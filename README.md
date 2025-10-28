@@ -18,3 +18,4 @@ It does include some nice features, such as morse decoder, slow scan waterfall, 
 To build the hardware you should have experience with RF circuits and the appropiate toolset. At least a tinySA and NanoVNA are strongly recommended. 
 
 See the main file SI4732Radio_V0_524.ino for more details.
+![Alt text](1.jpg)
