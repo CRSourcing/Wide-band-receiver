@@ -1,8 +1,8 @@
 # Wide-band-receiver
-An all mode wide band receiver receiver project, covering 0.1-860MHz. Using Arduino IDE for firmware, SI4732+AD831 for shortwave reception and additionally an I2C TV tuner for VHF/UHF reception.
+An all mode wide band receiver receiver project, covering 0.1-860MHz. Using Arduino IDE for firmware, SI4732 as demodulator, AD831 as active mixer and additionally an I2C TV tuner for VHF/UHF reception.
 A tinySA can be used as optional panorama adapter and will then get automatically configured and updated by the software.     
  
-It is an experimental receiver and should not be considered as a flawless building description with guaranteed success. 
+This is an experimental receiver and should not be considered as a flawless building description with guaranteed success. 
 It does require RF experience and tools.
 
 It uses a NOS "tin can" I2C TV tuner and covers 0.1 - 860MHz. A "shortwave only" version (without tuner) can be compiled. It will then cover 0.1-50MHz.
