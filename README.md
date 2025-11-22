@@ -1,5 +1,5 @@
 # Wide band receiver
-An all mode wide band receiver receiver project, covering 0.1-860MHz. Using Arduino IDE for firmware, SI4732 as demodulator, AD831 as active mixer and an I2C "tin can" TV tuner for VHF/UHF reception.
+An all mode wide band receiver project, covering 0.1-860MHz. Using Arduino IDE for firmware, SI4732 as demodulator, AD831 as active mixer and an I2C "tin can" TV tuner for VHF/UHF reception.
 A tinySA can be used as optional panorama adapter and will then get automatically configured and updated by the software.     
  
 This is an experimental receiver and should not be considered as a flawless building description with guaranteed success. 
