@@ -22,3 +22,6 @@ To build the hardware you should have experience with RF circuits and the approp
 
 See the main file SI4732Radio_V0_524.ino for more details.
 ![Alt text](pics/1.jpg)
+
+
+![Alt text](pics/20250804_183503.jpg)
