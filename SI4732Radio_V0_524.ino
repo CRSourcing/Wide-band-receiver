@@ -187,8 +187,8 @@ Recommended buffer gain: 15–20 dB (example: MAR‑6 LNA).
 Connect GPIO 1 of the ESP32 with the RX pin of the tinySA and GPIO 3 with the TX pin (located on the tinySA board close to the battery connector).
 I have used a "Double Pole Double Throw" switch as power switch for both receiver and tinySA. 
 One pole switches the receiver on and the other pole is connected in parallel to the on/off switch of the tinySA and switches the tinySA.  
-TinySA needs it's battery permanently connected to keep it's setup data. 
-TinySA battery gets charged from +5V via 1N4007 and 10 Ohms (1/2 Watts) in serial when the receiver is on.
+TinySA needs it's battery permanently connected to keep it's setup data, so don't remove. 
+TinySA battery gets charged via 1N4007 and 10 Ohms (1/2 Watts) in serial from +5V only when the receiver is on.
 Optionally connect the tinySA audio output via 0.1uF and 10K to the hot end of the volume pot.
 
 
@@ -196,7 +196,36 @@ Firmware & Serial Configuration
 Firmware requirement: TinySA firmware version ≥ v1.4‑105 (2023‑07‑21).
 Serial connection: Configure TinySA to use 115200 baud so it accepts commands from the ESP32.
 
+//------------------------------------
 
+
+TinySA firmware setup required:
+Connection Settings:
+Config → More → Connection → Change to Serial.
+Set serial speed to 115200.
+
+Trace Menu
+Trace 2 (Green): Enabled
+Trace 3 (Red): Enabled
+Trace 1 (Yellow): Disabled
+
+Marker Menu:
+Assign Marker 1 to Trace 2, unselect “Tracking” and everything else that may be selected.
+Assign Marker 2 to Trace 3, select “Tracking”.
+
+Display Menu:
+Enable Waterfall.
+Optional: Set Sweep Accuracy to Fast.
+
+
+Level Menu:
+Ext Gain: Enter buffer amplifier gain (e.g. 15 dB).
+
+Save Settings:
+Save configuration as Startup Preset.
+Enable “Save Settings”.
+
+//-----------------------------------------
 
 Buttons in the receiver "TinySA Options" menu:
 TinySA Mode:
@@ -233,34 +262,6 @@ Cfg: Configure TinySA parameters.
 
 -----------
 
-
-TinySA setup Before Use:
-Connection Settings:
-Config → More → Connection → Change to Serial.
-Set serial speed to 115200.
-
-Trace Menu
-Trace 2 (Green): Enabled
-Trace 3 (Red): Enabled
-Trace 1 (Yellow): Disabled
-
-Marker Menu:
-Assign Marker 1 to Trace 2, unselect “Tracking” and everything else that may be selected.
-Assign Marker 2 to Trace 3, select “Tracking”.
-
-Display Menu:
-Enable Waterfall.
-Optional: Set Sweep Accuracy to Fast.
-
-
-Level Menu:
-Ext Gain: Enter buffer amplifier gain (e.g. 15 dB).
-
-Save Settings:
-Save configuration as Startup Preset.
-Enable “Save Settings”.
-
------------
 
  
 Software hints:
