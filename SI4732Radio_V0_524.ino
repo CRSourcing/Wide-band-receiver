@@ -6,20 +6,20 @@
 
 #define TV_TUNER_PRESENT  // If this option is commented out, a shortwave receiver version will compile. In this case max. FREQ = 50MHz.
 
-//#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
+#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
 #define FAST_TOUCH_HANDLER  // Invokes a faster touch handler that does not sample. Could cause spurious errors, but increases speed significantly. No problems so far.
 
 #define SHOW_DEBUG_UTILITIES  // Will show Debug utilities panel. Contains helper functions and status messages.
 
-//#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator
+#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator
 // Provides a frequency offset indicator and software AFC.
 
-//#define SI5351_GENERATES_CLOCKS  //If uncommented, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732. 
+#define SI5351_GENERATES_CLOCKS  //If uncommented, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732. 
 
-//#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
+#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
 
-//#define SW_ATTENUATOR_PRESENT  // uncommment only if an voltage controlled attenuator is present in the shortwave RF path.
+#define SW_ATTENUATOR_PRESENT  // uncommment only if a voltage controlled attenuator is present in the shortwave RF path.
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
 //#define PRINT_STORAGE_DEBUG_MESSAGES // Creates serial debug messages about files on LittleFS and SDcard.
@@ -124,9 +124,7 @@ It will also allow calibrated measurement of the signalstrength in dBm and micro
 If you do this, please note that the tinySA needs to be switched off when loading firmware into the ESP32.
 Connect the tinySA audio output via 10K and 0.1uF in series to the audio output of the SI4732.
 You can then listen to the tinySA. Check the Youtube video to see how it works.
-Configure the TSA to use serial connection 115200 so that it accepts the commands from the ESP32. In "Preset" menu enable "Save Settings".
-tinySA firmware version >= v1.4-105 2023-07-21 needed. This will control the TSA directly via serial commands. 
-The tinySA emits RF while scanning, so it should be connected via a buffer (UHF transistor or gain block) to the output of the RF gain block. The tinySA emits RF while scanning, 
+
 
 12. Additional SD card support has been implemented.  It uses the on board SD card slot of the ILI9488 display. Connect the pins in parallel to the existing SPI bus, except the CS pin.
 The SD Card CS pin gets connected to ESP32 GPIO 33. Not all SD cards work, this seems to be a limitation of the SD card library. Try several, including older ones. 
@@ -178,11 +176,84 @@ Calibration:
 
 9. "Tun. Attn" will reduce the tuner gain when no signal is received. It will also affect the point where the tuner agc kicks in.
 
+--------------
+
+
+TinySA Setup and Operation:
+Hardware Connection
+The TinySA RF input is connected via a buffer amplifier to the output of the first RF gain block.
+Recommended buffer gain: 15–20 dB (example: MAR‑6 LNA).
+
+
+Firmware & Serial Configuration
+Firmware requirement: TinySA firmware version ≥ v1.4‑105 (2023‑07‑21).
+Serial connection: Configure TinySA to use 115200 baud so it accepts commands from the ESP32.
+
+Buttons in the receiver "TinySA Options" menu:
+TinySA Mode:
+
+Window Mode: Displays a 1 MHz segment.
+Marker 1 shows the tuned frequency within the window.
+Marker moves across the screen as frequency changes.
+Tuning outside the window switches to the next window.
+
+Center Mode:
+Tuned frequency stays at the center.
+Slower, since TinySA must rebuild the entire screen whenever frequency changes.
+
+
+TinySA Config: Adjust Span and Bandwidth.
+
+Listen: Option to enable “Listen” if TinySA audio output is connected to the receiver’s audio amp.
+
+TinySA Sync:
+Synd disabled: TinySA works independently from the receiver.
+Sync enabled: Tunes a 1MHz segment around the receiver frequency. Markers follow the tuned frequency.
+Shows strongest peak within the 1 MHz segment.
+Receiver uses TinySA’s dBm value for S‑Meter readings (more precise than SI4732 RSSI).
+
+
+
+Additional Buttons (appear after successful sync on the lower right side of the receiver screen)
+R: Resets TinySA.
+M1: On TinySA drag Marker 1 to a signal of interest -> receiver tunes to that signal. Tap again to exit.
+M2: Tunes receiver to frequency of Marker 2 (strongest peak).
+M2F: Receiver follows Marker 2 only when squelch is closed. Stays on a frequency once squelch opens, when squelch closes again moves to next strongest peak.
+Cfg: Configure TinySA parameters.
+
+-----------
+
+
+TinySA setup Before Use:
+Connection Settings
+Config → More → Connection → Change to Serial.
+Set serial speed to 115200.
+
+Trace Menu
+Trace 2 (Green): Enabled
+Trace 3 (Red): Enabled
+Trace 1 (Yellow): Disabled
+
+Marker Menu
+Assign Marker 1 to Trace 2, unselect “Tracking” and everything else that may be selected.
+Assign Marker 2 to Trace 3, select “Tracking”.
+
+Display Menu
+Enable Waterfall.
+Additional: Set Sweep Accuracy to Fast.
+
+
+Level Menu
+Ext Gain: Enter buffer amplifier gain (e.g., 15 dB).
+
+Save Settings
+Save configuration as Startup Preset.
+
+Enable “Save Settings”.
+
+
+
  
-
-
-
-
 Software hints:
 
 There is little error checking implemented, so if you press combinations that make no sense you will get a result that makes no sense.
@@ -193,16 +264,6 @@ on the left or right side.
 
 "Select Band": Loads a predefined band from struct BandInfo. Configurable, tuning either without limits (can leave the band) or loop mode (stays within band). 
 Scan: Seek up, Seek down, or set a range. Scan is squelch driven. If band loop mode is enabled, Seek will stay within the band. 
-
-TinySA: 
-
-In window mode shows marker 1 at the tuned frequency in a 1Mhz wide segment. The marker will move through the screen when the frequency changes.
-Tuning out of the window switches to the next window.
-In window mode using a preselected band, the entire band will be displayed and and marker 1 shows the tuned frequency.
-
-In Config tinySA you can set parameters and also listen to the tinySA.
-Buttons at the lower right area (right side of the miniwindow): R = reset tinySA. M1 = Drag marker 1 on the tinySA and the receiver will follow the tinySA. M2: Receiver will
-tune to marker 2 (strongest signal in the window) M2F: Receiver will follow marker 2 (strongest signal in the window) as soon as the squelch gets closed.
 
 Memory scan: Only possible within 1 page. Press Scan, then press the buttons to scan, then scan again. Close squelch enough to avoid stuttering.
 
@@ -689,8 +750,8 @@ uint16_t buttonSelected = 4;  // 4-11
 // Web
 uint8_t imageSelector = 0;
 bool swappedJPEG = false;
-const char* ssid = "YourSSID";
-const char* password = "YourPW";
+const char* ssid = "MMV2025";
+const char* password = "Pekita#2020";
 int yShift = 0;
 int xShift = 0;
 int reportSelector = 0;
@@ -1076,7 +1137,7 @@ void setup() {
   bootScreen();
   etft.TTFdestination(&tft);
   etft.setTTFFont(Arial_13);
-  // uint16_t calData[5] = { 215, 3633, 198, 3539, 7 };  //example for display 4.0
+  //uint16_t calData[5] = { 292 3333, 198, 3539, 7 };  //example for display 4.0
   uint16_t calData[5] = { // values for display 3.5
                           (uint16_t)preferences.getInt("cal0", 323),
                           (uint16_t)preferences.getInt("cal1", 3305),
@@ -1085,6 +1146,7 @@ void setup() {
                           (uint16_t)preferences.getInt("cal4", 5)
   };
 
+  //calData[5] = {324, 3335, 427, 2870, 5 }; 
   tft.setTouch(calData);
   loadLastSettings();  // load settings from flash
   drawFrame();
@@ -1150,14 +1212,10 @@ void loop() {
   setTunerAGC();  // TV tuner AGC reduces tuner gain for better IP3, shows value as circle in the Tuner Gain tile
 #endif
 
-
-
 #ifdef SW_ATTENUATOR_PRESENT
   if (!TVTunerActive)
     setShortwaveAGC();  // TV tuner AGC reduces tuner gain for better IP3, shows value intile
 #endif
-
-
 
 
   saveCurrentSettings();  // save settings after 1 minute if freq has not changed
@@ -2262,7 +2320,7 @@ void setAFC(int afcVoltage) {  // only for NBFM hardware
   //Serial_printf("%ld %d  %d\n", shift, afcVoltage, signalStrength);
 
 
-  si5351.set_correction(SI5351calib + shift, SI5351_PLL_INPUT_XO);  // use correction instead of adjusting FREQ to avoid running away
+  si5351.set_correction(SI5351calib + shift, SI5351_PLL_INPUT_XO);  // use SI5351correction instead of adjusting FREQ to avoid running away
 }
 
 #endif

@@ -189,6 +189,13 @@ void touchCal() {
   tft.printf("Cal Data: %d, %d, %d, %d, %d", calData[0], calData[1], calData[2], calData[3], calData[4]);
 
 
+if (calData[0] == 1 ||  calData[1] == 1 || calData[2] == 1 || calData[3] == 1) {
+  tft.print("\n Possible calibration error. Try again.");
+  return;
+}
+
+  
+
   //write to EEPROM
   preferences.putInt("cal0", calData[0]);
   preferences.putInt("cal1", calData[1]);

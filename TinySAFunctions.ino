@@ -224,16 +224,16 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
 
     if (freqM1 > MIN_FREQ) {
       if (!blink && setFREQtoMarker1)  // Marker 1 blink when in use
-        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_RED);
+        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
       if (!blink && !setFREQtoMarker1)
-        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_RED);
+        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
       if (blink && setFREQtoMarker1)
         tft.fillRoundRect(257, 300, 30, 19, 4, TFT_BLUE);
 
 
       tft.fillRoundRect(233, 300, 15, 19, 4, TFT_ORANGE);       // Sync
-      tft.fillRoundRect(295, 300, 30, 19, 4, TFT_GREEN);        // Marker 2
-      tft.fillRoundRect(337, 300, 42, 19, 4, TFT_GREENYELLOW);  // Marker 2 Follow
+      tft.fillRoundRect(295, 300, 30, 19, 4, TFT_RED);        // Marker 2
+      tft.fillRoundRect(337, 300, 42, 19, 4, TFT_PINK);  // Marker 2 Follow
       tft.fillRoundRect(387, 300, 42, 19, 4, TFT_YELLOW);
 
 
@@ -352,7 +352,6 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
   }
 }
 //##########################################################################################################################//
-
 void centerTinySA() {  // centers TSA when FREQ moves outside window
 
 
@@ -397,8 +396,7 @@ void centerTinySA() {  // centers TSA when FREQ moves outside window
   }
 }
 
-
-//##########################################################################################################################//
+//#######################################################################################################//
 
 
 void synctinySAWaterfall(long midPoint, long startPoint, long endPoint) {  // syncs TSA waterfall with waterfall()
