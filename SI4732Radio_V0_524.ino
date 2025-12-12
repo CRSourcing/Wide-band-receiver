@@ -180,14 +180,23 @@ Calibration:
 
 
 TinySA Setup and Operation:
-Hardware Connection
+Hardware Connections:
+
 The TinySA RF input is connected via a buffer amplifier to the output of the first RF gain block.
 Recommended buffer gain: 15–20 dB (example: MAR‑6 LNA).
+Connect GPIO 1 of the ESP32 with the RX pin of the tinySA and GPIO 3 with the TX pin (located on the tinySA board close to the battery connector).
+I have used a "Double Pole Double Throw" switch as power switch for both receiver and tinySA. 
+One pole switches the receiver on and the other pole is connected in parallel to the on/off switch of the tinySA and switches the tinySA.  
+TinySA needs it's battery permanently connected to keep it's setup data. 
+TinySA battery gets charged from +5V via 1N4007 and 10 Ohms (1/2 Watts) in serial when the receiver is on.
+Optionally connect the tinySA audio output via 0.1uF and 10K to the hot end of the volume pot.
 
 
 Firmware & Serial Configuration
 Firmware requirement: TinySA firmware version ≥ v1.4‑105 (2023‑07‑21).
 Serial connection: Configure TinySA to use 115200 baud so it accepts commands from the ESP32.
+
+
 
 Buttons in the receiver "TinySA Options" menu:
 TinySA Mode:
@@ -208,15 +217,16 @@ Listen: Option to enable “Listen” if TinySA audio output is connected to the
 
 TinySA Sync:
 Synd disabled: TinySA works independently from the receiver.
-Sync enabled: Tunes a 1MHz segment around the receiver frequency. Markers follow the tuned frequency.
-Shows strongest peak within the 1 MHz segment.
+
+Sync enabled: Tunes a 1MHz segment around the receiver frequency. Marker 1 follows the tuned frequency.
+Marker 2 shows strongest peak within the 1 MHz segment.
 Receiver uses TinySA’s dBm value for S‑Meter readings (more precise than SI4732 RSSI).
 
 
 
-Additional Buttons (appear after successful sync on the lower right side of the receiver screen)
+Additional Buttons (appear after successful sync on the lower right side of the receiver screen):
 R: Resets TinySA.
-M1: On TinySA drag Marker 1 to a signal of interest -> receiver tunes to that signal. Tap again to exit.
+M1: On TinySA drag Marker 1 to a signal of interest -> receiver tunes to that signal. Tap again to exit this mode.
 M2: Tunes receiver to frequency of Marker 2 (strongest peak).
 M2F: Receiver follows Marker 2 only when squelch is closed. Stays on a frequency once squelch opens, when squelch closes again moves to next strongest peak.
 Cfg: Configure TinySA parameters.
@@ -225,7 +235,7 @@ Cfg: Configure TinySA parameters.
 
 
 TinySA setup Before Use:
-Connection Settings
+Connection Settings:
 Config → More → Connection → Change to Serial.
 Set serial speed to 115200.
 
@@ -234,24 +244,23 @@ Trace 2 (Green): Enabled
 Trace 3 (Red): Enabled
 Trace 1 (Yellow): Disabled
 
-Marker Menu
+Marker Menu:
 Assign Marker 1 to Trace 2, unselect “Tracking” and everything else that may be selected.
 Assign Marker 2 to Trace 3, select “Tracking”.
 
-Display Menu
+Display Menu:
 Enable Waterfall.
-Additional: Set Sweep Accuracy to Fast.
+Optional: Set Sweep Accuracy to Fast.
 
 
-Level Menu
-Ext Gain: Enter buffer amplifier gain (e.g., 15 dB).
+Level Menu:
+Ext Gain: Enter buffer amplifier gain (e.g. 15 dB).
 
-Save Settings
+Save Settings:
 Save configuration as Startup Preset.
-
 Enable “Save Settings”.
 
-
+-----------
 
  
 Software hints:
