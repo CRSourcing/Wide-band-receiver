@@ -310,11 +310,14 @@ bool longPress() {
 
 //##########################################################################################################################//
 
-bool get_Touch() {  // implements a short beep when pressed, calls getTouch, or uses fast raw functions.
+bool get_Touch() {  // implements a short beep when pressed, calls getTouch, or uses raw functions for speed
 
   static uint32_t t = 0;
   uint32_t tnew;
   static bool snd = true;
+  
+  const int samples = 10;
+  uint16_t xs[samples], ys[samples];
 
   tnew = millis();
   
@@ -322,17 +325,51 @@ bool get_Touch() {  // implements a short beep when pressed, calls getTouch, or 
   pressed = tft.getTouch(&tx, &ty);
 #endif
 
-#ifdef FAST_TOUCH_HANDLER
+
+
+#ifdef FAST_TOUCH_HANDLER // reduces sampling
  uint16_t x = 0, y = 0 ;
-  uint16_t z = tft.getTouchRawZ();
-  if ( z > 300) { 
-    pressed = true;
-    tft.getTouchRaw(&x, &y);  // Read raw x and y
-    tft.convertRawXY(&x, &y); // Convert to screen coordinates
-   tx = x;
-   ty = y;
+uint16_t z = tft.getTouchRawZ();
   
-   if(y >= DISP_HEIGHT || x >= DISP_WIDTH) {// eliminate spurious error
+  
+  
+  if ( z > 300) { 
+  pressed = true;
+   
+   int valid = 0;
+  for (int i = 0; i < samples; i++) {
+    uint16_t x, y;
+    if (tft.getTouchRaw(&x, &y)) {
+      tft.convertRawXY(&x, &y);
+      xs[valid] = x;
+      ys[valid] = y;
+      valid++;
+    }
+   // delayMicroseconds(50);  // ADC settle time
+  }
+
+
+  // --- Median filter ---
+  for (int i = 1; i < valid; i++) {
+    for (int j = i; j > 0 && xs[j] < xs[j - 1]; j--) {
+      uint16_t tmp = xs[j];
+      xs[j] = xs[j - 1];
+      xs[j - 1] = tmp;
+    }
+    for (int j = i; j > 0 && ys[j] < ys[j - 1]; j--) {
+      uint16_t tmp = ys[j];
+      ys[j] = ys[j - 1];
+      ys[j - 1] = tmp;
+    }
+  }
+
+ tx = xs[valid / 2];
+ ty = ys[valid / 2];
+
+
+
+  // --- Reject obvious false positives ---
+   if(ty >= DISP_HEIGHT || tx >= DISP_WIDTH) {
       pressed = false;
       tx = 0;
       ty = 0;

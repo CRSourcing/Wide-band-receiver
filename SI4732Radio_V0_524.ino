@@ -8,7 +8,7 @@
 
 #define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
-#define FAST_TOUCH_HANDLER  // Invokes a faster touch handler that does not sample. Could cause spurious errors, but increases speed significantly. No problems so far.
+#define FAST_TOUCH_HANDLER  // Invokes a faster touch handler with reduced sampling. Could cause spurious errors, but increases speed significantly. No problems so far.
 
 #define SHOW_DEBUG_UTILITIES  // Will show Debug utilities panel. Contains helper functions and status messages.
 
@@ -1286,7 +1286,7 @@ void loop() {
 
 #ifdef TINYSA_PRESENT
   if (fTrigger % 15 == 0)
-    synctinySA();  // tinySA synchronisation when in RF mode
+    synctinySA();  // tinySA synchronisation 
 #endif
 
 

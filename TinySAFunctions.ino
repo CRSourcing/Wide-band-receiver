@@ -183,18 +183,18 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
 
   if (syncEnabled) {
 
-    if (!init) {  // force TSA to init if TSA is already initialized when program starts
+    if (!init) {  // force TSA to init if TSA is not already initialized when program starts
       init = true;
       resetTSA();
       return;
     }
 
     Serial.println("marker 1");
-    delay(2);
+    delay(1);
     Serial.readBytesUntil(0, marker1Buffer, 50);  // reads string from marker 1, readings get stuck when too frequent
-    delay(2);
+    delay(1);
     Serial.println("marker 2");  // reads string from marker 2,  peak signal
-    delay(2);
+    delay(1);
     Serial.readBytesUntil(0, marker2Buffer, 50);
 
 
@@ -223,14 +223,13 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
 
 
     if (freqM1 > MIN_FREQ) {
-      if (!blink && setFREQtoMarker1)  // Marker 1 blink when in use
-        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
-      if (!blink && !setFREQtoMarker1)
-        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
+      // Marker 1 blink when in use
+  
       if (blink && setFREQtoMarker1)
         tft.fillRoundRect(257, 300, 30, 19, 4, TFT_BLUE);
 
-
+      if (!blink) {
+      tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
       tft.fillRoundRect(233, 300, 15, 19, 4, TFT_ORANGE);       // Sync
       tft.fillRoundRect(295, 300, 30, 19, 4, TFT_RED);        // Marker 2
       tft.fillRoundRect(337, 300, 42, 19, 4, TFT_PINK);  // Marker 2 Follow
@@ -251,7 +250,7 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
       tft.setCursor(392, 302);
       tft.print("Cfg");
       tft.setTextColor(textColor);
-
+      }
 
 
       if (ty > 293 && tx >= 233 && tx <= 255) {  // manually sync the TSA
