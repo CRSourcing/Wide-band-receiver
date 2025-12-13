@@ -575,7 +575,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.523";         // version
+const char ver[] = "V.525";         // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -1144,10 +1144,16 @@ void setup() {
   preferences.begin("data", false);  // preferences namespace is data. Needs to be loaded before bootscreen
   Serial.begin(115200);
   //startHWT();  // not used in this version
+  
+  pinMode(ENCODER_PIN_A, INPUT_PULLUP); // encoder needed for touch calibration
+  pinMode(ENCODER_PIN_B, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), RotaryEncFreq, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), RotaryEncFreq, CHANGE);
+
   bootScreen();
   etft.TTFdestination(&tft);
   etft.setTTFFont(Arial_13);
-  //uint16_t calData[5] = { 292 3333, 198, 3539, 7 };  //example for display 4.0
+
   uint16_t calData[5] = { // values for display 3.5
                           (uint16_t)preferences.getInt("cal0", 323),
                           (uint16_t)preferences.getInt("cal1", 3305),
@@ -1156,7 +1162,8 @@ void setup() {
                           (uint16_t)preferences.getInt("cal4", 5)
   };
 
-  //calData[5] = {324, 3335, 427, 2870, 5 }; 
+  // uint16_t calData[5] = {324, 3335, 427, 2870, 5 }; // example for display 3.5"
+  ///  uint16_t calData[5] = { 292 3333, 198, 3539, 7 };  //example for display 4.0
   tft.setTouch(calData);
   loadLastSettings();  // load settings from flash
   drawFrame();
@@ -1166,9 +1173,6 @@ void setup() {
   pinMode(IF_INPUT_RELAY, OUTPUT);  // pin for IF relay and to enable tuner voltage
   pinMode(TUNER_AGC_PIN, OUTPUT);
   pinMode(NBFM_MUTE_PIN, OUTPUT);
-
-  pinMode(ENCODER_PIN_A, INPUT_PULLUP);
-  pinMode(ENCODER_PIN_B, INPUT_PULLUP);
   pinMode(MUTEPIN, OUTPUT);
   pinMode(AUDIO_INPUT_PIN, INPUT);  // Audio FFT
   pinMode(PULSE_PIN, INPUT);        // Audio square wave
@@ -1180,8 +1184,7 @@ void setup() {
 #endif
 
 
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), RotaryEncFreq, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), RotaryEncFreq, CHANGE);
+ 
   SI5351_Init();
   loadLists();                    // load structures, use from LittleFS if exists
   createMemoInfoCSVIfNotExist();  //Create memoInfo on LittleFS if not there

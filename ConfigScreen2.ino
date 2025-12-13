@@ -181,20 +181,48 @@ void touchCal() {
   tft.calibrateTouch(calData, TFT_WHITE, TFT_RED, 15);
 
   tft.setTextSize(2);
-  tft.setCursor(0, 60);
-  tft.println("Calibration complete!\nTouch screen to leave.");
-
-  // Display calibration data on the screen
-  tft.setCursor(0, 120);
-  tft.printf("Cal Data: %d, %d, %d, %d, %d", calData[0], calData[1], calData[2], calData[3], calData[4]);
-
-
-if (calData[0] == 1 ||  calData[1] == 1 || calData[2] == 1 || calData[3] == 1) {
-  tft.print("\n Possible calibration error. Try again.");
-  return;
-}
-
+  tft.setCursor(0, 20);
+  tft.print("Calibration complete!\nTouch screen with stylus\nto test different areas.\n\n Press encoder to save\nMove encoder to recalibrate\n");
+  tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
   
+  // Display calibration data on the screen
+ /*
+ 
+ tft.setCursor(0, 120);
+  tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
+  tft.println("");
+  tft.println("");
+  tft.println("Caldata should look similar to:");
+  tft.println("324, 3335, 427, 2870, 5");
+  tft.println("");
+  tft.println("Repeat calibration if values look far");
+  tft.println("off or buttons respond wrong");
+*/
+
+  while (1) {
+        if ((digitalRead(ENCODER_BUTTON) == LOW))
+          break;
+        
+        if (clw || cclw){
+        clw = false;
+        cclw = false;
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(0, 20);
+        tft.print("Recalibration\nTouch screen with stylus\nto test different areas\n\n");
+        tft.calibrateTouch(calData, TFT_WHITE, TFT_RED, 15); 
+        tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
+        }
+        
+        get_Touch();
+        if (pressed)
+          tft.fillCircle (tx,ty,3, TFT_RED);
+        pressed = false;
+        delay(10);
+         tft.fillCircle (tx,ty,3, TFT_BLACK);
+  }
+
+
+
 
   //write to EEPROM
   preferences.putInt("cal0", calData[0]);
@@ -206,7 +234,10 @@ if (calData[0] == 1 ||  calData[1] == 1 || calData[2] == 1 || calData[3] == 1) {
   // Apply calibration data
   tft.setTouch(calData);
 
-  tDoublePress();
+ tft.print("Calibration data saved");
+
+delay(1000);
+
 }
 
 //##########################################################################################################################//
