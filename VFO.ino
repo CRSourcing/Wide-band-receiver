@@ -1,5 +1,5 @@
 void setLO() {
-  // Sets the oscillator(s) to required frequency. Redirects to selectTuningMethod() when using VHF/UHF.
+  // Sets the oscillator(s) to required frequency. Redirects to tune().
 
 
   if (noMixer) {  // debug - tune the SI4732 directly
@@ -8,6 +8,8 @@ void setLO() {
       tuneWBFMSI4735();
       return;
     }
+
+
     si4735.setFrequency(FREQ / 1000);
     return;
   }
@@ -20,9 +22,11 @@ void setLO() {
     si5351.set_freq(LO_RX * 100ULL, SI5351_CLK2);  // tune the synthesizer so that the tinySA shows WBFM spectrum. Use low injectionurn;
     return;
 #endif
-  } else
+  }
 
-    selectTuningMethod();
+
+  else
+    tune();  // select tuning method and tune in
   return;
 }
 
@@ -112,8 +116,6 @@ void fineTune() {  // reads fine tune potentiometer and adjusts FREQ
     FREQ -= oldPot;
     FREQ += potResult;
     oldPot = potResult;
-  
-  
   }
 }
 
@@ -137,7 +139,7 @@ void saveCurrentSettings() {
     preferences.putInt("lastBw", bandWidth);
     preferences.putChar("lastMod", modType);
     addFrequencyAndModeToHistoryBuffer(FREQ, modType);
-    Serial_printf("Last saved after %ldsec (FREQ=%ld)\n", millis()/1000, FREQ);
+    Serial_printf("Last saved after %ldsec (FREQ=%ld)\n", millis() / 1000, FREQ);
     hasWritten = true;  // Block further writes until next change
   }
 }
@@ -154,3 +156,47 @@ void addFrequencyAndModeToHistoryBuffer(uint32_t freq, char mode) {
 
 
 //##########################################################################################################################//
+
+
+
+void vfoSelector() {
+
+
+  static bool init = false;
+  static long vfo1Freq = 0;
+  static long vfo2Freq = 0;
+  static int vfo1ModType = -1;
+  static int vfo2ModType = -1;
+
+  if (vfo1Active) {
+
+
+    vfo2Freq = FREQ;
+    vfo2ModType = modType;
+    FREQ = vfo1Freq;
+
+    if (modType != vfo1ModType) {
+      modType = vfo1ModType;
+      loadSi4735parameters();
+    }
+  }
+
+  else {
+
+    vfo1ModType = modType;
+
+    if (!init) {
+      vfo2Freq = FREQ;
+      vfo2ModType = modType;
+      init = true;
+    }
+
+    vfo1Freq = FREQ;
+    FREQ = vfo2Freq;
+
+    if (modType != vfo2ModType) {
+      modType = vfo2ModType;
+      loadSi4735parameters();
+    }
+  }
+}

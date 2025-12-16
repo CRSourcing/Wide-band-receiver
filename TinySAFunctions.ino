@@ -183,7 +183,7 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
 
   if (syncEnabled) {
 
-    if (!init) {  // force TSA to init if TSA is not already initialized when program starts
+    if (!init) {  // force TSA to init when program starts
       init = true;
       resetTSA();
       return;
@@ -493,7 +493,7 @@ void convertTodBm(char* extractedSS) {
 
 void resetTSA() {  //forces TSA to center when needed, or by pressing orange "R" button
 
-  if (tinySA_RF_Mode == false || tinySACenterMode == true)
+  if (tinySACenterMode == true)
     return;
 
   long CENTER_FREQ = FREQ;
@@ -677,7 +677,7 @@ void showSelectedBand() {
 
   BandInfo& sel = bandList[selected_band];
 
-  if (tinySACenterMode == false && tinySA_RF_Mode == true) {
+  if (tinySACenterMode == false) {
     char buffer[50];
     long midPoint = (sel.stopFreqKHz + sel.startFreqKHz) / 2;
     sprintf(buffer, "sweep center %ld", midPoint * 1000);

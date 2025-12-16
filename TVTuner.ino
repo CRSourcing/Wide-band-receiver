@@ -46,13 +46,6 @@ const long segmentSize = 1000000;        // segment that will be covered before 
 //##########################################################################################################################//
 
 
-void selectTuningMethod() {
-
-  tuningSelector();
-}
-
-//##########################################################################################################################//
-
 #ifdef TV_TUNER_PRESENT
 // Function to calculate divider bytes
 void setDividerBytes(int PLLFreq) {
@@ -69,7 +62,7 @@ void setDividerBytes(int PLLFreq) {
 
 //##########################################################################################################################//
 
-void tuningSelector() {  // selects tuning method depending on frequency
+void tune() {  // selects tuning method depending on frequency and programs si5351
 
 #ifdef TV_TUNER_PRESENT
 

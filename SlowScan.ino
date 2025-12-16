@@ -110,15 +110,6 @@ if ((modType == 2 || modType == 3 || modType == 6 || modType == 7) && (oldModTyp
   setLO();       // and tune it in
   getRSSIAndSNR();
 
-#ifdef TINYSA_PRESENT
-  if (tinySA_RF_Mode == true && FREQ < 350000000) { // only makes sense in RF mode and do not exceed frequency limit of TSA
-  char tBuffer[50];
-  sprintf(tBuffer, "sweep center %ld", FREQ);
-  Serial_println(tBuffer);  // set the tinySA center to current FREQ
-  }
-  delay(150);
-#endif  
-    
  calculateAndDisplaySignalStrength(); // display RSSI/SNR
  displaySmeterBar(10); // fast smeter. no delay
 

@@ -1380,3 +1380,74 @@ if (modType == LSB || modType == USB || modType == SYNC || modType == CW || modT
     }
   }
 }
+
+//##########################################################################################################################//
+void selectWaterFall(){
+
+
+  draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
+
+  struct Button {
+    int x;
+    int y;
+    const char* label;
+  };
+
+  Button buttons[] = {
+    { 193, 245, "Use" }, 
+    { 193, 265, "Band" }, 
+    { 100, 245, "Use" }, 
+    { 100, 265, "Range" }, 
+    { 290, 245, "" }, 
+    { 280, 265, "" }, 
+    { 20, 188, "" }, 
+    { 20, 210, "" }, 
+    { 20, 132, "" }, 
+    { 20, 152, "" }, 
+    { 20, 255, "BACK" }
+  };
+
+
+  etft.setTTFFont(Arial_14);
+  tft.fillRect(2, 61, 337, 173, TFT_BLACK); // overwrite buttons 1-8
+
+  for (int i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
+    etft.setCursor(buttons[i].x, buttons[i].y);
+    etft.print(buttons[i].label);
+  }
+
+
+  while (true) {
+    tDoublePress();
+
+    int buttonID = getButtonID();
+
+    if (row < 2 || row > 4 || column > 4)
+      return;  // outside of area
+
+
+    switch (buttonID) {
+      case 41:
+        redrawMainScreen = true;
+        tx = ty = pressed = 0;
+        return;
+      case 42:
+        waterFall(true);  // use keypad for waterfall
+         redrawMainScreen = true;
+        tx = ty = pressed = 0;
+        return;
+        break;
+      case 43:
+        setBand(true);  // use band for waterfall
+         redrawMainScreen = true;
+        tx = ty = pressed = 0;
+        return;
+        break;
+      default:
+        redrawMainScreen = true;
+        tx = ty = pressed = 0;
+        return;
+    }
+  }
+}
+

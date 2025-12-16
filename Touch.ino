@@ -7,10 +7,10 @@ void freqScreen() {  // displays and reads frequency numeric keypad
   tRel();
   readKeypadButtons();
 
-  if (modType == WBFM && (FREQ < 88000000 || FREQ > 108000000)){
-     modType = AM;
+  if (modType == WBFM && (FREQ < 88000000 || FREQ > 108000000)) {
+    modType = AM;
     loadSi4735parameters();
-  }  
+  }
 }
 
 //##########################################################################################################################//
@@ -20,7 +20,7 @@ void drawKeypadButtons() {
   char labels[9] = { '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 
   int x_positions[] = { 25, 108, 191 };
-  int y_positions[] = {70, 128, 186  };
+  int y_positions[] = { 70, 128, 186 };
 
   int index = 0;
   for (int i = 0; i < 3; i++) {
@@ -77,13 +77,13 @@ bool readKeypadButtons() {
 
   while (index < 8) {  //6 digits frequency input
     tPress();
-  
-if (tx > 345 && loadHistory) {// touch was in big button area, load history
-    loadFreqFromHistory();
-    tRel();
-    tx = 0; 
-    return false;
-   } 
+
+    if (tx > 345 && loadHistory) {  // touch was in big button area, load history
+      loadFreqFromHistory();
+      tRel();
+      tx = 0;
+      return false;
+    }
 
     column = 1 + (tx / HorSpacing);  //  get row and column
     row = 1 + ((ty - 40) / vTouchSpacing);
@@ -131,18 +131,18 @@ if (tx > 345 && loadHistory) {// touch was in big button area, load history
 
     if (row == 2 && column == 4) {  //enter Mhz
       tft.fillRect(10, 3, 325, 40, TFT_BLACK);
-      if (f > MAX_FREQ/1000)
-        f/=1000; // Must be KHz by user error
+      if (f > MAX_FREQ / 1000)
+        f /= 1000;  // Must be KHz by user error
       if (!decimalPoint)
         FREQ = (f * 100000);
       else
         FREQ = (f * 1000000);
-      
+
       if (FREQ < MIN_FREQ) {  // limit max input
         FREQ = freqSave;
         keyPadErr();
       }
-      
+
       tRel();
       selected_band = -1;  // remove selected band
       return true;
@@ -227,8 +227,8 @@ void drawNumPad() {
   uint16_t yb = 58;
   int h = 8;
 
-    tft.fillRect(2, 50, 337, 240, TFT_BLACK);
- 
+  tft.fillRect(2, 50, 337, 240, TFT_BLACK);
+
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       drawButton(h + j * 83, (i + 1) * yb, TILE_WIDTH, TILE_HEIGHT, TFT_BTNBDR, TFT_BTNCTR);
@@ -245,7 +245,7 @@ void confirmTouch(int row, int column) {
     return;
   uint16_t yb = 58;
   int h = 8;
-  drawButton(h + (column - 1) * 83, (row) * yb, TILE_WIDTH, TILE_HEIGHT, TFT_BTNBDR, TFT_BTNCTR);  // draw empty button
+  drawButton(h + (column - 1) * 83, (row)*yb, TILE_WIDTH, TILE_HEIGHT, TFT_BTNBDR, TFT_BTNCTR);  // draw empty button
   delay(200);
   drawKeypadButtons();
   //redraw buttons
@@ -302,7 +302,7 @@ bool longPress() {
     uint32_t t2 = millis();
     if (t2 - t1 > longPressLimit) {
       return true;
-    }  
+    }
     if (!pressed)
       return false;
   }
@@ -315,72 +315,72 @@ bool get_Touch() {  // implements a short beep when pressed, calls getTouch, or 
   static uint32_t t = 0;
   uint32_t tnew;
   static bool snd = true;
-  
+
   const int samples = 10;
   uint16_t xs[samples], ys[samples];
 
   tnew = millis();
-  
+
 #ifndef FAST_TOUCH_HANDLER
   pressed = tft.getTouch(&tx, &ty);
 #endif
 
 
 
-#ifdef FAST_TOUCH_HANDLER // reduces sampling
- uint16_t x = 0, y = 0 ;
-uint16_t z = tft.getTouchRawZ();
-  
-  
-  
-  if ( z > 300) { 
-  pressed = true;
-   
-   int valid = 0;
-  for (int i = 0; i < samples; i++) {
-    uint16_t x, y;
-    if (tft.getTouchRaw(&x, &y)) {
-      tft.convertRawXY(&x, &y);
-      xs[valid] = x;
-      ys[valid] = y;
-      valid++;
+#ifdef FAST_TOUCH_HANDLER  // reduces sampling
+  uint16_t x = 0, y = 0;
+  uint16_t z = tft.getTouchRawZ();
+
+
+
+  if (z > 300) {  // press lower limit
+    pressed = true;
+
+    int valid = 0;
+    for (int i = 0; i < samples; i++) {
+      uint16_t x, y;
+      if (tft.getTouchRaw(&x, &y)) {
+        tft.convertRawXY(&x, &y);
+        xs[valid] = x;
+        ys[valid] = y;
+        valid++;
+      }
+      // delayMicroseconds(50);  // ADC settle time
     }
-   // delayMicroseconds(50);  // ADC settle time
-  }
 
 
-  // --- Median filter ---
-  for (int i = 1; i < valid; i++) {
-    for (int j = i; j > 0 && xs[j] < xs[j - 1]; j--) {
-      uint16_t tmp = xs[j];
-      xs[j] = xs[j - 1];
-      xs[j - 1] = tmp;
+    // --- Median filter ---
+    for (int i = 1; i < valid; i++) {
+      for (int j = i; j > 0 && xs[j] < xs[j - 1]; j--) {
+        uint16_t tmp = xs[j];
+        xs[j] = xs[j - 1];
+        xs[j - 1] = tmp;
+      }
+      for (int j = i; j > 0 && ys[j] < ys[j - 1]; j--) {
+        uint16_t tmp = ys[j];
+        ys[j] = ys[j - 1];
+        ys[j - 1] = tmp;
+      }
     }
-    for (int j = i; j > 0 && ys[j] < ys[j - 1]; j--) {
-      uint16_t tmp = ys[j];
-      ys[j] = ys[j - 1];
-      ys[j - 1] = tmp;
-    }
-  }
 
- tx = xs[valid / 2];
- ty = ys[valid / 2];
+    tx = xs[valid / 2];
+    ty = ys[valid / 2];
 
 
 
-  // --- Reject obvious false positives ---
-   if(ty >= DISP_HEIGHT || tx >= DISP_WIDTH) {
+    // --- Reject obvious false positives ---
+    if (ty >= DISP_HEIGHT || tx >= DISP_WIDTH) {
       pressed = false;
       tx = 0;
       ty = 0;
       return false;
-   }  
-  }  
-  
-  else {
-  pressed = false;
+    }
   }
-  #endif
+
+  else {
+    pressed = false;
+  }
+#endif
 
   if (tnew - t > 200 && !pressed)
     snd = true;
@@ -390,10 +390,10 @@ uint16_t z = tft.getTouchRawZ();
     snd = false;
     t = millis();
   }
-  
-  if(pressed)
-   enableAnimations = false; // stop any animation
-  
+
+  if (pressed)
+    enableAnimations = false;  // stop any animation
+
   return pressed;
 }
 
@@ -429,13 +429,11 @@ void checkTouchCoordinates() {  // touch coordinates for loop and mainscrees
 
 
 
-if (tx > 345 && loadHistory &&  redrawMainScreen == true) { // main loop interrupted, big buttons are hidden, waiting for user input
-   loadFreqFromHistory();
-  
-}
+  if (tx > 345 && loadHistory && redrawMainScreen == true) {  // main loop interrupted, big buttons are hidden, waiting for user input
+    loadFreqFromHistory();
+  }
 
 
   indicatorTouch();  //check whether indicators get touched directly
 }
 //##########################################################################################################################//
-

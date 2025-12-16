@@ -6,13 +6,13 @@
 
 #define TV_TUNER_PRESENT  // If this option is commented out, a shortwave receiver version will compile. In this case max. FREQ = 50MHz.
 
-//#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
+#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
 #define FAST_TOUCH_HANDLER  // Invokes a faster touch handler with reduced sampling. Could cause spurious errors, but increases speed significantly. No problems so far.
 
 #define SHOW_DEBUG_UTILITIES  // Will show Debug utilities panel. Contains helper functions and status messages.
 
-//#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator
+#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator
 // Provides a frequency offset indicator and software AFC.
 
 //#define SI5351_GENERATES_CLOCKS  //If uncommented, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732. 
@@ -575,7 +575,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.525";         // version
+const char ver[] = "V.526";         // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -588,6 +588,8 @@ long FREQ = 100000;            // receiver tuned frequency
 long FREQ_OLD = FREQ - 1;      // start with != FREQ value
 long LO_RX;                    // SI5351 frequency in Hz
 int SI4735TUNED_FREQ = 21400;  // 1st IF in KHz Also mid frequency of crystal filter, SI4732 needs to be tuned to it. 
+
+
 bool wideIFFilter = true;      // IF filter bandwidth false = narrow, true = wide;
 bool afcEnable = false;
 int NBFMOffset = 0;           // shift of  SI4735TUNED_FREQ in KHz to demodulate FM on the flank of the filter.
@@ -624,7 +626,6 @@ long MAX_FREQ = HIGHEST_ALLOWED_FREQUENCY;
 long MAX_FREQ = 50000000;
 #endif
 
-bool tinySA_RF_Mode = true;     // start tinySA in RF mode
 bool tinySACenterMode = false;  // tinySA in RF mode synchronizes with receiver frequency
 bool tinySAfound = false;
 bool syncEnabled = false;     // uses Marker 1 for Smeter and dBm and uV indicators
@@ -673,7 +674,7 @@ uint8_t AGCIDX = 0;  //AGC Index (0 = Minimum attenuation (max gain); 1 – 36 =
 uint8_t SNR = 0;
 int8_t signalStrength = 0;  // RSSI
 float microVolts;
-uint8_t modType = 1;                        //modulation type
+uint8_t modType = 1;                        //modulation type, 
 uint16_t tx = 0, ty = 0, ttx = 0, tty = 0;  // touchscreen coordinates and temporary value holders
 uint16_t row = 0, column = 0;               // buttons are grouped in rows and columns
 
@@ -715,6 +716,7 @@ bool showAudioWaterfall = false;
 uint8_t wabuf[26][90] = { 0 };  // audio waterfall miniwindow buffer
 bool audiowf = false;
 bool showPanorama = false;  //Panorama screen while squelch is closed
+bool vfo1Active = true;
 
 
 // Slow scan
@@ -760,8 +762,8 @@ uint16_t buttonSelected = 4;  // 4-11
 // Web
 uint8_t imageSelector = 0;
 bool swappedJPEG = false;
-const char* ssid = "MYSSID";
-const char* password = "MYPASSWORD";
+const char* ssid = "YourSSID";
+const char* password = "YourPw";
 int yShift = 0;
 int xShift = 0;
 int reportSelector = 0;
@@ -1183,12 +1185,11 @@ void setup() {
   pinMode(TUNING_VOLTAGE_READ_PIN, INPUT);  // NBFM demodulator AFC read
 #endif
 
-
- 
   SI5351_Init();
   loadLists();                    // load structures, use from LittleFS if exists
   createMemoInfoCSVIfNotExist();  //Create memoInfo on LittleFS if not there
-  radioInit();
+  radioInit();                    // init   
+
   Serial_printf("\nTouchcal: %d %d %d %d %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
   Serial_println(" DSP Wide Band Receiver ready to rock!\n");
 
@@ -1196,6 +1197,8 @@ void setup() {
   Serial.setTimeout(5);  // do not wait, if the TSA does not answer quickly
   tinySAInit();
 #endif
+
+
 }
 
 //##########################################################################################################################//
@@ -1212,7 +1215,10 @@ void loop() {
     resetSmeter = true;    // reset to zero
     autoloopBands();       // if autoloop is enabled frequency will stay within a selected band
     FREQ_OLD = FREQ;
+  //Serial.print("freq changed\n");
   }
+
+
   getRSSIAndSNR();  // get RSSI (signalStrength) and SNR, valid for all functions in the main loop
 
   displaySTEP(false);  // check STEP, do not force update
@@ -1284,6 +1290,10 @@ void loop() {
     }
   }
 
+
+
+
+
 #ifdef TINYSA_PRESENT
   if (fTrigger % 15 == 0)
     synctinySA();  // tinySA synchronisation 
@@ -1298,7 +1308,7 @@ void loop() {
 
   if (fTrigger % 50 == 0) {
 
-    if (syncEnabled == false || tinySA_RF_Mode == false || tinySAfound == false)
+    if (syncEnabled == false || tinySAfound == false)
       calculateAndDisplaySignalStrength();  // Smeter about 3x second, alternatively gets called from convertTodBm(),when tinySA provides signal level
 
     slowTaskHandler();  // run tasks with a long period
@@ -1307,10 +1317,13 @@ void loop() {
   }
 
 
+
   fTrigger++;  // function trigger counter, triggers functions that should not run every loop cycle
 
-  if (loopDelay)  // prevents the main loop from running faster than 10ms since several functions depend on the speed of it.
+
+  if (loopDelay)  // prevents the main loop from running faster than 10ms since several functions would run too fast
     delay(loopDelay);
+
 }
 //##########################################################################################################################//
 
@@ -1743,7 +1756,7 @@ void calculateAndDisplaySignalStrength() {  // gets called from main loop, or op
 
   //Serial_printf("SignalStrength:%d SNR:%d\n", signalStrength, SNR);
 
-  if (!syncEnabled || !tinySA_RF_Mode || !TSAdBm) {  // calculate dBm from RSSI when no data from tinySA
+  if (!syncEnabled || !TSAdBm) {  // calculate dBm from RSSI when no data from tinySA
     // Convert dBµV to dBm      substract gain from LNA
     dBm = signalStrength - 107 - RFGainCorrection;
   }

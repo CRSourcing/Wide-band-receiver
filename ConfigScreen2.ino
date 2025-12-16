@@ -181,8 +181,8 @@ void touchCal() {
   tft.calibrateTouch(calData, TFT_WHITE, TFT_RED, 15);
 
   tft.setTextSize(2);
-  tft.setCursor(0, 20);
-  tft.print("Calibration complete!\nTouch screen with stylus\nto test different areas.\n\n Press encoder to save\nMove encoder to recalibrate\n");
+  tft.setCursor(0, 30);
+  tft.print("Calibration complete!\nTouch screen with stylus\nto test different areas.\nDot must appear close to stylus\nPRESS encoder to save\nOr MOVE encoder to recalibrate\n");
   tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
   
   // Display calibration data on the screen
@@ -215,16 +215,13 @@ void touchCal() {
         
         get_Touch();
         if (pressed)
-          tft.fillCircle (tx,ty,3, TFT_RED);
+          tft.fillCircle (tx,ty,3, TFT_YELLOW);
         pressed = false;
         delay(10);
          tft.fillCircle (tx,ty,3, TFT_BLACK);
   }
 
-
-
-
-  //write to EEPROM
+  //write to flash
   preferences.putInt("cal0", calData[0]);
   preferences.putInt("cal1", calData[1]);
   preferences.putInt("cal2", calData[2]);
@@ -234,7 +231,7 @@ void touchCal() {
   // Apply calibration data
   tft.setTouch(calData);
 
- tft.print("Calibration data saved");
+ tft.print("Calibration data saved.");
 
 delay(1000);
 

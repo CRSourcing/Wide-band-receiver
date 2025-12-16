@@ -36,16 +36,13 @@ void rebuildIndicators() {
 
 void drawMainButtons() {
 
-
-
-
-  if (!altStyle)  // restore background
+  // Background
+  if (!altStyle)
     tft.fillRect(2, 56, 337, 233, TFT_BLACK);
   else
-    drawButton(2, 56, 337, 233, TFT_NAVY, TFT_DARKGREY);  // plain buttons background
+    drawButton(2, 56, 337, 233, TFT_NAVY, TFT_DARKGREY);
 
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
-
 
   struct Button {
     int x;
@@ -53,26 +50,13 @@ void drawMainButtons() {
     const char *label;
   };
 
-
   Button buttons[] = {
-    { 275, 245, "Set" },
-    { 185, 245, "Select" },
-    { 110, 255, "Scan" },
-    { 100, 198, "Bandw" },
-    { 25, 198, "Step" },
-    { 185, 188, "Save" },
-    { 270, 188, "Load" },
-    { 188, 132, "View" },
-    { 270, 132, "View" },
-    { 185, 265, "Band" },
-    { 275, 265, "Freq" },
-    { 185, 208, "Memo" },
-    { 267, 208, "Memo" },
-    { 185, 151, "Range" },
-    { 268, 151, "Band" }
+    { 275, 245, "Set" }, { 185, 245, "Select" }, { 110, 255, "Scan" },
+    { 100, 198, "Bandw" }, { 25, 198, "Step" }, { 185, 188, "Save" },
+    { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "VFO" },
+    { 185, 265, "Band" }, { 275, 265, "Freq" }, { 185, 208, "Memo" },
+    { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "  " }
   };
-
-
 
   etft.setTTFFont(Arial_14);
   for (int i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
@@ -83,63 +67,57 @@ void drawMainButtons() {
     etft.print(buttons[i].label);
   }
 
+  // "More" button
   drawButton(8, 234, TILE_WIDTH, TILE_HEIGHT, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 254);
   etft.print("More");
-
   etft.setTextColor(textColor);
 
 #ifdef TINYSA_PRESENT
-  etft.setCursor(15, 132);
-  etft.print("TinySA");
-  etft.setCursor(14, 152);
-  etft.print("Options");
-#endif
+  etft.setCursor(15, 132); etft.print("TinySA");
+  etft.setCursor(14, 152); etft.print("Options");
 
-
-
-#ifndef TINYSA_PRESENT  // this is otherwise used for the tinySA options
-  etft.setCursor(40, 132);
-  etft.print("IF");
-  etft.setCursor(18, 152);
-  etft.print("Bandw");
+#else  
+  etft.setCursor(40, 132); etft.print("IF");
+  etft.setCursor(18, 152); etft.print("Bandw");
 #endif
 
 #ifdef TV_TUNER_PRESENT
-
   etft.setCursor(100, 132);
   if (TVTunerActive) {
     etft.setTextColor(TFT_SKYBLUE);
     etft.print("Tun.");
     etft.setCursor(100, 152);
     etft.print("Attn.");
-  }
-
-#ifdef SW_ATTENUATOR_PRESENT
+  } 
+ #endif 
+  
   else {
+  
+ #ifdef SW_ATTENUATOR_PRESENT
     etft.setTextColor(TFT_GREEN);
     etft.print("SW");
+    etft.setCursor(100, 152);
+    etft.print("Attn.");
+    etft.setTextColor(textColor);
+  #endif
   }
-  etft.setCursor(100, 152);
-  etft.print("Attn.");
-  etft.setTextColor(textColor);
-#endif
-#endif
 
-
-#ifndef TV_TUNER_PRESENT
-#ifdef SW_ATTENUATOR_PRESENT
-
-  etft.setTextColor(TFT_GREEN);
-  etft.setCursor(100, 132);
-  etft.print("SW");
-  etft.setCursor(100, 152);
-  etft.print("Attn.");
-  etft.setTextColor(textColor);
-#endif
-#endif
+  // VFO toggle 
+  tft.fillRect(275, 152, 40, 15, TFT_BLACK);
+  etft.setCursor(275, 152);
+  
+  if (vfo1Active) {
+    etft.setTextColor(TFT_SKYBLUE);
+    etft.print("->B");
+  }
+ else {
+    etft.setTextColor(TFT_YELLOW);
+    etft.print("->A");
+ }  
 }
+
 
 //##########################################################################################################################//
 
@@ -177,29 +155,21 @@ void readMainBtns() {
         setRFAttenuatorMinAttn();
 #endif
 
-
-
-
       break;
     case 23:
-      hideBigBtns();
       FREQ_OLD = FREQ;
-      waterFall(true);  // use keypad for waterfall
+      selectWaterFall();
       tRel();
+      FREQ = FREQ_OLD;
       displayFREQ(FREQ);
-      setLO();  // return to previous frequenc
-      while (digitalRead(ENCODER_BUTTON) == LOW)
+      setLO();    
         ;
       break;
     case 24:
-      hideBigBtns();
-      FREQ_OLD = FREQ;
-      setBand(true);  // select band for waterfall
-      tRel();
-      displayFREQ(FREQ);
-      setLO();
-      while (digitalRead(ENCODER_BUTTON) == LOW)
-        ;
+    vfo1Active = !vfo1Active;    
+    vfoSelector();
+    tRel();
+      return;
       break;
     case 31:
       hideBigBtns();

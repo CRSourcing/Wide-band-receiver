@@ -160,10 +160,6 @@ void SI5351_Init() {
 
 void radioInit() {
 
-  if (!SI4732found)
-    return;
-
-
   dac1.outputVoltage((uint8_t)(180));  // set to full VHF/UHF gain
 
 #ifdef NBFM_DEMODULATOR_PRESENT
@@ -171,20 +167,34 @@ void radioInit() {
   Serial_printf("AFC DC offset %d\n", afcVoltage);
 #endif
 
+  /*
+Parameters
+uint8_t	CTSIEN sets Interrupt anabled or disabled (1 = anabled and 0 = disabled )
+uint8_t	GPO2OEN sets GP02 Si473X pin enabled (1 = anabled and 0 = disabled )
+uint8_t	PATCH Used for firmware patch updates. Use it always 0 here.
+uint8_t	XOSCEN sets external Crystal enabled or disabled. 0 = Use external RCLK (crystal oscillator disabled); 1 = Use crystal oscillator
+uint8_t	FUNC sets the receiver function have to be used [0 = FM Receive; 1 = AM (LW/MW/SW) and SSB (if SSB patch apllied)]
+uint8_t	OPMODE set the kind of audio mode you want to use.
+*/
+
+
+
+#ifdef SI5351_GENERATES_CLOCKS
+  si4735.setPowerUp(0, 0, 0, 0, 1, 5); 
+
+#else
+  si4735.setPowerUp(0, 0, 0, 1, 1, 5);
+#endif
+
+  si4735.radioPowerUp();
+  si4735.setAM(520, 29900, SI4735TUNED_FREQ, 1);
+
 
 
   si4735.setAudioMuteMcuPin(MUTEPIN);
   digitalWrite(MUTEPIN, HIGH);
   dcOffset = analogRead(AUDIO_INPUT_PIN);  // need to measure the collector voltage of the tft amplifier to center mini oscilloscope
   Serial_printf("FFT DC Offset %d\n", dcOffset);
-
-#ifdef SI5351_GENERATES_CLOCKS
-  si4735.setup(RESET_PIN, 0, 1, SI473X_ANALOG_AUDIO, 0, 0);  //External clock
-#endif
-
-#ifndef SI5351_GENERATES_CLOCKS
-  si4735.setup(RESET_PIN, 0, 1, SI473X_ANALOG_AUDIO, 1, 0);  // Use crystal
-#endif
 
 
   if (modType == USB || modType == LSB)
@@ -197,7 +207,10 @@ void radioInit() {
     STEP = DEFAULT_AM_STEP;
   else if (modType == NBFM)
     STEP = DEFAULT_NBFM_STEP;
-  loadSi4735parameters();
+
+
+
+
   vol = preferences.getChar("Vol", 50);  // get global volume
   si4735.setVolume(vol);
   si4735.setAMSoftMuteSnrThreshold(preferences.getChar("SMute", 0));
@@ -205,6 +218,8 @@ void radioInit() {
   digitalWrite(MUTEPIN, LOW);
   digitalWrite(IF_FILTER_BANDWIDTH_PIN, HIGH);  // default use wide IF filter
   digitalWrite(NBFM_MUTE_PIN, LOW);             // LOW means the NBFM demodulator is muted
+
+  loadSi4735parameters(); // finally load the parameters 
 }
 
 //##########################################################################################################################//
@@ -386,7 +401,7 @@ void loadLastSettings() {
   Serial_printf("%-35s %s\n", "Show panorama when squelch closed:", showPanorama ? "Yes" : "No");
   Serial_printf("%-35s %d\n", "Tuner AGC start value", initialGain);
 
-   tRel();
+  tRel();
 
 
   for (int i = 0; i < 2000; i++) {
