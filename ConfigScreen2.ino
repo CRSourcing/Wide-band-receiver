@@ -39,8 +39,7 @@ void drawCf2Btns() {
 #ifndef NBFM_DEMODULATOR_PRESENT
     { 185, 190, "NBFM" },
     { 188, 210, "Shift" },
-#endif
-#ifdef NBFM_DEMODULATOR_PRESENT
+#else 
     { 185, 190, "Zero" },
     { 188, 210, "Discr." },
 #endif
@@ -185,19 +184,6 @@ void touchCal() {
   tft.print("Calibration complete!\nTouch screen with stylus\nto test different areas.\nDot must appear close to stylus\nPRESS encoder to save\nOr MOVE encoder to recalibrate\n");
   tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
   
-  // Display calibration data on the screen
- /*
- 
- tft.setCursor(0, 120);
-  tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
-  tft.println("");
-  tft.println("");
-  tft.println("Caldata should look similar to:");
-  tft.println("324, 3335, 427, 2870, 5");
-  tft.println("");
-  tft.println("Repeat calibration if values look far");
-  tft.println("off or buttons respond wrong");
-*/
 
   while (1) {
         if ((digitalRead(ENCODER_BUTTON) == LOW))

@@ -92,6 +92,9 @@ void tune() {  // selects tuning method depending on frequency and programs si53
       digitalWrite(IF_INPUT_RELAY, HIGH);  // switch bandpass to AD831
       LO_RX = abs((SI4735TUNED_FREQ * 1000) + FREQ);
 
+
+      
+
       si5351.set_freq(LO_RX * 100ULL, SI5351_CLK2);
       return;
     }
@@ -174,9 +177,9 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
 
 
 
-    LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // formula for LO above RF, to calculate SI5351 frequency
+    LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
 
-    //LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // formula for LO below RF
+    //LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // optional: expression for LO below RF
 
     si5351.set_freq((LO_RX + errorComp) * 100ULL, SI5351_CLK2);  // add the tuner  offset correction
 
@@ -194,26 +197,23 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
 1 0 0 high-band
 */
 
-    // Initialize all bands to false 
-    lowBand = midBand = highBand = false;
-
+  
     // Set the correct band based on frequency
     if (FREQ >= LOW_BAND_LOWER_LIMIT && FREQ <= LOW_BAND_UPPER_LIMIT) {
       //bandSwitchByte = 0b00011001;
       bandSwitchByte = 0b00000001;
-      lowBand = true;
     }
 
     else if (FREQ > LOW_BAND_UPPER_LIMIT && FREQ <= MID_BAND_UPPER_LIMIT) {
       //bandSwitchByte = 0b00011010;
       bandSwitchByte = 0b00000010;
-      midBand = true;
+ 
     }
 
     else if (FREQ > MID_BAND_UPPER_LIMIT && FREQ <= HIGH_BAND_UPPER_LIMIT) {
       //bandSwitchByte = 0b00011100;
       bandSwitchByte = 0b00000100;
-      highBand = true;
+ 
     }
   }
 

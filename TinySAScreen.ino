@@ -68,6 +68,10 @@ void readTSAButtons() {
   
   tRel();
 
+
+
+
+
   int buttonID = getButtonID();
 
   if (row < 2 || row > 4 || column > 4)
@@ -112,7 +116,6 @@ void readTSAButtons() {
   
     break;
     case 31:
-
       Serial.println("rbw 100");
       delay(100);
       Serial.println("sweep center 15M");

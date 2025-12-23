@@ -40,9 +40,9 @@ void drawMainButtons() {
   if (!altStyle)
     tft.fillRect(2, 56, 337, 233, TFT_BLACK);
   else
-    drawButton(2, 56, 337, 233, TFT_NAVY, TFT_DARKGREY);
+     drawButton(2, 56, 337, 233, TFT_NAVY, TFT_DARKGREY);
 
-  draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
+    draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
 
   struct Button {
     int x;
@@ -66,6 +66,8 @@ void drawMainButtons() {
       etft.setTextColor(TFT_SKYBLUE);
     etft.print(buttons[i].label);
   }
+
+
 
   // "More" button
   drawButton(8, 234, TILE_WIDTH, TILE_HEIGHT, TFT_MIDGREEN, TFT_DARKGREEN);
@@ -116,6 +118,10 @@ void drawMainButtons() {
     etft.setTextColor(TFT_YELLOW);
     etft.print("->A");
  }  
+
+
+
+
 }
 
 

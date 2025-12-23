@@ -22,6 +22,8 @@
 //#define SW_ATTENUATOR_PRESENT  // uncommment only if a voltage controlled attenuator is present in the shortwave RF path.
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
+//#define FLIP_IMAGE // Uncomment this if the image is upside down
+
 //#define PRINT_STORAGE_DEBUG_MESSAGES // Creates serial debug messages about files on LittleFS and SDcard.
 //##########################################################################################################################//
 
@@ -591,14 +593,14 @@ int SI4735TUNED_FREQ = 21400;  // 1st IF in KHz Also mid frequency of crystal fi
 
 
 bool wideIFFilter = true;      // IF filter bandwidth false = narrow, true = wide;
-bool afcEnable = false;
+bool afcEnable = false;         
 int NBFMOffset = 0;           // shift of  SI4735TUNED_FREQ in KHz to demodulate FM on the flank of the filter.
 int afcVoltage = 0;           // voltage tap from the quadrature demodulator
 int discriminatorZero = 100;  // middle of the tuning meter needle
 int RFGainCorrection = -6;    //  corrects overall gain provided by the 1st gain block after splitter and filter
-uint8_t SWAttn = 0; // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
-uint8_t SWMinAttn= 0; // Shortwave attenuator minimum attenuation, 0 = 0dB, 255= 30dB attenuation
-bool attnOFF = true;  // SW Attenuator off
+uint8_t SWAttn = 0;     // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
+uint8_t SWMinAttn= 0;  // Shortwave attenuator minimum attenuation, 0 = 0dB, 255= 30dB attenuation
+bool attnOFF = true;   // SW Attenuator off
 long lastAMFREQ = -1;  // AM frequency before switching to WBFM
 long span = 1000000;   // tinySA default span, configured in TSA Presets 0 and 1
 long potVal;           // fine tune potentiometer read value
@@ -608,9 +610,6 @@ long keyVal = 0;       // scan mode frequencies delivered from touchpad
 
 
 bool TVTunerActive = false;     //will get set to true when tuner in use
-bool lowBand = false;     // // TV tuner bands
-bool midBand = false;
-bool highBand = false;
 uint8_t initialGain = 180;     // adjust tuner gain when no signal received, depending on gain of the LNA. Must be as low as possible to reduce cross modulation
 uint8_t agcVal = initialGain;  // starting point of the AGC
 uint32_t OLDPLLFREQ = -1;
@@ -655,6 +654,9 @@ bool showMeters = false;   // shows analog meters on right side
 bool resetSmeter = false;  // reset Smeter when frequency changes, to avoid decay delay
 bool funEnabled = false;   // animations
 bool enableAnimations = false;
+bool fastBoot = false;     // quick boot when enabled
+
+
 const int Xsmtr = 10;  // Smeter position
 const int Ysmtr = 58;  // Smeter position
 int dBm = 0;           // dBm based onn RSSI
@@ -693,7 +695,7 @@ int old_analog2 = 0;                                // Value last displayed
 // misc
 const uint16_t textColor = TFT_ORANGE;
 bool audioMuted = false;            // mute state
-char miniWindowMode = 0;            // mini window mode: 1 = 16 channel, 2 = 85 channel, 3= minioscilloscope, 4 = waterfall, 5 = envelope
+char miniWindowMode = 3;            // mini window mode: 1 = 16 channel, 2 = 85 channel, 3= minioscilloscope, 4 = waterfall, 5 = envelope
 int amplitude = 150;                // amplitute divider for spectrum analyzer
 int fTrigger = 0;                   // triggers functions in main loop
 int currentSquelch = 0;             // squelch trigger level
@@ -701,22 +703,22 @@ uint8_t vol = 50;                   // global volume, should be around 50
 bool disableFFT = false;            // stops the spectrum analyzer during time critical operations
 bool SNRSquelch = true;             // use either RSSI or SNR to trigger squelch
 bool noMixer = false;               // run with antenna directly connected to SI4732 for testing
+bool vfo1Active = true;
 bool showTouchCoordinates = false;  // debug
 int loopDelay = 0;                  // stabilize loop at not less than 10ms
 
 // Waterfall
 const int wfSensitivity = 50;                 // is a divider, more means less sensitivity
-uint16_t* framebuffer1;                       // First framebuffer for waterfall, each is 240 pixels wide
+uint16_t* framebuffer1;                       // First framebuffer for waterfall, also used in panoramascan
 uint16_t* framebuffer2;                       // Second framebuffer for waterfall
-uint16_t stretchedX[FRAMEBUFFER_FULL_WIDTH];  // array audio waterfall to strech 240 to 331 pixels
+uint16_t stretchedX[FRAMEBUFFER_FULL_WIDTH] = { 0 };  // array audio waterfall to strech 240 to 331 pixels
 int currentLine = 0;                          // Current line being written to
-uint16_t newLine[FRAMEBUFFER_FULL_WIDTH];     // transfer buffer
+uint16_t newLine[DISP_WIDTH] = { 0 };             // line transfer buffer
 bool smoothColorGradient = false;             // smooth = blue to white, otherwise blue to red
 bool showAudioWaterfall = false;
 uint8_t wabuf[26][90] = { 0 };  // audio waterfall miniwindow buffer
 bool audiowf = false;
 bool showPanorama = false;  //Panorama screen while squelch is closed
-bool vfo1Active = true;
 
 
 // Slow scan
@@ -753,7 +755,7 @@ volatile unsigned long pulseInterval = 0;  // Time between rising edges
 volatile bool newPulse = false;
 #endif
 
-// Sprites
+// Buttons
 extern const uint16_t But1[], But2[], But3[], But4[], But5[], But6[], But7[], But8[];  // sprite buttons in sprite.h
 const uint16_t* buttonImages[] = { But1, But2, But3, But4, But5, But6, But7, But8 };
 uint16_t buttonSelected = 4;  // 4-11
@@ -762,8 +764,8 @@ uint16_t buttonSelected = 4;  // 4-11
 // Web
 uint8_t imageSelector = 0;
 bool swappedJPEG = false;
-const char* ssid = "YourSSID";
-const char* password = "YourPw";
+const char* ssid = "MMV2025";
+const char* password = "Pekita#2020";
 int yShift = 0;
 int xShift = 0;
 int reportSelector = 0;
@@ -1146,15 +1148,15 @@ void setup() {
   preferences.begin("data", false);  // preferences namespace is data. Needs to be loaded before bootscreen
   Serial.begin(115200);
   //startHWT();  // not used in this version
-  
   pinMode(ENCODER_PIN_A, INPUT_PULLUP); // encoder needed for touch calibration
   pinMode(ENCODER_PIN_B, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), RotaryEncFreq, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), RotaryEncFreq, CHANGE);
 
   bootScreen();
-  etft.TTFdestination(&tft);
+  etft.TTFdestination(&tft); // Additional font
   etft.setTTFFont(Arial_13);
+
 
   uint16_t calData[5] = { // values for display 3.5
                           (uint16_t)preferences.getInt("cal0", 323),
@@ -1164,14 +1166,15 @@ void setup() {
                           (uint16_t)preferences.getInt("cal4", 5)
   };
 
-  // uint16_t calData[5] = {324, 3335, 427, 2870, 5 }; // example for display 3.5"
-  ///  uint16_t calData[5] = { 292 3333, 198, 3539, 7 };  //example for display 4.0
+
+
+  //uint16_t calData[5] = {324, 3335, 427, 2870, 3 }; // example for display 3.5"
+  //uint16_t calData[5] = {290, 3588, 301, 3510, 1 }; // example for display 3.5" flipped
+  // uint16_t calData[5] = { 292 3333, 198, 3539, 7 };  //example for display 4.0
   tft.setTouch(calData);
   loadLastSettings();  // load settings from flash
   drawFrame();
   spriteBorder();
-
-
   pinMode(IF_INPUT_RELAY, OUTPUT);  // pin for IF relay and to enable tuner voltage
   pinMode(TUNER_AGC_PIN, OUTPUT);
   pinMode(NBFM_MUTE_PIN, OUTPUT);
@@ -1182,13 +1185,13 @@ void setup() {
   pinMode(IF_FILTER_BANDWIDTH_PIN, OUTPUT);  // IF filter
 
 #ifdef NBFM_DEMODULATOR_PRESENT
-  pinMode(TUNING_VOLTAGE_READ_PIN, INPUT);  // NBFM demodulator AFC read
+  pinMode(TUNING_VOLTAGE_READ_PIN, INPUT);  // NBFM demodulator AFC read pin
 #endif
 
   SI5351_Init();
   loadLists();                    // load structures, use from LittleFS if exists
   createMemoInfoCSVIfNotExist();  //Create memoInfo on LittleFS if not there
-  radioInit();                    // init   
+  radioInit();                    // prepare SI4732 and AGC  
 
   Serial_printf("\nTouchcal: %d %d %d %d %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
   Serial_println(" DSP Wide Band Receiver ready to rock!\n");
@@ -1237,6 +1240,7 @@ void loop() {
 #endif
 
 
+
   saveCurrentSettings();  // save settings after 1 minute if freq has not changed
 
 
@@ -1261,8 +1265,6 @@ void loop() {
   }
 
 
-
-
   if (fTrigger % 8 == 0 && disableFFT == false) {  // spectrum eats a lot of processing resources
 
 
@@ -1276,7 +1278,9 @@ void loop() {
     }
 #endif
 
-    PanoramaScanner();  // scans +-500 KHz around current frequency when squelch is closed
+
+
+    PanoramaScanner();  // scans +-500 KHz around current frequency when squelch is closed (AM only)
     audioSpectrum();
     if (enableAnimations && funEnabled)
       pacM(true);
@@ -1321,7 +1325,7 @@ void loop() {
   fTrigger++;  // function trigger counter, triggers functions that should not run every loop cycle
 
 
-  if (loopDelay)  // prevents the main loop from running faster than 10ms since several functions would run too fast
+  if (loopDelay)  // prevents the main loop from running faster than 10ms since several functions would then run too fast
     delay(loopDelay);
 
 }
@@ -1479,7 +1483,7 @@ void colorSelector() {  // set frequency display colors
 #endif
 
 #ifndef TV_TUNER_PRESENT
-  etft.setTextColor(TFT_GREEN);  // shortwave normal color
+  etft.setTextColor(TFT_GREEN);  
   tft.setTextColor(TFT_GREEN);
 #endif
 
@@ -1540,90 +1544,83 @@ void displaySTEP(bool update) {
 //STEP switching
 
 
+static const uint32_t AMStepSize[]  PROGMEM = { 250, 500, 1000, 2500, 5000, 6000, 8333, 9000, 10000, 100000, 1000000, 10000000 };
+static const uint32_t SSBStepSize[] PROGMEM = { 10, 25, 50, 100, 250, 500, 1000, 5000, 10000, 100000, 1000000, 10000000 };
+static const uint32_t FMStepSize[]  PROGMEM = { 500, 1000, 2500, 5000, 6250, 10000, 12500, 25000, 50000, 100000, 1000000, 10000000 };
+
+static const char* const AMLabels[]  PROGMEM = { "250Hz","500Hz","1KHz","2.5K","5KHz","6KHz","8.3KHz","9KHz","10KHz","100KHz","1MHz","10MHz" };
+static const char* const SSBLabels[] PROGMEM = { "10Hz","25Hz","50Hz","100Hz","250Hz","500Hz","1KHz","5KHz","10KHz","100KHz","1MHz","10MHz" };
+static const char* const FMLabels[]  PROGMEM = { "500Hz","1K","2.5K","5K","6.25K","10K","12.5K","25K","50K","100K","1MHz","10MHz" };
+
+
+struct StepTable {
+  const uint32_t* sizes;
+  const char* const* labels;
+};
+
+static const StepTable stepTables[] = {
+  { AMStepSize, AMLabels },   // AM
+  { SSBStepSize, SSBLabels }, // SSB/CW/SYNC
+  { FMStepSize, FMLabels }    // NBFM
+};
+
 void setSTEP() {
-
-  if (modType == WBFM)  // fixed 100Khz
-    return;
-
-  int pos = 0;
-  uint32_t AMStepSize[13] = { 250, 500, 1000, 2500, 5000, 6000, 8333, 9000, 10000, 100000, 1000000, 10000000, 0 };
-  uint32_t SSBStepSize[13] = { 10, 25, 50, 100, 250, 500, 1000, 5000, 10000, 100000, 1000000, 10000000, 0 };
-  uint32_t FMStepSize[13] = { 500, 1000, 2500, 5000, 6250, 10000, 12500, 25000, 50000, 100000, 1000000, 10000000, 0 };
-  const char* AMLabels[] = { "250Hz", "500Hz", "1KHz", "2.5KH", "5KHz", "6KHz", "8.3KHz", "9KHz", "10KHz", "100KHz", "1MHz", "10MHz" };
-  const char* SSBLabels[] = { "10Hz", "25Hz", "50Hz", "100Hz", "250Hz", "500Hz", "1KHz", "5KHz", "10KHz", "100KHz", "1MHz", "10MHz" };
-  const char* FMLabels[] = { "500Hz", "1K", "2.5K", "5K", "6.25K", "10K", "12.5K", "25K", "50K", "100K", "1MHz", "10MHz" };
+  if (modType == WBFM) return; // fixed 100kHz
 
   if (pressed) {
-
     draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
 
-
-    int positions[][2] = {
-      { 19, 141 }, { 105, 141 }, { 185, 141 }, { 265, 141 }, { 19, 198 }, { 105, 198 }, { 185, 198 }, { 265, 198 }, { 19, 255 }, { 96, 255 }, { 185, 255 }, { 260, 255 }
+    const int positions[12][2] = {
+      {19,141},{105,141},{185,141},{265,141},
+      {19,198},{105,198},{185,198},{265,198},
+      {19,255},{96,255},{185,255},{260,255}
     };
-
-
 
     etft.setTTFFont(Arial_14);
     etft.setTextColor(TFT_GREEN);
 
+    const char* const* labels = nullptr;
+    const uint32_t* sizes = nullptr;
+
+    if (modType == AM) {
+      labels = stepTables[0].labels;
+      sizes  = stepTables[0].sizes;
+    } else if (modType == LSB || modType == USB || modType == SYNC || modType == CW) {
+      labels = stepTables[1].labels;
+      sizes  = stepTables[1].sizes;
+    } else if (modType == NBFM) {
+      labels = stepTables[2].labels;
+      sizes  = stepTables[2].sizes;
+    }
+
     for (int i = 0; i < 12; i++) {
       etft.setCursor(positions[i][0], positions[i][1]);
-      if (modType == AM)
-        etft.print(AMLabels[i]);
-      if (modType == LSB || modType == USB || modType == SYNC || modType == CW)
-        etft.print(SSBLabels[i]);
-      if (modType == NBFM)
-        etft.print(FMLabels[i]);
+      etft.print(labels[i]);
     }
 
     etft.setTextColor(textColor);
 
-    tDoublePress();  // wait for touch
-
+    tDoublePress();
     pressed = get_Touch();
 
-    if (ty > 300 || ty < 120 || tx > 345)  // nothing there
-      return;
+    if (ty > 300 || ty < 120 || tx > 345) return;
 
-    column = tx / HorSpacing;
-    row = 1 + ((ty - 20) / vTouchSpacing);
+    int column = tx / HorSpacing;
+    int row    = 1 + ((ty - 20) / vTouchSpacing);
+    if (row < 2) { pressed = tx = ty = 0; return; }
 
-
-    if (row < 2) {  // outside of area
-      pressed = 0;
-      tx = 0;
-      ty = 0;
-      return;
-    }
-
-    if (row == 2)
-      pos = column;
-    if (row == 3)
-      pos = column + 4;
-    if (row == 4)
-      pos = column + 8;
-
-
-    if (modType == AM)
-      STEP = AMStepSize[pos];
-    if (modType == LSB || modType == USB || modType == SYNC || modType == CW)
-      STEP = SSBStepSize[pos];
-    if (modType == NBFM)
-      STEP = FMStepSize[pos];
+    int pos = (row == 2) ? column : (row == 3) ? column+4 : column+8;
+    STEP = sizes[pos];
   }
-
-
 
   tRel();
   tx = ty = pressed = 0;
   displaySTEP(false);
-
   roundFreqToSTEP();
-
   redrawMainScreen = true;
   mainScreen();
 }
+
 //##########################################################################################################################//
 
 void roundFreqToSTEP() {  // round  FREQ up or down to the next STEP when STEP or modulation gets changed
@@ -1651,7 +1648,11 @@ void roundFreqToSTEP() {  // round  FREQ up or down to the next STEP when STEP o
 
 
 
-void drawButton(int16_t x, int16_t y, int16_t w, int16_t h, uint32_t color1, uint32_t color2) {  // draws buttons as plain rectangles or sprites
+void drawButton(int16_t x, int16_t y, int16_t w, int16_t h, uint32_t color1, uint32_t color2) {  // draws buttons as plain rectangles or push bitmaps
+
+  
+if (buttonSelected < 1 || buttonSelected > 8) // if value loaded from flash outside range (older versions use different values)
+          buttonSelected  = 4;
 
   if (altStyle) {  //draw plain buttons
 
@@ -1665,7 +1666,7 @@ void drawButton(int16_t x, int16_t y, int16_t w, int16_t h, uint32_t color1, uin
 
     if (h == 50)
 
-      tft.pushImage(x, y + 4, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t*)buttonImages[buttonSelected]);  // draw selected button sprite
+      tft.pushImage(x, y + 4, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t*)buttonImages[buttonSelected]);  // draw selected button bitmap
 
 
     if (h == 78)
@@ -1781,7 +1782,7 @@ void calculateAndDisplaySignalStrength() {  // gets called from main loop, or op
 
 
   tft.fillRect(330, 4, 145, 22, TFT_BLACK);
-  if (TSAdBm) {
+  if (TSAdBm) { // only values from the tinySA are precise, RSSI from SI4732 depends on AGC
     tft.setCursor(345, 8);
 
     if (microVolts < 10000)
@@ -1802,7 +1803,6 @@ void calculateAndDisplaySignalStrength() {  // gets called from main loop, or op
 
   if (SNRSquelch)
     tft.setTextColor(TFT_WHITE);
-
   tft.printf("SNR:%d", SNR);
   tft.setTextSize(2);
 }
@@ -2037,21 +2037,26 @@ void loopTimer() {  // displays loop time and stops if from falling below 10ms
 //##########################################################################################################################//
 void readSquelchPot(bool draw) {  // reads value of squelch potentiometer and if draw is true displays a circle showing squelch adjustment
 
-  static int oldPot = 0;
-  const int div = 31;
-  int val;
-  int pot;
+  static uint8_t oldPot = 0;
+  const int div = 295;
+  uint32_t val = 0;
+  uint8_t pot;
 
 
-  for (int l = 0; l < 35; l++)
-    val = analogRead(SQUELCH_POT);
-  pot = val / div;  // oversample and  set range
+  for (int l = 0; l < 10; l++)
+    val += analogRead(SQUELCH_POT);
+  
+  pot = val / div;  // oversample and  set pot to a value from 0 to 138
 
   if (pot <= oldPot - 2 || pot >= oldPot + 2 || redrawMainScreen) {  // eliminate A/D convrter noise, update only when pot turned
 
-    disableFFT = true;  //temporarily disable spectrum analyzer to  read ADC without interruption
+    currentSquelch = pot - 5;  // this sets currentSquelch to a value from  - 5 to 132 (leaving some margin). 
+    //A negative value is required to open squelch if RSSI == 0. A value > 127 is needed to always close
 
-    currentSquelch = pot - 10;  // this sets currentSquelch to a value from roughly -10 to 127. A negative value is required to open squelch if RSSI == 0
+
+
+    disableFFT = true;  //temporarily disable spectrum analyzer to keep loop fast, so that circle does not jump
+
 
     if (!draw)  // do not draw squelch position circle (when squelch used in memo functions)
       return;
@@ -2074,6 +2079,17 @@ void setSquelch() {
   uint32_t open, duration;
   static uint32_t lastopen = 0;
   static int16_t stutter = 0;
+
+
+if (currentSquelch > 127) {// squelch fully closed == mute
+
+      si4735.setAudioMute(true);
+      si4735.setHardwareAudioMute(true);
+       audioMuted = true;
+       return;
+}
+
+
 
 
   if (!SNRSquelch) {  // use RSSI only as open/close criteria
@@ -2406,7 +2422,7 @@ if(attnOFF)
 //##########################################################################################################################//
 
 
-void setRFAttenuatorMinAttn() {  //Min. attenuation of the RF attenuator
+void setRFAttenuatorMinAttn() {  //Min. attenuation of the shortwave RF attenuator
                                 
     uint8_t oldSWMinAttn = 0;
 

@@ -166,7 +166,7 @@ bool readKeypadButtons() {
     }
 
     if (row == 4 && column == 2) {            // restart ESP if pressed
-      preferences.putBool("fastBoot", true);  // set fastboot
+      preferences.putBool("fB", true);  // set fastboot
       ESP.restart();
     }
 
@@ -328,10 +328,8 @@ bool get_Touch() {  // implements a short beep when pressed, calls getTouch, or 
 
 
 #ifdef FAST_TOUCH_HANDLER  // reduces sampling
-  uint16_t x = 0, y = 0;
+
   uint16_t z = tft.getTouchRawZ();
-
-
 
   if (z > 300) {  // press lower limit
     pressed = true;

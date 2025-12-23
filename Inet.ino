@@ -173,7 +173,7 @@ void readIBtns() {
 
   tDoublePress();
 
-  preferences.putBool("fastBoot", true);  // Does not go back to main menu, uses fast restart instead. Image displays eats up too much memory and does not reliably free it
+  preferences.putBool("fB", true);  // Does not go back to main menu, uses fast restart instead. Image displays eats up too much memory and does not reliably free it
                                           //, so better reboot after leaving
   int buttonID = getButtonID();
 

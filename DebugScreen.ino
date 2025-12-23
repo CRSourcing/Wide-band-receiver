@@ -177,13 +177,22 @@ void setLOLevel() {
   };
 
   Button buttons[] = {
-    { 203, 245, "6" }, { 193, 265, "dBm" }, { 120, 245, "3" }, { 110, 265, "dBm" }, { 290, 245, "10" }, { 280, 265, "dBm" }, { 20, 188, "" }, { 20, 210, "" }, { 20, 132, "" }, { 20, 152, "" }, { 20, 255, "BACK" }
+    { 203, 245, "6" }, 
+    { 193, 265, "dBm" }, 
+    { 120, 245, "3" }, 
+    { 110, 265, "dBm" }, 
+    { 290, 245, "10" }, 
+    { 280, 265, "dBm" }, 
+    { 20, 188, "" }, 
+    { 20, 210, "" }, 
+    { 20, 132, "" }, 
+    { 20, 152, "" }, 
+    { 20, 255, "BACK" }
   };
 
 
   etft.setTTFFont(Arial_14);
   etft.setTextColor(TFT_YELLOW);
-
 
   for (int i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
     etft.setCursor(buttons[i].x, buttons[i].y);
@@ -548,7 +557,7 @@ void showADCs() {
   }
 
   // needs reboot since buffers use memory already allocated for sprites!?
-  preferences.putBool("fastBoot", true);
+  preferences.putBool("fB", true);
   ESP.restart();
 
 }

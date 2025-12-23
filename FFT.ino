@@ -570,6 +570,10 @@ void CodeToChar() {
 
 //##########################################################################################################################//
 
+  const float stretch = 1.39;  // stretch width to 333 pixels 
+  #define FRAMEBUFFER_STRETCHED_WIDTH  (int) (FRAMEBUFFER_FULL_WIDTH * stretch)
+
+
 void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels after user inactivity
 
   if (audioMuted || showPanorama)  // showPanorama and audioSpectrum256() are mutually exclusive
@@ -578,10 +582,10 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
   const int startX = 3;
   const int yOffset = 241;
   const int ampl = 80;
-  const float stretch = 1.39;  // stretch width to 333 pixels
-  int oldX = startX;
+ int oldX = startX;
   int dmax = 30;
   int ctr = 0;
+
 
   tft.fillRect(2, 52, 338, 30, TFT_BLACK);   // overwrite area for spectrum
   tft.fillRect(2, 82, 338, 40, TFT_BLACK);   // overwrite area for waterfall
@@ -591,11 +595,13 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
 
   tft.drawFastHLine(2, 81, 338, TFT_SKYBLUE);  // draw separator bar
 
-  framebuffer1 = (uint16_t*)heap_caps_malloc(FRAMEBUFFER_FULL_WIDTH * AUDIO_FRAMEBUFFER_HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA);
+   tft.setSwapBytes(true);
+
+  framebuffer1 = (uint16_t*)heap_caps_malloc(FRAMEBUFFER_STRETCHED_WIDTH * AUDIO_FRAMEBUFFER_HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA);
   if (framebuffer1 == NULL)
     buffErr();
 
-  memset(framebuffer1, 0, FRAMEBUFFER_FULL_WIDTH * AUDIO_FRAMEBUFFER_HEIGHT * sizeof(uint16_t));  //black background
+  memset(framebuffer1, 0, FRAMEBUFFER_STRETCHED_WIDTH * AUDIO_FRAMEBUFFER_HEIGHT * sizeof(uint16_t));  //black background
 
   for (int strX = 0; strX < FRAMEBUFFER_FULL_WIDTH; strX++) {
     stretchedX[strX] = round(strX * stretch);  // Precompute stretchedX;
@@ -646,9 +652,9 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
 
 
       if (i > 1 && clr > 25)  // discard first 2 bins and set background noise treshold
-        newLine[i] = clr;
+        newLine[strX] = clr;  
       else
-        newLine[i] = 0;
+        newLine[strX] = 0;
 
       if (dsize > Rpeak[i])
         Rpeak[i] = dsize;
@@ -673,6 +679,8 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
   tft.fillRect(260, 50, 70, 10, TFT_BLACK);      // overwrite last frequency peak
   for (int i = 0; i < 255; i++)                  // reset to 0 to avoid artefacts when starting mini spectrum 16
     Rpeak[i] = 0;
+
+  tft.setSwapBytes(false); // needed to swap when pushing
   rebuildIndicators();
   readMainBtns();
 }
@@ -727,56 +735,43 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
 //##########################################################################################################################//
 
 void addLineToFramebuffer1(uint16_t* newLine) {
-  // copy line into framebuffer
-  memcpy(&framebuffer1[currentLine * 240], newLine, 240 * sizeof(uint16_t));
+  // Shift all existing lines down by one
+  for (int y = AUDIO_FRAMEBUFFER_HEIGHT - 1; y > 0; y--) {
+    memcpy(&framebuffer1[y * FRAMEBUFFER_STRETCHED_WIDTH],
+           &framebuffer1[(y - 1) * FRAMEBUFFER_STRETCHED_WIDTH],
+           FRAMEBUFFER_STRETCHED_WIDTH * sizeof(uint16_t));
+  }
 
+  // Copy the new line into the top row
+  memcpy(&framebuffer1[0], newLine,FRAMEBUFFER_STRETCHED_WIDTH * sizeof(uint16_t));
+
+  // Push the entire framebuffer to the screen
   updateDisp();
-
-  // next line
-  currentLine = (currentLine + 1) % AUDIO_FRAMEBUFFER_HEIGHT;
 }
 
 //##########################################################################################################################//
 void updateDisp() {
-  const int upper = 84;
-  const int lower = 124;
-  const int startX = 3;
-  const int endX = startX + FRAMEBUFFER_FULL_WIDTH;
-  const int lineWrap = 4;
-  int oldX = 0;
+  const int upper   = 84;
+  const int lower   = 124;
+  const int startX  = 3;
+  const int width   = FRAMEBUFFER_STRETCHED_WIDTH;
+  const int height  = lower - upper;
 
-  for (int x = startX; x < endX; x++) {
-    int prevY = lower;
-    int strX = stretchedX[x - startX] + startX;
-    int lstclrIndex = (currentLine - lineWrap + AUDIO_FRAMEBUFFER_HEIGHT) % AUDIO_FRAMEBUFFER_HEIGHT * FRAMEBUFFER_FULL_WIDTH + (x - startX);
-    uint16_t lastColor = framebuffer1[lstclrIndex];
-
-    for (int y = lower; y > upper; y--) {
-      int clrIndex = ((currentLine + y - lineWrap + AUDIO_FRAMEBUFFER_HEIGHT) % AUDIO_FRAMEBUFFER_HEIGHT) * FRAMEBUFFER_FULL_WIDTH + (x - startX);
-      uint16_t color = framebuffer1[clrIndex];
-
-      if (color != lastColor || y == upper) {
-        int lineHeight = prevY - y;
-
-        if (lastColor + color) {  // Not draw black lines
-          tft.drawFastVLine(strX, lower - prevY + upper, lineHeight, lastColor);
-
-          // Fill gap when exists
-          if (strX > oldX + 1)
-            tft.drawFastVLine(oldX + 1, lower - prevY + upper, lineHeight, lastColor);
-        }
-        lastColor = color;
-        prevY = y;
-      }
-    }
-    oldX = strX;
-  }
+ 
+  // Push  entire framebuffer 
+  tft.pushImage(startX, upper, width, height, framebuffer1);
 }
-//##########################################################################################################################//
 
+
+//##########################################################################################################################//
 void audioFreqAnalyzer() {
   int y = 15;
   const float stretchFactor = 1.92;
+
+
+  for (int i = 1; i < DISP_WIDTH; i++) // clean line buffer
+     newLine[i] = 0;
+
   tft.fillScreen(TFT_BLACK);
   audioScale();
   si4735.setAudioMute(false);
@@ -786,43 +781,45 @@ void audioFreqAnalyzer() {
   tft.setCursor(0, 305);
   tft.printf("Frequency: %ld", FREQ);
 
+  // Need byte swapping for pushImage
+  tft.setSwapBytes(true);
+
   while (digitalRead(ENCODER_BUTTON) == HIGH && !get_Touch()) {
     FFTSample(512, 0, 0);
 
     if (clw || cclw) {
-      if (clw)
-        FREQ += 100;
-      if (cclw)
-        FREQ -= 100;
+      if (clw) FREQ += 100;
+      if (cclw) FREQ -= 100;
 
       tft.fillRect(0, 305, 480, 15, TFT_BLACK);
       tft.setCursor(0, 305);
-      tft.printf("Freqency: %ld", FREQ);
+      tft.printf("Frequency: %ld", FREQ);
       setLO();
       clw = false;
       cclw = false;
     }
 
-    for (int i = 2; i < SAMPLES; i++) {
-      tft.drawPixel(i * stretchFactor, y, valueToWaterfallColor((int)(RvReal[i])));
-    
-    
+    // Fill linebuffer 
+    for (int i = 1; i < DISP_WIDTH; i++) {
+      int fftIndex = (int)(i / stretchFactor);
+      if (fftIndex >= SAMPLES) fftIndex = SAMPLES - 1;
+      newLine[i] = valueToWaterfallColor((int)(RvReal[fftIndex]));
     }
+
+    // Push line
+    tft.pushImage(0, y, DISP_WIDTH, 1, newLine);
 
     y++;
 
-
     drawRandomObjects();
-    if (y == 320) {
+    if (y == 300) {
       y = 15;
       tft.fillScreen(TFT_BLACK);
       audioScale();
     }
   }
 
-
-
-
+   tft.setSwapBytes(false);
   rebuildMainScreen(0);
 }
 
@@ -928,7 +925,7 @@ void audioScan() {  //  240 channels spectrum in slow scan mode
 
       if (strX > oldX + 1)
         tft.fillRectVGradient(oldX + 1, DISP_HEIGHT - dsize - yOffset, 1, dsize, TFT_SILVERBLUE, clr);  // stretch gap fill
-                                                                                                        //tft.drawFastVLine(oldX  + 1, DISP_HEIGHT - 1 - dsize - yOffset, dsize, clr);
+    //tft.drawFastVLine(oldX  + 1, DISP_HEIGHT - 1 - dsize - yOffset, dsize, clr);
     }
     oldX = strX;
   }

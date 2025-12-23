@@ -1,5 +1,5 @@
 void setLO() {
-  // Sets the oscillator(s) to required frequency. Redirects to tune().
+  // Sets the oscillator(s) to required frequency if WBFM or no mixer. Otherwise redirects to tune().
 
 
   if (noMixer) {  // debug - tune the SI4732 directly
@@ -17,6 +17,7 @@ void setLO() {
 
   if (SI4735WBFMTune) {
     tuneWBFMSI4735();  // tune SI4735  for WBFM
+
 #ifdef TINYSA_PRESENT
     LO_RX = abs(((SI4735TUNED_FREQ * 1000) - FREQ));
     si5351.set_freq(LO_RX * 100ULL, SI5351_CLK2);  // tune the synthesizer so that the tinySA shows WBFM spectrum. Use low injectionurn;
@@ -168,12 +169,11 @@ void vfoSelector() {
   static int vfo1ModType = -1;
   static int vfo2ModType = -1;
 
-  if (vfo1Active) {
-
-
-    vfo2Freq = FREQ;
+  if (vfo1Active) { //VFO 2 was active, VFO1 will be used 
+ 
+    vfo2Freq = FREQ;  // save FREQ and modType of VFO2
     vfo2ModType = modType;
-    FREQ = vfo1Freq;
+    FREQ = vfo1Freq;   
 
     if (modType != vfo1ModType) {
       modType = vfo1ModType;
@@ -181,11 +181,11 @@ void vfoSelector() {
     }
   }
 
-  else {
+  else { //VFO 1 was active, VFO2 gwill be used
 
     vfo1ModType = modType;
 
-    if (!init) {
+    if (!init) { // first toggle, must initiate VFO2
       vfo2Freq = FREQ;
       vfo2ModType = modType;
       init = true;

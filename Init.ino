@@ -3,7 +3,14 @@
 void bootScreen() {
   int16_t si4735Addr = 0;
   tft.init();
-  tft.setRotation(1);
+
+#ifdef FLIP_IMAGE
+ tft.setRotation(3);
+#else
+tft.setRotation(1);
+#endif
+
+
   tft.setTextColor(TFT_FOREGROUND);
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(2);
@@ -31,16 +38,19 @@ void bootScreen() {
   while (!si4735Addr);
 
   tft.fillScreen(TFT_BLACK);
-  bool fastBoot = preferences.getBool("fastBoot", 0);
-
-
-  if (!fastBoot) {
+  fastBoot = preferences.getBool("fB", 0);
+ 
+ if (!fastBoot) {
+ 
 #ifdef SHOW_SPLASHSCREEN
     LittleFS.begin(true);  // bool formatOnFail = false
     swappedJPEG = true;    // depends on file format
+    Serial.print("Loading splash\n");
     drawJpeg("/splash.jpg", 0, 0);
     LittleFS.end();
 #endif
+
+
     tft.setTextSize(3);
     tft.setCursor(0, 30);
 
@@ -51,8 +61,6 @@ void bootScreen() {
 #ifndef TV_TUNER_PRESENT
     tft.println(" 0.1-50MHz\n\nUniversal Receiver\n");
 #endif
-
-
 
     tft.setTextSize(2);
     tft.setCursor(0, 180);
@@ -80,8 +88,11 @@ void bootScreen() {
       SI4732found = true;
       si4735.setDeviceI2CAddress(1);
     }
-    preferences.putBool("fastBoot", 0);  // remove fastboot flag
   }
+   
+ if (fastBoot) 
+   preferences.putBool("fB", false);  // remove fastboot flag
+
 }
 //##########################################################################################################################//
 
@@ -359,7 +370,7 @@ void loadLastSettings() {
   modType = preferences.getChar("lastMod", 1);        //last modulation type
   altStyle = preferences.getBool("lastStyle", 0);     //plain or sprite style
   pressSound = preferences.getBool("pressSound", 0);  // short beep when pressed
-  miniWindowMode = preferences.getChar("spectr", 0);  // audio spectrum analyzer mode
+  miniWindowMode = preferences.getChar("spectr", 3);  // audio spectrum analyzer mode
   sevenSeg = preferences.getBool("sevenSeg", 0);      // frequency display font
 #ifdef TINYSA_PRESENT
   syncEnabled = preferences.getBool("useTSADBm", 0);  // use tinySA for DBm
@@ -403,7 +414,8 @@ void loadLastSettings() {
 
   tRel();
 
-
+if (! fastBoot) { // provide option to calibrate touchscreen
+ 
   for (int i = 0; i < 2000; i++) {
     delay(1);
     get_Touch();
@@ -452,6 +464,9 @@ void loadLastSettings() {
       }
     }
   }
+}
+
+
 }
 
 //##########################################################################################################################//

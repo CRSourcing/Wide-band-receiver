@@ -104,7 +104,7 @@ void readSDBtns() {
       break;
     case 32:
       deleteRecursive(SD, "/");
-      preferences.putBool("fastBoot", 1);
+      preferences.putBool("fB", true);
       ESP.restart();
       break;
     case 33:
@@ -185,7 +185,7 @@ while (!SD.begin(SD_CS, spiSD, 2000000))  {
   tDoublePress();
 
   SD.end();
-  preferences.putBool("fastBoot", true);
+  preferences.putBool("fB", true);
   ESP.restart();
 }
 //##########################################################################################################################//
@@ -417,7 +417,7 @@ void copyFilesToLittleFS() {
     tft.println("LittleFS Mount Failed");
     delay(2000);
     LittleFS.format();
-    preferences.putBool("fastBoot", true);
+    preferences.putBool("fB", true);
     ESP.restart();
   } else
     tft.println("LittleFS mounted");
@@ -455,7 +455,7 @@ void copyFilesToLittleFS() {
   tft.println("\n Done, touch to continue.");
   tDoublePress();
   SD.end();
-  preferences.putBool("fastBoot", true);
+  preferences.putBool("fB", true);
   ESP.restart();  // reset pin 16 for encoder
 }
 
@@ -804,7 +804,7 @@ void formatLittleFSWithWarning() {
       break;
   }
   LittleFS.end();
-  preferences.putBool("fastBoot", true);
+  preferences.putBool("fB", true);
   ESP.restart();
 }
 

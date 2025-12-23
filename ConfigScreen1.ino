@@ -84,9 +84,9 @@ void readCf1Btns() {
         showAudioWaterfall = false;  // panoramascan has priority
 
       tft.setCursor(10, 65);
-      tft.print("Shows +-500KHz around freq");
+      tft.print("Shows waterfall when");
       tft.setCursor(10, 85);
-      tft.print("when squelch is closed.");
+      tft.print("squelch is closed (AM/FM).");
       tft.setCursor(10, 110);
       tft.printf("Panorama: %s\n", showPanorama ? "ON" : "OFF");
       delay(2000);
@@ -110,7 +110,7 @@ void readCf1Btns() {
         delay(1000);
       }
       preferences.putBool("sM", showMeters);
-      preferences.putBool("fastBoot", true);
+      preferences.putBool("fB", true);
       ESP.restart();
       break;
 

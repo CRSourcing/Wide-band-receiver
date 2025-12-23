@@ -96,7 +96,7 @@ void decodeLines() {
     if (digitalRead(ENCODER_BUTTON) == LOW) {  // encoder pressed while building image
 
       if (imageLoop) {
-        preferences.putBool("fastBoot", true);
+        preferences.putBool("fB", true);
         ESP.restart();
       } else
         return;
