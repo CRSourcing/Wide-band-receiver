@@ -764,8 +764,8 @@ uint16_t buttonSelected = 4;  // 4-11
 // Web
 uint8_t imageSelector = 0;
 bool swappedJPEG = false;
-const char* ssid = "MMV2025";
-const char* password = "Pekita#2020";
+const char* ssid = "MYSSID";
+const char* password = "MYPW";
 int yShift = 0;
 int xShift = 0;
 int reportSelector = 0;
