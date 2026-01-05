@@ -6,7 +6,7 @@
 
 #define TV_TUNER_PRESENT  // If this option is commented out, a shortwave receiver version will compile. In this case max. FREQ = 50MHz.
 
-#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
+//#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
 #define FAST_TOUCH_HANDLER  // Invokes a faster touch handler with reduced sampling. Could cause spurious errors if the touchscreen is worn out, but increases speed significantly. No problems so far.
 
