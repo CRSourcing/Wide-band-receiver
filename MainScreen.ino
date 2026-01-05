@@ -17,7 +17,7 @@ void mainScreen() {  // main screen does not block loop(), all other screens do
 
 
 //##########################################################################################################################//
-void rebuildIndicators() {
+void redrawIndicators() {
 
   tft.fillRect(3, 52, 336, 30, TFT_BLACK);  // overwrite area for spectrum
   tft.fillRect(3, 82, 336, 41, TFT_BLACK);  // overwrite area for waterfall
@@ -53,9 +53,9 @@ void drawMainButtons() {
   Button buttons[] = {
     { 275, 245, "Set" }, { 185, 245, "Select" }, { 110, 255, "Scan" },
     { 100, 198, "Bandw" }, { 25, 198, "Step" }, { 185, 188, "Save" },
-    { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "VFO" },
+    { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "Set" },
     { 185, 265, "Band" }, { 275, 265, "Freq" }, { 185, 208, "Memo" },
-    { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "  " }
+    { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "VFO" }
   };
 
   etft.setTTFFont(Arial_14);
@@ -106,20 +106,6 @@ void drawMainButtons() {
   #endif
   }
 
-  // VFO toggle 
-  tft.fillRect(275, 152, 40, 15, TFT_BLACK);
-  etft.setCursor(275, 152);
-  
-  if (vfo1Active) {
-    etft.setTextColor(TFT_SKYBLUE);
-    etft.print("->B");
-  }
- else {
-    etft.setTextColor(TFT_YELLOW);
-    etft.print("->A");
- }  
-
-
 
 
 }
@@ -163,20 +149,13 @@ void readMainBtns() {
 
       break;
     case 23:
-      FREQ_OLD = FREQ;
       selectWaterFall();
       tRel();
-      FREQ = FREQ_OLD;
-      displayFREQ(FREQ);
-      setLO();    
-        ;
       break;
     case 24:
-    vfo1Active = !vfo1Active;    
-    vfoSelector();
-    tRel();
+     vfoMenu(); 
+     FREQ_OLD = FREQ - 1;    // trigger update
       return;
-      break;
     case 31:
       hideBigBtns();
       setSTEP();  // use touchbuttons
@@ -554,3 +533,13 @@ void drawRandomObjects() {
   if (1 == random(600))
     tft.pushImage(5 + random(290), yPosStart + random(6) * yShift, 40, 30, cam);
 }
+
+//###############################################################################################//
+void resetMainScreen(void) {
+
+  redrawMainScreen = true;
+  tx = ty = pressed = 0;
+
+}
+//###############################################################################################//
+

@@ -1,7 +1,6 @@
 //##########################################################################################################################//
 // Next functions are to draw a slow scan waterfall, resolution is limited to 240 * 231 due to amount of framebuffer needed
 // IlI9488 display does not allow to read back from the hardware framebuffer when touchscreen is enabled, so a sw buffer is needed.
-// Typical draw time is btw. 10 minutes and several hours for one screen
 // Uses fine tune potentiometer to adjust colors
 
 void waterFall(bool useKeypad) {
@@ -84,9 +83,7 @@ void waterFall(bool useKeypad) {
   }
 
   tft.setTextSize(2);
-  tft.setSwapBytes(true); // set to big endian for pushing an entire line to the display
-
-
+  tft.setSwapBytes(true);  // set to big endian for pushing an entire line to the display
   /// loop that reads RSSI and feeds the framebuffers
   while (drawingTrace) {
 
@@ -103,15 +100,15 @@ void waterFall(bool useKeypad) {
 
 
     int mult = (analogRead(FINETUNE_PIN) / wfSensitivity) - 1;
-    long corrFactor = (cellSize / 2000); // ajust accum to cellsize
+    long corrFactor = (cellSize / 2000);     // ajust accum to cellsize
     corrFactor = min(corrFactor, (long)50);  // Limit corrFactor to 50
-  
+
 
     si4735.getCurrentReceivedSignalQuality(0);
     while (offset < cellSize) {
       FREQ = startPoint + total + offset;
       setLO();
-     // si4735.getCurrentReceivedSignalQuality(0);
+      // si4735.getCurrentReceivedSignalQuality(0);
       strength = si4735.getCurrentRSSI();  // Read RSSI
 
       accum += abs((strength * mult) / (corrFactor + 1));
@@ -120,7 +117,7 @@ void waterFall(bool useKeypad) {
 
     uint16_t clr = valueToWaterfallColor((accum - 600) * 3);  // Convert to RGB565
     //tft.fillCircle(470, 312, 4, clr);                              // Lower right corner indicator
-    tft.fillRect(2 * xPos, 265, 2, 6, clr);                        // indicator bar
+    tft.fillRect(2 * xPos, 265, 2, 6, clr);  // indicator bar
     //tft.drawPixel(2 * xPos, 0, TFT_BLUE);                          //  upper bar current position
     //tft.drawPixel(2 * xPos + 1, 0, TFT_BLUE);
 
@@ -359,7 +356,7 @@ uint16_t valueToWaterfallColor(int value) {
 
 
   // Define transition points
-int transitionPoints[] = { 0, 400, 800, 1500, 1700, 1800, 20000 };
+  int transitionPoints[] = { 0, 400, 800, 1500, 1700, 1800, 20000 };
 
   // Find the right transition
   for (int i = 0; i < 6; i++) {
@@ -391,7 +388,7 @@ void addLineToFramebuffer(uint16_t* newLine) {
   memcpy(&framebuffer2[currentLine * FRAMEBUFFER_HALF_WIDTH], newLine + FRAMEBUFFER_HALF_WIDTH, FRAMEBUFFER_HALF_WIDTH * sizeof(uint16_t));
 
   // Displayframebuffer
-    updateDisplay();
+  updateDisplay();
 
   // Move to the next liine
   currentLine = (currentLine + 1) % FRAMEBUFFER_HEIGHT;
@@ -401,7 +398,7 @@ void addLineToFramebuffer(uint16_t* newLine) {
 //##########################################################################################################################//
 void updateDisplay() {
   const int yShiftDown = 22;
- 
+
   // Temporary line buffer
   static uint16_t lineBuf[WATERFALL_SCREEN_WIDTH];
 
@@ -418,14 +415,14 @@ void updateDisplay() {
         if ((y % (WATERFALL_SCREEN_HEIGHT / 15) == 0) && (y != 0)) {
           lineBuf[x] = TFT_WHITE;  // orientation dots
         } else {
-          lineBuf[x] = TFT_BLACK;  
+          lineBuf[x] = TFT_BLACK;
         }
       } else {
         lineBuf[x] = color;
       }
     }
 
-    // Push the line 
+    // Push the line
     int drawY = WATERFALL_SCREEN_HEIGHT - y + yShiftDown;
     tft.pushImage(0, drawY, WATERFALL_SCREEN_WIDTH, 1, lineBuf);
   }
@@ -433,7 +430,6 @@ void updateDisplay() {
   // Draw new line on the top
   for (int x = 0; x < WATERFALL_SCREEN_WIDTH; x++) {
     lineBuf[x] = getInterpolatedColor(x, currentLine);
-  
   }
   tft.pushImage(0, yShiftDown, WATERFALL_SCREEN_WIDTH, 1, lineBuf);
 }
@@ -533,8 +529,10 @@ void touchTuner() {
 
   si4735.setAudioMute(true);
   audioMuted = true;
-  tft.fillRect(0, 296, 479, 23, TFT_BLACK);        // clear infobar
-  tft.fillRect(330, 8, 135, 15, TFT_BLACK);        // clear microvolt indicator area
+  tft.fillRect(0, 296, 479, 23, TFT_BLACK);  // clear infobar
+
+  if (!useNixieDial)
+    tft.fillRect(330, 8, 135, 15, TFT_BLACK);      // clear microvolt indicator area
   tft.fillRect(Xsmtr, Ysmtr, 325, 70, TFT_BLACK);  // S meter area
 
   if (!clear) {
@@ -583,7 +581,7 @@ void touchTuner() {
   delay(50);
 #endif
 
-hideBigBtns();
+  hideBigBtns();
 
   while (drawingTrace) {
 
@@ -638,7 +636,7 @@ hideBigBtns();
     setLO();
     si4735.getCurrentReceivedSignalQuality(0);
     strength = si4735.getCurrentRSSI();  // Read RSSI
-   
+
 
     if (ctr > 1)  // 1st run is to calculate background noise floor, do not display
       accum = (strength - avgBgN) * 30;
@@ -746,11 +744,11 @@ hideBigBtns();
 
           long touchFREQ = startPoint + tSpan - ((343 - tx) * 1000000 / 360);
           // long touchFREQ = startPoint + tSpan - ((traceWidth  - tx) * spanHz / traceWidth ); ????
-    
+
           FREQ = touchFREQ / 1000 * 1000;  // round to 1KHz
-         audioMuted = false;
+          audioMuted = false;
           si4735.setAudioMute(false);
-         si4735.setHardwareAudioMute(false);
+          si4735.setHardwareAudioMute(false);
         }
 
         if (clw) {
@@ -769,7 +767,7 @@ hideBigBtns();
           getRSSIAndSNR();
           strength = signalStrength;
           if (graphicMode)
-           calculateAndDisplaySignalStrength();
+            calculateAndDisplaySignalStrength();
           F = FREQ;
         }
 
@@ -958,16 +956,17 @@ void drawScale(int xCursorStart, int traceWidth, int startPoint, float div, int 
   //
 
   float scale = 0;
+  tft.fillRect(xCursorStart, height, traceWidth + xCursorStart, 18, TFT_BLACK);  // overwrite last scale
   tft.setTextSize(1);
   tft.setTextColor(TFT_WHITE);
-  tft.drawFastHLine(xCursorStart, height, traceWidth + xCursorStart, TFT_WHITE);
+  tft.drawFastHLine(xCursorStart, height, traceWidth + xCursorStart, TFT_WHITE);  // top lines
   tft.drawFastHLine(xCursorStart, height + 1, traceWidth + xCursorStart, TFT_WHITE);
   tft.drawFastVLine(traceWidth - 1, height + 1, 5, TFT_WHITE);
-  for (int i = xCursorStart; i < traceWidth + xCursorStart; i += traceWidth / 10) {
+  for (int i = xCursorStart; i < traceWidth + xCursorStart; i += traceWidth / 10) {  //draw ticks
     tft.drawFastVLine(i, height + 2, 5, TFT_WHITE);
     tft.setCursor(i, height + 9);
-    if (i < traceWidth)
-      tft.printf("%.1f\n", (scale + startPoint) / (float)tSpan);
+    if (i < traceWidth && startPoint >= 0)
+      tft.printf("%.1f\n", (scale + startPoint) / (float)tSpan);  // labels
     scale += div;
   }
   tft.setTextSize(2);
@@ -976,60 +975,57 @@ void drawScale(int xCursorStart, int traceWidth, int startPoint, float div, int 
 //##########################################################################################################################//
 
 
-void panoramaScan() {  // shows panorama and waterfall while no activity on current FREQ (squelch is closed)
-
-  float startPoint = FREQ - (tSpan / 2);  // +- 500KHz
-  const uint16_t stp = tSpan / 333;       // 3 KHz per pixel
+void panoramaScan(bool show1MhzSegment) {  // shows panorama and waterfall while no activity on current FREQ (squelch is closed)
+                                           //  show1MhzSegment will show a 1 MHz segment that can be changed with the encoder
+  uint32_t startPoint;
+  const uint16_t stp = tSpan / 333;  // 3 KHz per pixel
   const uint16_t endX = 337;
   const uint16_t startY = 61;
   const uint16_t endY = 293;
-  const uint16_t startWfY = 165; // start waterfall y
+  const uint16_t startWfY = 165;  // start waterfall y
   const uint16_t yPos = 161;
-  uint16_t xPos = 2;  
+  uint16_t xPos = 2;
   uint16_t startX = xPos;     // start x
-  uint32_t tFREQ = 0;      // temporary frequency holder
+  uint32_t tFREQ = 0;         // temporary frequency holder
   char amplBuf[355] = { 0 };  // amplitude buffer to overwrite previous panorama
   const int wWidth = endX - startX;
   const int wHeight = 100;
-  
+
   bool squelchOpen = false;
   bool centered = false;
+  bool restart = false;
   int minSig = 127;  // to substract average background noise
   int avgBgN = 1;    // average background noise
   int lastSS = 0;
   uint64_t ctr = 1, sum = 0;
   int16_t adjustedSS = 0;
 
+
   long savFreq = FREQ;
-  FREQ = (long)startPoint;
-  ttx = tx = tty = ty = pressed = 0;  // eliminate previous touch coordinates
 
-  tft.fillRect(0, 294, 227, 26, TFT_BLACK);  // overwrite clock and  mute indicator
-  tft.fillRect(330, 4, 145, 22, TFT_BLACK);  // overwrite microvolts
-  tft.fillRect(2, startY, endX, 200, TFT_BLACK);  // overwrite window
-  tft.fillRect(2, startWfY, endX - 2,endY - startWfY, TFT_BLACK);  // overwrite buttons
-  tft.setTextSize(1);
-  tft.setCursor (startX + 10,endY - 20);
-  tft.print("Touch peak to tune. Touch here to return;");
-   tft.setTextSize(2);
+  if (show1MhzSegment == false && FREQ >= tSpan / 2)
+    startPoint = FREQ - (tSpan / 2);  // +- 500KHz
 
-  drawScale(xPos, 332, FREQ, tSpan / 10, 65); // scale
-  tft.drawFastVLine(endX  / 2, 61, 15, TFT_RED);  // center marker
-  tft.setSwapBytes(true); // needed for push line
+  else {
 
+    if (modType != AM || modType != NBFM) {
+      modType = AM;  // force AM demodulation, SSB is too slow
+      loadSi4735parameters();
+    }
 
-  if (showMeters) { // set meters to zero
-    plotNeedle(1, 0);
-    plotNeedle2(1, 0);
+    si4735.setAudioMute(true);
+    startPoint = FREQ / 1000000 * 1000000;  //start with full MHz
   }
 
 
-  // allocate single framebuffer
-  framebuffer1 = (uint16_t*)malloc(wWidth  * wHeight * sizeof(uint16_t));
-  if (framebuffer1 == NULL)
-    buffErr(); // exit graciously
-  memset(framebuffer1, 0, wWidth* wHeight * sizeof(uint16_t)); // black background
+  FREQ = startPoint;
+  ttx = tx = tty = ty = pressed = 0;  // eliminate prev touch coordinates
 
+
+  initPanoramaScan(wWidth, wHeight, startX, startY, endX, endY);
+
+  drawScale(xPos, 332, FREQ, tSpan / 10, 65);    // scale
+  tft.drawFastVLine(endX / 2, 61, 15, TFT_RED);  // center marker
 
   while (true) {
 
@@ -1040,13 +1036,13 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
     }
 
 
-    if (ctr == 2 && xPos == 2) 
-      tft.fillRect(10, 100, 320, 16, TFT_BLACK); // overwrite notification
+    if (ctr == 2 && xPos == 2)
+      tft.fillRect(10, 100, 320, 16, TFT_BLACK);  // overwrite notification
 
     if (!centered) {  // only calculate when not tFREQ = FREQ;
       lastSS = signalStrength;
       si4735.getCurrentReceivedSignalQuality(0);  // fetch signal strength
-      signalStrength = si4735.getCurrentRSSI();  
+      signalStrength = si4735.getCurrentRSSI();
     }
 
     else {
@@ -1058,15 +1054,15 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
     if (minSig > signalStrength)  // get noise floor
       minSig = signalStrength;
 
-     adjustedSS = constrain(signalStrength - avgBgN, 1, 80);  // substract average background noise and limit
+    adjustedSS = constrain(signalStrength - avgBgN, 1, 80);  // substract average background noise and limit
 
 
     if (ctr > 1) {
-      
-       uint16_t clr = valueToWaterfallColor(adjustedSS * 50);  // Convert to RGB565
 
-       framebuffer1[xPos] = clr; // load buffer 
-      
+      uint16_t clr = valueToWaterfallColor(adjustedSS * 50);  // Convert to RGB565
+
+      framebuffer1[xPos] = clr;  // load buffer
+
       tft.drawFastVLine(xPos, yPos - amplBuf[xPos] - 3, amplBuf[xPos] + 2, TFT_BLACK);  // Overwrite old amplitude values
 
       static bool alternate = false;
@@ -1077,7 +1073,6 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
         tft.fillRectVGradient(xPos, yPos - adjustedSS, 1, adjustedSS, TFT_WHITE, TFT_BLUE);
 
       tft.drawFastVLine(xPos, yPos - adjustedSS - 3, 3, TFT_GREEN);  // draw a green crest
-
     }
 
     amplBuf[xPos] = adjustedSS;
@@ -1086,56 +1081,9 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
     setLO();  // move to next frequency step
 
 
-    uint16_t z = tft.getTouchRawZ();
-    if (z > 400) { // have a touch
-      get_Touch();
-
-      if (ty > (startWfY + wHeight) || tx > endX) {// touch outside waterfall
-        FREQ = savFreq;
-        tx = ty = pressed = 0;
-        tRel();
-        free(framebuffer1);
-         tft.setSwapBytes(false);
-        redrawMainScreen = true;
-        mainScreen();
-        return;
-      }
 
 
-      else {  // center the peak that was touched
-       drawScale(2, 332, FREQ, tSpan / 10, 65); // redraw the scale
-
-        if (tx > 167)
-          startPoint += (tx - 167) * 3 * 1000;
-        else
-          startPoint -= (167 - tx) * 3 * 1000;
-
-        startPoint /= 1000;
-        startPoint *= 1000;
-
-        startPoint /= STEP;
-        startPoint *= STEP;
-
-
-        savFreq = startPoint + (tSpan / 2);
-
-        savFreq /= 1000;
-        savFreq *= 1000;
-
-        FREQ = savFreq;
-        tx = ty = pressed = 0;
-        roundFreqToSTEP();
-        displayFREQ(FREQ);  // display new FREQ
-        setLO();
-        xPos = endX;
-        tRel();
-        
-      }
-    }
-
-
-
-    if (xPos % 30 == 0) {  // roughly every 200ms scan the tuned freq
+    if ((xPos % 30 == 0) && (show1MhzSegment == false)) {  // roughly every 200ms poll the tuned freq
       tFREQ = FREQ;
       centered = true;
 
@@ -1145,22 +1093,14 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
           setLO();
         }
 
-        if (clw || cclw) {
-          free(framebuffer1);
-           tft.setSwapBytes(false);
-          redrawMainScreen = true;
-          mainScreen();
-          return;
-        }
-
-        delay(5); // this is mandatory, otherwise RSSI may fail
+        delay(5);                                   // this is mandatory, otherwise RSSI may fail
         si4735.getCurrentReceivedSignalQuality(0);  // fetch signal strength
         signalStrength = si4735.getCurrentRSSI();
         readSquelchPot(true);  // read'n draw
-        delay(5); // this is mandatory, otherwise SNR squelch may fail  
-        setSquelch();                              
- 
-      if (signalStrength > currentSquelch) {
+        delay(5);              // this is mandatory, otherwise SNR squelch may fail
+        setSquelch();
+
+        if (signalStrength > currentSquelch) {
           squelchOpen = true;
           free(framebuffer1);
           tft.setSwapBytes(false);
@@ -1170,8 +1110,7 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
         }
       }
 
-      while (signalStrength > currentSquelch || SNR)
-         ;
+      while (signalStrength > currentSquelch || SNR);
 
 
 
@@ -1186,27 +1125,135 @@ void panoramaScan() {  // shows panorama and waterfall while no activity on curr
     }  // endif  xPos % 30 == 0
 
 
+
+    uint16_t z = tft.getTouchRawZ();
+    if (z > 400) {  // have a touch
+      get_Touch();
+
+      if ((ty > (startWfY + wHeight) || tx > endX) && show1MhzSegment == false) {  // touch outside waterfall
+        FREQ = savFreq;
+        resetMainScreen();
+        show1MhzSegment = false;  // disable the 1 MHz segment mode
+        tPress();
+        tRel();
+        free(framebuffer1);
+        tft.setSwapBytes(false);
+        mainScreen();
+        return;
+      }
+
+
+
+      if (show1MhzSegment && tx < endX) {  // we are in 1MHz mode
+        si4735.setAudioMute(false);
+        while (true) {  // loop to tune to the peak that was touched
+          delay(20);
+
+          // Break if encoder moved (load new segment)
+          if (clw || cclw)
+            break;
+
+          get_Touch();
+
+
+          // --- Leave segment ---
+          if (ty >= (endY - 30) && tx > (startX + 100) && tx < (startX + 155)) {
+            show1MhzSegment = false;
+            free(framebuffer1);
+            tft.setSwapBytes(false);
+            FREQ = savFreq;
+            FREQ_OLD -= 1;  // force display update
+            return;
+          }
+
+          // --- restart and continue drawing waterfall ---
+          else if (ty >= (endY - 30) && tx > (startX + 165) && tx < (startX + 215)) {  // restart wf
+            restart = true;
+            si4735.setAudioMute(true);
+            tRel();
+            tx = ty = z = 0;
+            pressed = false;
+            break;
+          }
+
+          // --- Touch inside waterfall area: tune frequency ---
+          else if (ty < (startWfY + 50) && (tx < endX)) {
+            uint32_t offset = (tx - startX) * 3 * 1000;
+            FREQ = startPoint + offset;
+          }
+
+          // --- Set & Leave ---
+          else if (ty >= (endY - 30) && tx > (startX + 10) && tx < (startX + 75)) {
+            show1MhzSegment = false;
+            free(framebuffer1);
+            tft.setSwapBytes(false);
+            FREQ /= STEP;
+            FREQ *= STEP;  // round down to STEP
+            return;
+          }
+
+          // --- Apply frequency if pressed ---
+          if (pressed) {
+            FREQCheck();
+            FREQ /= STEP;
+            FREQ *= STEP;       // round down to STEP
+            displayFREQ(FREQ);  // display new FREQ
+            setLO();
+            si4735.setAudioMute(false);
+            si4735.setHardwareAudioMute(false);
+            pressed = false;
+          }
+        }  // endwhile true
+      }
+    }  //endif z > 400
+
+
+
+    if ((clw || cclw || restart) && show1MhzSegment) {
+
+      if (clw) {
+
+        FREQ += 1000000;  // up
+      } else if (cclw) {
+        FREQ -= 1000000;  // down
+      }
+
+
+      restart = false;
+      FREQ = (FREQ / 1000000) * 1000000;  // round down
+      startPoint = FREQ;
+      displayFREQ(FREQ);  // display new FREQ
+
+#ifdef TINYSA_PRESENT
+      char buffer[50];
+      sprintf(buffer, "sweep center %ld", FREQ + tSpan / 2);  // sync TSA center frequency with the next 1MHz step
+      Serial.println(buffer);
+#endif
+
+      tft.fillRect(2, startY, endX, 200, TFT_BLACK);  // overwrite window
+      drawScale(2, 332, FREQ, tSpan / 10, 65);
+      memset(framebuffer1, 0, wWidth * wHeight * sizeof(uint16_t));  // clear buffer
+      xPos = startX;
+      ctr = 1;
+      sum = 0;
+      clw = false;
+      cclw = false;
+      tx = ty = pressed = 0;
+    }
+
+
+
     if (xPos == endX) {
 
-// Scroll framebuffer down one line
-for (int yCopy = wHeight - 1; yCopy > 0; yCopy--) {
-  for (int xCopy = startX; xCopy < wWidth; xCopy++) {
-    framebuffer1[yCopy * wWidth + xCopy] =
-        framebuffer1[(yCopy - 1) * wWidth + xCopy];
-  }
-}
+      pushPanoramaBuf(wHeight, wWidth, startX, startWfY);
 
-
-tft.pushImage(startX,startWfY, wWidth, wHeight- 1, &framebuffer1[wWidth]); // push the entire buffer
-
-      xPos = 2;
+      xPos = startX;
       tft.fillRect(2, yPos - 1, endX, 2, TFT_BLACK);
       FREQ = startPoint;
-     
       sum += minSig;
-      minSig = 127;        // reset to highest possible value (127dBuV)
-      avgBgN = (sum / ctr); // estimating average background noise 
-      
+      minSig = 127;          // reset to highest possible value (127dBuV)
+      avgBgN = (sum / ctr);  // estimating average background noise
+
       ctr++;
     }
   }
@@ -1215,23 +1262,110 @@ tft.pushImage(startX,startWfY, wWidth, wHeight- 1, &framebuffer1[wWidth]); // pu
 
 //##########################################################################################################################//
 
-void PanoramaScanner() {  // helper that blocks calling panoramaScan() for interval ms if it was left through touch or encoder moved
- 
-if (modType == LSB || modType == USB || modType == SYNC || modType == CW || modType == WBFM) // only works AM or NBFM, RSSI too slow in SSB?
-   return;
- 
- 
- 
- if (audioMuted && showPanorama) {
+
+void pushPanoramaBuf(int wHeight, int wWidth, int startX, int startWfY) {
+
+
+  // Scroll framebuffer down one line
+  for (int yCopy = wHeight - 1; yCopy > 0; yCopy--) {
+    for (int xCopy = startX; xCopy < wWidth; xCopy++) {
+      framebuffer1[yCopy * wWidth + xCopy] =
+        framebuffer1[(yCopy - 1) * wWidth + xCopy];
+    }
+  }
+
+  tft.setSwapBytes(true);                                                       // needed for pushimage
+  tft.pushImage(startX, startWfY, wWidth, wHeight - 1, &framebuffer1[wWidth]);  // push next screen
+  tft.setSwapBytes(false);
+}
+
+//##########################################################################################################################//
+
+void initPanoramaScan(int wWidth, int wHeight, int startX, int startY, int endX, int endY) {
+
+  tft.fillRect(0, 294, 227, 26, TFT_BLACK);  // overwrite clock and  mute indicator
+
+  if (!useNixieDial)
+    tft.fillRect(330, 4, 145, 22, TFT_BLACK);  // overwrite microvolts
+
+  tft.fillRect(startX, startY, endX, 230, TFT_BLACK);  // overwrite window
+
+
+  if (show1MhzSegment == false) {
+    tft.setTextSize(1);
+    tft.setCursor(startX + 10, endY - 20);
+    tft.print("Open squelch to return");
+
+  }
+
+  else {
+    tft.setTextColor(TFT_WHITE);
+
+    tft.drawRoundRect(startX + 10, endY - 25, 75, 20, 3, TFT_GREEN);
+    tft.drawRoundRect(startX + 100, endY - 25, 55, 20, 3, TFT_GREEN);
+    tft.drawRoundRect(startX + 165, endY - 25, 50, 20, 3, TFT_GREEN);
+
+
+    tft.setCursor(startX + 20, endY - 120);
+    tft.print("Encoder changes MHz.");
+    tft.setCursor(startX + 20, endY - 100);
+    tft.print("Tap on a peak to listen.");
+
+
+    tft.setTextSize(1);
+    tft.setCursor(startX + 15, endY - 20);
+    tft.print("Set & Leave");
+
+    tft.setCursor(startX + 110, endY - 20);
+    tft.print("Leave");
+
+    tft.setCursor(startX + 170, endY - 20);
+    tft.print("Restart");
+
+     tft.setCursor(startX + 220, endY - 20);
+    tft.print("Tap peak to listen.");
+
+    tft.setTextColor(textColor);
+  }
+
+  tft.setTextSize(2);
+
+  if (showMeters) {  // set meters to zero
+    plotNeedle(1, 0);
+    plotNeedle2(1, 0);
+  }
+
+  tRel();
+
+  // allocate framebuffer
+  framebuffer1 = (uint16_t*)malloc(wWidth * wHeight * sizeof(uint16_t));
+  if (framebuffer1 == NULL)
+    buffErr();                                                   // exit graciously
+  memset(framebuffer1, 0, wWidth * wHeight * sizeof(uint16_t));  // black background
+}
+
+
+
+//##########################################################################################################################//
+
+
+
+void loadPanoramaScan(bool show1MhzSegment) {  // helper that blocks calling panoramaScan() for interval ms if it was left through touch or encoder moved
+  // mode 1 = show +- 500KHz
+
+  if ((modType == LSB || modType == USB || modType == SYNC || modType == CW || modType == WBFM) && show1MhzSegment == false)  // only works AM or NBFM, RSSI too slow in SSB?
+    return;
+
+
+
+  if (audioMuted && showPanorama) {
     static bool blocked = false;
     static unsigned long previousMillis = 0;
     const unsigned long interval = 2000;  // 2000ms interval
 
 
     if (!blocked) {
-      
-      
-      panoramaScan();
+      panoramaScan(show1MhzSegment);
       blocked = true;
       previousMillis = millis();  // Store time when blocking begins
       if (clw)
@@ -1241,7 +1375,7 @@ if (modType == LSB || modType == USB || modType == SYNC || modType == CW || modT
       clw = 0;
       cclw = 0;
       setLO();
-      rebuildIndicators();
+      redrawIndicators();
     }
 
     // Check interval
@@ -1252,7 +1386,7 @@ if (modType == LSB || modType == USB || modType == SYNC || modType == CW || modT
 }
 
 //##########################################################################################################################//
-void selectWaterFall(){ // select frequency range for waterfall
+void selectWaterFall() {  // select waterfall mode
 
 
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
@@ -1264,22 +1398,22 @@ void selectWaterFall(){ // select frequency range for waterfall
   };
 
   Button buttons[] = {
-    { 193, 245, "Use" }, 
-    { 193, 265, "Band" }, 
-    { 100, 245, "Use" }, 
-    { 100, 265, "Range" }, 
-    { 290, 245, "" }, 
-    { 280, 265, "" }, 
-    { 20, 188, "" }, 
-    { 20, 210, "" }, 
-    { 20, 132, "" }, 
-    { 20, 152, "" }, 
+    { 193, 245, "Use" },
+    { 193, 265, "Band" },
+    { 100, 245, "Use" },
+    { 100, 265, "Range" },
+    { 270, 245, "Show" },
+    { 270, 265, "1MHz" },
+    { 20, 188, "" },
+    { 20, 210, "" },
+    { 20, 132, "" },
+    { 20, 152, "" },
     { 20, 255, "BACK" }
   };
 
 
   etft.setTTFFont(Arial_14);
-  tft.fillRect(2, 61, 337, 173, TFT_BLACK); // overwrite buttons 1-8
+  tft.fillRect(2, 61, 337, 173, TFT_BLACK);  // overwrite buttons 1-8
 
   for (int i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
     etft.setCursor(buttons[i].x, buttons[i].y);
@@ -1298,26 +1432,34 @@ void selectWaterFall(){ // select frequency range for waterfall
 
     switch (buttonID) {
       case 41:
-        redrawMainScreen = true;
-        tx = ty = pressed = 0;
+        resetMainScreen();
         return;
       case 42:
         waterFall(true);  // use keypad for waterfall
-         redrawMainScreen = true;
-        tx = ty = pressed = 0;
+        resetMainScreen();
         return;
-        break;
       case 43:
         setBand(true);  // use band for waterfall
-         redrawMainScreen = true;
-        tx = ty = pressed = 0;
+        resetMainScreen();
         return;
-        break;
+
+      case 44:
+        {
+          show1MhzSegment = true;
+          uint8_t oldMT = modType;
+          panoramaScan(show1MhzSegment);  // neeeds SI4732 AM mode
+          if (oldMT != modType) {
+            modType = oldMT;
+            loadSi4735parameters();
+            redrawIndicators();
+          }
+          resetMainScreen();
+        }
+        show1MhzSegment = false;
+        return;
       default:
-        redrawMainScreen = true;
-        tx = ty = pressed = 0;
+        resetMainScreen();
         return;
     }
   }
 }
-

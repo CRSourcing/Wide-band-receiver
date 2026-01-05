@@ -122,8 +122,7 @@ void readSDBtns() {
     case 44:
       break;
     default:
-      redrawMainScreen = true;
-      tx = ty = pressed = 0;
+     resetMainScreen();
       return;
   }
 

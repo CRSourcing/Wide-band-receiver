@@ -3,8 +3,6 @@
 //=======================================================================================
 void loadSSB() {
 
-
-
   if (!ssbLoaded) {
 
     if (!slowScan) {  //  do not display message bar in slowScan

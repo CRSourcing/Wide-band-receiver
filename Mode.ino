@@ -1,5 +1,5 @@
 //##########################################################################################################################//
-void setMode() {  // gets called from loop, selects btw. normal or scan mode. Also activates freq up and freq down. Calls selectModulation() too.
+void setMode() {  // gets called from loop, selects btw. normal or scan mode, activates freq up and freq down. Calls selectModulation() too.
 
   static uint16_t dly = 0;
   static bool stop = false;
@@ -7,12 +7,19 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode. Al
 
 
 
-  if ((tx > btLeftBorder && pressed && !scanMode) || (!scanMode && pressed && ty < 35)) {
+  if((tx > btLeftBorder && pressed && !scanMode) || (!scanMode && pressed && ty < 65)){
     // UP or DOWN pressed or frequency display left or right pressed
     disableFFT = true;
     freq_UP_DOWN();
   }
 
+
+#ifdef NBFM_DEMODULATOR_PRESENT 
+
+ if ( (tx > btLeftBorder) && (ty > 45) && (ty < 115) & pressed && !scanMode && showMeters) // set AFC on/off and display small green AFC indicator in upper meter
+     getAFCstatus();  
+
+#endif
 
 
   if (!scanMode && lim1 && lim2) {  // reset scan parameters
@@ -25,7 +32,7 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode. Al
   if (scanMode) {
 
 
-    if (keyVal && showScanRange && lim1 && lim2) {
+    if (keyVal && showScanRange && lim1 && lim2) { // scan with frequency limits
       tft.fillRect(3, 119, 334, 58, TFT_BLACK);  // overwrite row 3 to make room for scan parameters
       printScanRange();                          // print scan parameters once (not in every cycle)
       showScanRange = false;
@@ -62,9 +69,7 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode. Al
     delay(10);
 #endif
 
-
-
-    SCANfreq_UP_DOWN(stop);
+    scanUpDown(stop);
   }
 
   if ((ty > 215 && ty < 295) && !scanMode && tx > btLeftBorder) {  // Mode button pressed
@@ -197,9 +202,7 @@ void selectModulation() {
     Serial_printf("modType %d loaded\n", modType);
     loadSi4735parameters();
   }
-
-  redrawMainScreen = true;
-  tx = ty = pressed = 0;
+  resetMainScreen();
   mainScreen();
 }
 
@@ -339,10 +342,11 @@ void loadSi4735parameters() {
     delay(10);
     si4735.setFM(6400, 10800, FMSTARTFREQ, DEFAULT_WBFM_STEP / 10000);
     si4735.setFmStereoOff();
+
 #ifdef NBFM_DEMODULATOR_PRESENT
     if (afcEnable) {
       afcEnable = false;
-      showAFCStatus();  // diable AFC in SSB modes
+     // diable AFC in WBFM
     }
 #endif
     displayFREQ(FREQ);
@@ -359,7 +363,7 @@ void loadSi4735parameters() {
 #ifdef NBFM_DEMODULATOR_PRESENT
     if (afcEnable) {
       afcEnable = false;
-      showAFCStatus();  // diable AFC in SSB modes
+      // diable AFC in SSB modes
     }
 #endif
     si4735.setSsbAgcOverrite(1, AGCIDX);                                // disable AGC to eliminateSSB humming noise

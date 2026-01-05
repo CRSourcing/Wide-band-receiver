@@ -590,7 +590,9 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
   tft.fillRect(2, 52, 338, 30, TFT_BLACK);   // overwrite area for spectrum
   tft.fillRect(2, 82, 338, 40, TFT_BLACK);   // overwrite area for waterfall
   tft.fillRect(0, 294, 230, 25, TFT_BLACK);  // Overwrite infobar
-  tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // Overwrite microvolts
+  
+  if (! useNixieDial)
+     tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // Overwrite microvolts
   tft.fillCircle(470, 20, 2, TFT_BLACK);     // overwrite serial communication indicator
 
   tft.drawFastHLine(2, 81, 338, TFT_SKYBLUE);  // draw separator bar
@@ -681,7 +683,7 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
     Rpeak[i] = 0;
 
   tft.setSwapBytes(false); // needed to swap when pushing
-  rebuildIndicators();
+  redrawIndicators();
   readMainBtns();
 }
 
@@ -855,7 +857,6 @@ void printMajorPeak() {
     cpy[i] = RvReal[i];
   pk = FFT.majorPeak(cpy, 512, 5930);  //2.75KHz
   tft.printf("Peak:%4.0fHz", pk);      // display peak frequency
-  tft.fillRect(330, 4, 145, 20, TFT_BLACK);
   tft.setTextSize(2);
 }
 
@@ -873,8 +874,6 @@ void audioScan() {  //  240 channels spectrum in slow scan mode
   int oldX = startX;
   int dmax = 55;
 
-
-  tft.fillCircle(470, 20, 2, TFT_BLACK);  // overwrite serial communication indicator
 
   for (int strX = 0; strX < FRAMEBUFFER_FULL_WIDTH; strX++) {
     stretchedX[strX] = round(strX * stretch);  // Precalculate stretchedX;

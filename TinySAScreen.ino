@@ -99,6 +99,8 @@ void readTSAButtons() {
       tRel(); 
     break;
     case 23:
+
+     if (! useNixieDial)
       tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // overwrite last microvolt indication
       tft.fillRect(232, 294, 247, 25, TFT_BLACK);
       tft.fillCircle(470, 20, 2, TFT_BLACK); // overwrite communication indicator

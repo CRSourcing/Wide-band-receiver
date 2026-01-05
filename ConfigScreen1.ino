@@ -27,8 +27,8 @@ void drawCf1Btns() {
   Button buttons[] = {
     { 20, 134, "Show" },
     { 20, 152, "Panor." },
-    { 105, 132, "7Seg" },
-    { 105, 152, "Font" },
+    { 105, 132, "Retro" },
+    { 105, 152, "Dial" },
     { 185, 132, "Show" },
     { 187, 151, "Meters " },
     { 270, 132, "Auto" },
@@ -91,15 +91,19 @@ void readCf1Btns() {
       tft.printf("Panorama: %s\n", showPanorama ? "ON" : "OFF");
       delay(2000);
 
-
       break;
     case 22:
-      tft.fillRect(5, 5, 325, 38, TFT_BLACK);
-      sevenSeg = !sevenSeg;
-      displayFREQ(FREQ);
-      preferences.putBool("sevenSeg", sevenSeg);
-      break;
-
+      useNixieDial = !useNixieDial;
+      tft.fillRect(3, 3, 335, 42, TFT_BLACK);// overwrite freq digits
+      tft.fillRect(330, 4, 145, 22, TFT_BLACK);// overwrite microvolts
+      tft.fillRoundRect(5, 3, 235, 42, 3, TFT_DIAL_BACKGROUND);  // overwrite space for dial or FREQ digits
+      if (useNixieDial)
+        tft.fillRect(335, 26, 140, 20, TFT_BLACK);  // overwrite step display
+      else
+        displaySTEP(true);  // restore
+      preferences.putBool("dial", useNixieDial);
+     FREQ_OLD -= 1; // force freq display
+     break;
     case 23:
       showMeters = !showMeters;
       if (showMeters) {
@@ -173,8 +177,7 @@ void readCf1Btns() {
       calibSI5351();
       break;
     default:
-      redrawMainScreen = true;
-      tx = ty = pressed = 0;
+      resetMainScreen();
       return;
   }
   redrawMainScreen = true;

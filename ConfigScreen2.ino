@@ -32,7 +32,7 @@ void drawCf2Btns() {
     { 180, 151, "Waterf." },
     { 265, 132, "Plain/" },
     { 265, 151, "Sprite" },
-    { 20, 188, "Sprite" },
+    { 20, 188, "Button" },
     { 20, 210, "Style" },
     { 100, 188, "Snap" },
     { 100, 210, "Freq" },
@@ -112,7 +112,7 @@ void readCf2Btns() {
     case 32:
       roundToStep = !roundToStep;
       tft.setCursor(10, 75);
-      tft.printf("Snap Freq to Step: %s\n", roundToStep ? "True" : "False");
+      tft.printf("Round Freq to Step: %s\n", roundToStep ? "True" : "False");
       // round  FREQ up or down to the next STEP when STEP or modulation gets changed
       delay(1000);
       break;
@@ -146,8 +146,7 @@ void readCf2Btns() {
       setFFTGain();
       break;
     default:
-      redrawMainScreen = true;
-      tx = ty = pressed = 0;
+      resetMainScreen();
       return;
   }
 

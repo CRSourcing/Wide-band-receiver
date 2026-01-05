@@ -21,21 +21,11 @@ void analogMeter(int ySh) {
   else
     tft.pushImage(345, 132, 130, 76, (uint16_t *)meterFrame);
 
-  tft.setTextColor(TFT_WHITE);  // Text colour
+  tft.setTextColor(TFT_LIGHTBULB);  // Text colour
 
   tft.fillCircle(379, 108, 1, TFT_LIGHTGREY);  // needle stop
   tft.fillCircle(379, 187, 1, TFT_LIGHTGREY);
 
-
-
-  tft.drawArc(410, 125, 10, 3, 90, 270, TFT_GREY, TFT_BLACK, true);
-
-  tft.drawArc(410, 125, 3, 0, 90, 270, TFT_RED, TFT_BLACK, true);
-
-
-  tft.drawArc(410, 204, 10, 3, 90, 270, TFT_GREY, TFT_BLACK, true);
-
-  tft.drawArc(410, 204, 3, 0, 90, 270, TFT_RED, TFT_BLACK, true);
 
 
 
@@ -51,32 +41,6 @@ void analogMeter(int ySh) {
     uint16_t y0 = sy * (M_SIZE * 100 + tl) + M_SIZE * 150 + ySh;
     uint16_t x1 = sx * M_SIZE * 100 + M_SIZE * 120 + xSh;
     uint16_t y1 = sy * M_SIZE * 100 + M_SIZE * 150 + ySh;
-
-    // Coordinates of next tick for zone fill
-    // float sx2 = cos((i + 5 - 90) * 0.0174532925);
-    //float sy2 = sin((i + 5 - 90) * 0.0174532925);
-    // int x2 = sx2 * (M_SIZE*100 + tl) + M_SIZE*120 + xSh;
-    //int y2 = sy2 * (M_SIZE*100 + tl) + M_SIZE*150 + ySh;
-    // int x3 = sx2 * M_SIZE*100 + M_SIZE*120 + xSh;
-    // int y3 = sy2 * M_SIZE*100 + M_SIZE*150 + ySh;
-
-    // Yellow zone limits
-    //if (i >= -50 && i < 0) {
-    //  tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_YELLOW);
-    //  tft.fillTriangle(x1, y1, x2, y2, x3, y3, TFT_YELLOW);
-    //}
-
-    // Green zone limits
-    //if (i >= -10 && i <= 10 && ySh < 100) { // upper meter only
-    //  tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_GREEN);
-    // tft.fillTriangle(x1, y1, x2, y2, x3, y3, TFT_GREEN);
-    //}
-
-    // Orange zone limits
-    //if (i >= 25 && i < 50)  {
-    // tft.fillTriangle(x0, y0, x1, y1, x2, y2, TFT_DARKGREEN);
-    // tft.fillTriangle(x1, y1, x2, y2, x3, y3, TFT_DARKGREEN);
-    // }
 
     // Short scale tick length
     if (i % 25 != 0) tl = 6;
@@ -156,7 +120,7 @@ void analogMeter(int ySh) {
     x0 = sx * M_SIZE * 100 + M_SIZE * 120 + xSh;
     y0 = sy * M_SIZE * 100 + M_SIZE * 150 + ySh;
     // Draw scale arc, don't draw the last part
-    if (i < 50) tft.drawLine(x0, y0, x1, y1, TFT_WHITE);
+    if (i < 50) tft.drawLine(x0, y0, x1, y1, TFT_LIGHTBULB);
   }
 
   //tft.drawString("%RH", M_SIZE*(3 + 230 - 40), M_SIZE*(119 - 20), 2); // Units at bottom right
@@ -179,7 +143,7 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
   if (!showMeters || scanMode)
     return;
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextColor(TFT_LIGHTBULB, TFT_DARKVIOLET);
 
   if (value < 0) value = 0;  // Limit value to emulate needle end stops
   if (value > 100) value = 100;
@@ -220,22 +184,14 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     // Draw the needle in the new postion, magenta makes needle a bit bolder
     // draws 3 lines to thicken needle
 
+   tft.setTextColor(TFT_WHITE); 
+
 #ifndef NBFM_DEMODULATOR_PRESENT
     tft.drawCentreString("RSSI", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
-#endif
-
-#ifdef NBFM_DEMODULATOR_PRESENT
+#else
     if (modType != WBFM) {
 
-      if (value > 40 && value < 60 && !audioMuted)
-        tft.setTextColor(TFT_GREEN);
-      else if ((value <= 40 || value >= 60) && !audioMuted)
-        tft.setTextColor(TFT_RED);
-      else if (audioMuted)
-        tft.setTextColor(TFT_LIGHTGREY);
-
       tft.drawCentreString("Tune", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
-
     }
 
     else
@@ -246,7 +202,6 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     tft.drawLine(M_SIZE * (120 + 24 * ltx) + xSh, M_SIZE * (150 - 24) + ySh - 8, osx + xSh, osy + ySh, TFT_MAGENTA);
     tft.drawLine(M_SIZE * (120 + 24 * ltx) + 1 + xSh, M_SIZE * (150 - 24) + ySh - 8, osx + 1 + xSh, osy + ySh, TFT_RED);
   }
-
 
   tft.setTextColor(textColor, TFT_BLACK);
 }
@@ -262,7 +217,7 @@ void plotNeedle2(int value2, int updateRate)  // lower needle
   if (!showMeters || scanMode)
     return;
 
-  tft.setTextColor(TFT_WHITE, TFT_DARKVIOLET);
+  tft.setTextColor(TFT_LIGHTBULB, TFT_DARKVIOLET);
 
   if (value2 < 0) value2 = 0;  // Limit value to emulate needle end stops
   if (value2 > 100) value2 = 100;

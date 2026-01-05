@@ -312,7 +312,8 @@ void drawBigBtns() {
   }
 
 
-  tft.setTextSize(3);
+    tft.setTextFont(4); 
+    tft.setTextSize(1); 
   if (!scanMode) {
     if (!showMeters) {
       tft.setTextColor(TFT_GREEN);
@@ -326,6 +327,8 @@ void drawBigBtns() {
       tft.setTextColor(textColor);
     tft.setCursor(375, 240);
     tft.print("MODE");
+ 
+    
   }
 
 
@@ -339,17 +342,18 @@ void drawBigBtns() {
     tft.print("SET");
     tft.setCursor(370, 175);
     tft.print("RANGE");
-    tft.setCursor(375, 65);
+    tft.setCursor(375, 63);
     tft.print("SEEK");
-    tft.setCursor(375, 95);
+    tft.setCursor(375, 93);
     tft.print("UP");
-    tft.setCursor(375, 220);
+    tft.setCursor(375, 222);
     tft.print("SEEK");
-    tft.setCursor(375, 255);
+    tft.setCursor(375, 252);
     tft.print("DOWN");
     tft.setTextSize(2);
     tft.setTextColor(textColor);
   }
+  tft.setTextFont(1);  
   tft.setTextSize(2);
 }
 
@@ -371,7 +375,6 @@ void loadLastSettings() {
   altStyle = preferences.getBool("lastStyle", 0);     //plain or sprite style
   pressSound = preferences.getBool("pressSound", 0);  // short beep when pressed
   miniWindowMode = preferences.getChar("spectr", 3);  // audio spectrum analyzer mode
-  sevenSeg = preferences.getBool("sevenSeg", 0);      // frequency display font
 #ifdef TINYSA_PRESENT
   syncEnabled = preferences.getBool("useTSADBm", 0);  // use tinySA for DBm
 #endif
@@ -390,6 +393,7 @@ void loadLastSettings() {
   discriminatorZero = preferences.getInt("dZero", 100);
   initialGain = preferences.getUChar("agcS", 200);  // tuner agc start value.
   funEnabled = preferences.getBool("fun", 0);
+  useNixieDial = preferences.getBool("dial", 0); 
 
   Serial_printf("\n%-35s %s\n", "Settings loaded:", "");
   Serial_printf("%-35s %ld Khz\n", "FREQ:", FREQ / 1000);
@@ -397,7 +401,6 @@ void loadLastSettings() {
   Serial_printf("%-35s %d\n", "Mod Type:", modType);
   Serial_printf("%-35s %s\n", "Alt Style:", altStyle ? "Enabled" : "Disabled");
   Serial_printf("%-35s %d\n", "Mini Window Mode:", miniWindowMode);
-  Serial_printf("%-35s %s\n", "Seven Seg Font:", sevenSeg ? "Enabled" : "Disabled");
   Serial_printf("%-35s %s\n", "SNR Squelch:", SNRSquelch ? "Enabled" : "Disabled");
   Serial_printf("%-35s %d\n", "Sprite Style:", buttonSelected);
   Serial_printf("%-35s %s\n", "Loop bands when tuning:", loopBands ? "Yes" : "No");
@@ -411,7 +414,7 @@ void loadLastSettings() {
   Serial_printf("%-35s %d ppm\n", "TV Tuner Offset:", tunerOffsetPPM);
   Serial_printf("%-35s %s\n", "Show panorama when squelch closed:", showPanorama ? "Yes" : "No");
   Serial_printf("%-35s %d\n", "Tuner AGC start value", initialGain);
-
+  Serial_printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
   tRel();
 
 if (! fastBoot) { // provide option to calibrate touchscreen
@@ -430,7 +433,6 @@ if (! fastBoot) { // provide option to calibrate touchscreen
       tft.printf("Mod Type: %d\n", modType);
       tft.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
       tft.printf("Mini Window Mode: %d\n", miniWindowMode);
-      tft.printf("Seven Seg Font: %s\n", sevenSeg ? "Enabled" : "Disabled");
       tft.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
       tft.printf("Sprite Style: %d\n", buttonSelected);
       tft.printf("Loop bands when tuning: %s\n", loopBands ? "Yes" : "No");
@@ -443,6 +445,7 @@ if (! fastBoot) { // provide option to calibrate touchscreen
       tft.printf("RF Gain Correction: %d\n", RFGainCorrection);
       tft.printf("TV Tuner Offset: %dppm\n", tunerOffsetPPM);
       tft.printf("Show panorama when squelch closed %s\n", showPanorama ? "Yes" : "No");
+      tft.printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
       tft.printf("%-35s %d\n", "Tuner AGC start value", initialGain);
       tft.setTextSize(2);
       tft.setTextColor(TFT_RED);

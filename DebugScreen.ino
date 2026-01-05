@@ -152,8 +152,7 @@ void readDbgBtns() {
      setDac1();
       break;
     default:
-      redrawMainScreen = true;
-      tx = ty = pressed = 0;
+      resetMainScreen();
       return;
   }
 
@@ -212,8 +211,7 @@ void setLOLevel() {
 
     switch (buttonID) {
       case 41:
-        redrawMainScreen = true;
-        tx = ty = pressed = 0;
+        resetMainScreen();
         return;
       case 42:
         si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_2MA);
@@ -235,8 +233,7 @@ void setLOLevel() {
         break;
 
       default:
-        redrawMainScreen = true;
-        tx = ty = pressed = 0;
+        resetMainScreen();
         return;
     }
   }

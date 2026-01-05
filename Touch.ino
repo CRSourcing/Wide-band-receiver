@@ -70,7 +70,7 @@ bool readKeypadButtons() {
   long freqSave = FREQ;
 
 
-  tft.fillRect(10, 3, 325, 40, TFT_BLACK);
+  tft.fillRect(10, 3, 465, 40, TFT_BLACK);
 
   showFreqHistory();
 
@@ -78,7 +78,7 @@ bool readKeypadButtons() {
   while (index < 8) {  //6 digits frequency input
     tPress();
 
-    if (tx > 345 && loadHistory) {  // touch was in big button area, load history
+    if (tx > 345 && loadHistory) {  // touch was in history area, load history
       loadFreqFromHistory();
       tRel();
       tx = 0;
@@ -259,7 +259,7 @@ void tRel() {  // wait for touch release
 
   do {
     pressed = get_Touch();
-    delay(50);
+    delay(20);
   } while (pressed);
 }
 
@@ -269,13 +269,13 @@ void tRel() {  // wait for touch release
 void tDoublePress() {  // wait until pressed again
   do {
     get_Touch();
-    delay(50);
+    delay(20);
   } while (pressed);
-  delay(50);
+  delay(20);
 
   do {
     pressed = get_Touch();
-    delay(50);
+    delay(20);
   } while (!pressed);
 }
 
@@ -286,7 +286,7 @@ void tPress() {  // wait for press
 
   do {
     pressed = get_Touch();
-    delay(50);
+    delay(20);
   } while (!pressed);
 }
 

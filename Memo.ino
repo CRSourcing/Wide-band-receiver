@@ -35,17 +35,15 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
   row = 0;
   column = 0;
 
-  tft.fillRect(330, 4, 145, 22, TFT_BLACK);  // Clear No tinySA message
   tft.fillRect(0, 295, 479, 25, TFT_BLACK);  // clear status line
 
   showFreqHistory();
 
-
-
-  if (isRead)
+  if (isRead )
     modType = 1;  // default to AM at startup
 
   loadSi4735parameters();
+  
   if (usePageZero)  // when called from Mainscreen
     currentPage = 0;
 
@@ -123,8 +121,7 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
 
     if (row == 4 && column == 4 && currentPage == totalPages - 1) {  // Last page reached, or Exit pressed
       selected_band = -1;                                            //
-      redrawMainScreen = true;
-      tx = ty = pressed = 0;
+      resetMainScreen();
       tRel();
 
       mainScreen();

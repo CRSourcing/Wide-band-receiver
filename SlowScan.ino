@@ -6,6 +6,8 @@ void SlowStationScan() {
     return;
 
   audioMuted = false;
+  
+  if (! useNixieDial)
   tft.fillRect(330, 4, 145, 20, TFT_BLACK); // overwrite TSA signal strength
   si4735.setAudioMute(false);  // function needs audio signal
   si4735.setHardwareAudioMute(false);

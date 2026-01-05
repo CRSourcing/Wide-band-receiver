@@ -541,7 +541,9 @@ void cfgTSA() {  // Touch "Cfg" in lower right corner to open Config Menu
   delay(100);
 
   tft.fillRect(0, 296, 479, 23, TFT_BLACK);  // clear infobar
-  tft.fillRect(330, 3, 135, 20, TFT_BLACK);  // clear microvolt indicator area
+  
+  if(! useNixieDial)
+    tft.fillRect(330, 3, 135, 20, TFT_BLACK);  // clear microvolt indicator area
   tft.fillRect(3, 61, 336, 230, TFT_BLACK);  // clear  area for buttons
 
   drawButton(35, 95, TILE_WIDTH, TILE_HEIGHT, TFT_BTNCTR, TFT_BTNBDR);   //div +

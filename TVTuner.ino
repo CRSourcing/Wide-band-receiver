@@ -285,9 +285,9 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
     tft.setTextColor(textColor);
     tft.fillRect(10, 60, 328, 64, TFT_BLACK);
     tft.setCursor(10, 63);
-    tft.print("Set encoder for maximum");
+    tft.print("Set encoder for max.");
     tft.setCursor(10, 83);
-    tft.print("tuner gain. Press to leave.");
+    tft.print("gain. Press enc. to leave.");
     tft.setCursor(10, 104);
     tft.printf("Gain: %d", (initialGain - 100) / 2);
 
