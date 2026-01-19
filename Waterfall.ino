@@ -1065,14 +1065,19 @@ void panoramaScan(bool show1MhzSegment) {  // shows panorama and waterfall while
 
       tft.drawFastVLine(xPos, yPos - amplBuf[xPos] - 3, amplBuf[xPos] + 2, TFT_BLACK);  // Overwrite old amplitude values
 
-      static bool alternate = false;
-      alternate = !alternate;
-      if (alternate)
-        tft.fillRectVGradient(xPos, yPos - adjustedSS, 1, adjustedSS, TFT_BLUE, TFT_WHITE);  // white blue alernate pattern
-      else
-        tft.fillRectVGradient(xPos, yPos - adjustedSS, 1, adjustedSS, TFT_WHITE, TFT_BLUE);
+    // static bool alternate = false;
+    //  alternate = !alternate;
+     // if (alternate)
+     //   tft.fillRectVGradient(xPos, yPos - adjustedSS, 1, adjustedSS, TFT_BLUE, TFT_WHITE);  // white blue alernate pattern
+     // else
+       // tft.fillRectVGradient(xPos, yPos - adjustedSS, 1, adjustedSS, TFT_WHITE, TFT_BLUE);
 
-      tft.drawFastVLine(xPos, yPos - adjustedSS - 3, 3, TFT_GREEN);  // draw a green crest
+        tft.fillRectVGradient(xPos, yPos - adjustedSS, 1, adjustedSS / 2, TFT_WHITE, TFT_BLUE);
+        tft.fillRectVGradient(xPos, yPos - adjustedSS / 2, 1, adjustedSS / 2, TFT_BLUE, TFT_BLACK);
+      
+     // tft.drawFastVLine(xPos, yPos - adjustedSS - 3, 3, TFT_GREEN);  // draw a green crest
+       tft.drawFastVLine(xPos, yPos - adjustedSS - 2, 2, TFT_GREEN);  // draw a green crest 
+    
     }
 
     amplBuf[xPos] = adjustedSS;

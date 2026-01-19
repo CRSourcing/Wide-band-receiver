@@ -224,20 +224,17 @@ void vfoMenu() {
   etft.setCursor(185, 264);
   etft.print("VFO 2");
 
-  //etft.setCursor(270, 244);
-  //etft.print("");
-  //etft.setCursor(270, 264);
-  //etft.print("");
+ // etft.setCursor(270, 244);
+ // etft.print("Use");
+ // etft.setCursor(270, 264);
+ // etft.print("List");
 
 
   tRel();
   tPress();
   readVfoBtns();
-
-
-  tPress();
-  tRel();
 }
+
 
 //##########################################################################################################################//
 
@@ -255,21 +252,18 @@ void readVfoBtns() {
   switch (buttonID) {
     case 41:
       return;
-      break;
     case 42:
-      Serial.print("VFO 1 active\n");
       vfo1Active = true;
       vfoSelector();
+      tRel();
       return;
-      break;
     case 43:
-      Serial.print("VFO 2 active\n");
       vfo1Active = false;
       vfoSelector();
+      tRel();
       return;
-      break;
-    case 44:
-      break;
+    case 44: 
+      return;
     default:
       tx = ty = pressed = 0;
       tRel();
@@ -277,6 +271,9 @@ void readVfoBtns() {
   }
 }
 //##########################################################################################################################//
+// Analog transceiver style dial and nixie tube frequency display
+//##########################################################################################################################//
+
 #define DIAL_RADIUS 150
 #define DIAL_CENTER_X 118
 #define DIAL_CENTER_Y 224  // center below "horizon" so only upper arc is visible

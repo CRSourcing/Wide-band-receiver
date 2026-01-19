@@ -53,9 +53,9 @@ void drawMainButtons() {
   Button buttons[] = {
     { 275, 245, "Set" }, { 185, 245, "Select" }, { 110, 255, "Scan" },
     { 100, 198, "Bandw" }, { 25, 198, "Step" }, { 185, 188, "Save" },
-    { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "Set" },
+    { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "Load" },
     { 185, 265, "Band" }, { 275, 265, "Freq" }, { 185, 208, "Memo" },
-    { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "VFO" }
+    { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "List" }
   };
 
   etft.setTTFFont(Arial_14);
@@ -153,7 +153,7 @@ void readMainBtns() {
       tRel();
       break;
     case 24:
-     vfoMenu(); 
+    loadPicocsv(); 
      FREQ_OLD = FREQ - 1;    // trigger update
       return;
     case 31:

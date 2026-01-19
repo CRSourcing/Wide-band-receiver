@@ -13,7 +13,6 @@
 int currentPage = 0;
 const int totalPages = 8;
 long SAVE_FREQ = FREQ;
-
 //##########################################################################################################################/
 
 void printMemoName(int index) {
@@ -39,11 +38,11 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
 
   showFreqHistory();
 
-  if (isRead )
+  if (isRead)
     modType = 1;  // default to AM at startup
 
   loadSi4735parameters();
-  
+
   if (usePageZero)  // when called from Mainscreen
     currentPage = 0;
 
@@ -548,8 +547,8 @@ void selectPage() {
 
 void showFreqHistory() {
 
-  
-  
+
+
   tft.fillRect(345, 48, 130, 242, TFT_BLACK);
   tft.setTextColor(TFT_GREEN);
 
@@ -598,4 +597,281 @@ void loadFreqFromHistory() {
       return;
     }
   }
+}
+
+//##########################################################################################################################//
+
+// PicoRX format station list loader, uses memory.csv
+
+//##########################################################################################################################//
+
+
+
+void loadPicocsv(void) {
+
+  enum ChannelNav {
+    PREV = false,
+    NEXT = true
+
+  };
+
+
+ tft.fillRect(3, 121, 333, 170, TFT_BLACK);
+
+
+  char buffer[50];
+
+
+  tft.setTextColor(TFT_DARKGREY);
+  tft.fillRect(5, 230, 330, 60, TFT_BLACK);
+  tft.setCursor(25, 250);
+  tft.print("memory.csv loader.");
+  tft.setCursor(25, 270);
+  tft.print("Press enc. to return.");
+
+  load_channel(NEXT);
+
+
+  while (true) {
+
+
+
+    if (digitalRead(ENCODER_BUTTON) == LOW) {  //return if encoder pressed
+      while (digitalRead(ENCODER_BUTTON) == LOW);      
+      redrawMainScreen = true;
+      return;
+    }
+
+    if (clw || cclw) {
+
+      if (clw)
+        load_channel(NEXT);
+      else if (cclw)
+        load_channel(PREV);
+
+#ifdef TINYSA_PRESENT
+      sprintf(buffer, "sweep center %ld", (FREQ / 1000000 * 1000000) + tSpan / 2);  // sync TSA center frequency with the next 1MHz step
+      Serial.println(buffer);
+#endif
+
+      clw = false;
+      cclw = false;
+    }
+
+
+
+    if (FREQ != FREQ_OLD) {  // If FREQ changes, update Si5351A
+      FREQCheck();           //check whether within FREQ range
+      displayFREQ(FREQ);     // display new FREQ
+      setLO();               // and tune it in
+      resetSmeter = true;    // reset to zero
+      FREQ_OLD = FREQ;
+      //Serial.print("freq changed\n");
+    }
+
+
+    audioSpectrum();
+    getRSSIAndSNR();  // get RSSI (signalStrength) and SNR, valid for all functions in the main loop
+    TSAdBm = 0;       // force to use RSSI for s meter
+    calculateAndDisplaySignalStrength();
+    readSquelchPot(true);  // true = read and draw position circle
+    setSquelch();
+    fineTune();  // read frequency potentiometer
+
+#ifdef NBFM_DEMODULATOR_PRESENT
+    getDiscriminatorVoltage();  // display Tuning meter
+
+#else
+    if (dBm < 0 && (!scanMode) && showMeters)
+      plotNeedle(signalStrength, 2);  // update the SMeter needle
+#endif
+
+    displaySmeterBar(2);  // // update the SMeter bar,
+    if (showMeters) {
+      int vol = peakVol / 1000;
+      if (!audioMuted)
+        plotNeedle2(vol, 3);
+      else
+        plotNeedle2(1, 0);
+    }
+    delay(10);
+  }
+}
+
+//##########################################################################################################################//
+
+
+#define MAX_LINE_LENGTH 80
+
+void load_channel(bool next) {
+  uint8_t bufI[100];
+  uint8_t bufO[80];
+  uint8_t bufFreq[8];
+  static uint16_t pos = 0x5D;  // start after first row
+  uint16_t ep = 0;
+  int i = 0;
+  static int row = 0;
+
+
+  File f = LittleFS.open("/memory.csv", "r");
+  if (!f) {
+    Serial_println("Could not load memory.csv");
+    tft.setCursor(10, 200);
+    tft.println("Could not load memory.csv");
+    delay(1000);
+    return;
+  }
+
+  size_t fileSize = f.size();  // check out of range
+  if (pos >= fileSize - MAX_LINE_LENGTH) {
+    pos = 0x5D;
+    row = 0;
+  }
+
+  if (!next && pos >= 2 * MAX_LINE_LENGTH) {  // cclw, go back 1 line
+    pos -= 2 * MAX_LINE_LENGTH;
+
+
+    while (bufI[0] != 0x0A) {
+      f.seek(pos, SeekSet);
+      f.read(bufI, 1);
+      pos++;
+    }
+    row--;
+    bufI[0] = 0;
+  }
+
+
+  else
+    row++;
+
+
+
+  if (row < 0) {
+    row = 0;
+    pos = 0;
+  }
+
+  if (!f.seek(pos, SeekSet)) {
+    f.close();
+    Serial_println("file seek error");
+    return;
+  }
+
+  f.read(bufI, sizeof(bufI));
+
+
+  while (bufI[i++] != 0x0A)
+    ;  // looking for "." seperator
+
+  ep = i;
+  pos += ep;
+
+  for (i = 0; i < ep; i++)  // load row into buffer
+    bufO[i] = bufI[i];
+
+  bufO[i + 1] = '\0';
+
+
+  setChannel((char *)bufO, row);
+  Serial.print("Outbuffer:");
+  Serial.println((char *)bufO);
+
+  f.close();
+
+  i = 0;
+}
+
+
+//##########################################################################################################################//
+void setChannel(const char *buffer, int row) {
+  int x = 30;
+  int y = 130;
+
+  // static storage of last values
+  static char lastLabel[32] = "";
+  static char lastFreq[32] = "";
+  static char lastMode[32] = "";
+
+  // Split CSV string into tokens
+  char temp[128];
+  strncpy(temp, buffer, sizeof(temp));
+  temp[sizeof(temp) - 1] = '\0';
+
+  char *tokens[10];
+  int count = 0;
+  char *p = strtok(temp, ",");
+  while (p != NULL && count < 10) {
+    tokens[count++] = p;
+    p = strtok(NULL, ",");
+  }
+
+
+  tft.setTextColor(TFT_CYAN);
+  tft.fillRect(x + 80, y, 50, 15, TFT_BLACK);
+  tft.setCursor(x, y);
+  tft.printf("Entry: %d ", row -1);
+  y += 40;
+
+  // Label
+  if (count > 0 && strcmp(tokens[0], lastLabel) != 0) {
+    tft.fillRect(x - 10, y, 300, 25, TFT_BLACK);  // clear old text
+    tft.setCursor(25, y);
+    tft.setTextSize(3);
+    tft.setTextColor(TFT_SKYBLUE);
+    tft.println(tokens[0]);
+    tft.setTextColor(TFT_CYAN);
+    strncpy(lastLabel, tokens[0], sizeof(lastLabel));
+    tft.setTextSize(2);
+  }
+  y += 45;
+
+  // Frequency
+  if (count > 1 && strcmp(tokens[1], lastFreq) != 0) {
+    tft.fillRect(x, y, 250, 18, TFT_BLACK);
+    tft.setCursor(x, y);
+    strncpy(lastFreq, tokens[1], sizeof(lastFreq));
+    FREQ = atol((char *)lastFreq);
+    tft.printf("Freq: %dKHz", FREQ / 1000);
+  }
+
+
+  // Mode
+  if (count > 4 && strcmp(tokens[4], lastMode) != 0) { // this may give false positives, if a leading or trailing space exists
+    tft.fillRect(250, 130, 83, 15, TFT_BLACK);
+    tft.setTextColor(TFT_CYAN);
+    tft.setCursor(250, 130);
+    tft.println(tokens[4]);
+    strncpy(lastMode, tokens[4], sizeof(lastMode));
+
+    if (strstr(lastMode, "AM") != NULL) {
+      modType = AM;
+    }
+
+    if (strstr(lastMode, "LSB") != NULL) {
+      modType = LSB;
+    }
+
+    if (strstr(lastMode, "USB") != NULL) {
+      modType = USB;
+    }
+
+    if (strstr(lastMode, "AMS") != NULL) {
+      modType = SYNC;
+    }
+
+    if (strstr(lastMode, "CW") != NULL) {
+      modType = CW;
+    }
+    redrawIndicators();
+
+    static uint8_t lastModType = 0;
+
+    if (lastModType != modType) { 
+      loadSi4735parameters();
+      lastModType = modType;
+    }
+  }
+
+  tft.setTextColor(textColor);
 }

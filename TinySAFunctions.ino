@@ -371,7 +371,7 @@ void centerTinySA() {  // centers TSA when FREQ moves outside window
       CENTER_FREQ += span / 2;
       sprintf(buffer, "sweep center %ld", CENTER_FREQ);
       Serial.println(buffer);  // shift center frequency
-      delay(100);
+      delay(20);
       sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
       Serial.println(buffer);
       return;

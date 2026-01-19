@@ -295,10 +295,12 @@ void loadSi4735parameters() {
     si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 2);  // SYNC uses USB mode
     si4735.setSSBConfig(bandWidth, 1, 3, 1, 0, 0);      // SYNC config mode
     si4735.setSSBBfo(preferences.getInt("SYNCBBfoOffset", 0));
-
     loadSSB();
     ssbLoaded = false;  // Reload SSB when changing to USB/LSB to disable AFC
   }
+
+
+  
   if (modType == CW) {
     digitalWrite(NBFM_MUTE_PIN, LOW);  //set pin LOW to mute the NBFM demodulator
     loadSSB();

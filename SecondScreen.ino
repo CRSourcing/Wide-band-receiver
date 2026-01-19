@@ -36,10 +36,10 @@ void drawSecBtns() {
     { 185, 152, "Tools" },
     { 270, 132, "Draw" },
     { 270, 155, "3D" },
-    { 18, 190, "Quick" },
-    { 18, 210, "Save" },
-    { 100, 190, "Quick" },
-    { 100, 210, "Load" },
+    { 18, 190, "Assign" },
+    { 18, 210, "VFO" },
+    { 100, 190, "" },
+    { 100, 210, "" },
     { 190, 200, "BFO" },
     { 182, 208, " " },
     { 273, 200, "Attn." },
@@ -123,22 +123,9 @@ void readSecBtns() {
       tRel();
       break;
     case 31:
-      preferences.putLong("savFreq", FREQ);  // quicksave
-      preferences.putInt("bandWidth", bandWidth);
-      preferences.putChar("modType", modType);
-      break;
+      vfoMenu();
       break;
     case 32:
-      FREQ = preferences.getLong("savFreq", 0);  // quickload
-      bandWidth = preferences.getInt("bandWidth", 0);
-      modType = preferences.getChar("modType", 0);
-      loadSi4735parameters();
-      displayFREQ(FREQ);
-      #ifdef TINYSA_PRESENT
-      char buffer[50];
-      sprintf(buffer, "sweep center %ld", FREQ);
-      Serial_println(buffer);
-      #endif
       break;
     case 33:
       setBFO();
