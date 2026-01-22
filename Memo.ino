@@ -837,7 +837,7 @@ void setChannel(const char *buffer, int row) {
 
 
   // Mode
-  if (count > 4 && strcmp(tokens[4], lastMode) != 0) { // this may give false positives, if a leading or trailing space exists
+  if ((count > 4 && strcmp(tokens[4], lastMode) != 0) || row == 1){  // modType change or init 
     tft.fillRect(250, 130, 83, 15, TFT_BLACK);
     tft.setTextColor(TFT_CYAN);
     tft.setCursor(250, 130);
