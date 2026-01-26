@@ -908,7 +908,7 @@ void roundFreqToSTEP() {  // round  FREQ up or down to the next STEP when STEP o
 void drawButton(int16_t x, int16_t y, int16_t w, int16_t h, uint32_t color1, uint32_t color2) {  // draws buttons as plain rectangles or push bitmaps
 
   
-if (buttonSelected < 1 || buttonSelected > 8) // if value loaded from flash outside range (older versions use different values)
+if (buttonSelected < 0 || buttonSelected > 8) // if value loaded from flash outside range (older versions use different values)
           buttonSelected  = 4;
 
   if (altStyle) {  //draw plain buttons
