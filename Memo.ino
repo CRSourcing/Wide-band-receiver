@@ -1053,14 +1053,14 @@ void showChannelList() {
   uint16_t pressedEntry = 0;
 
   tft.fillScreen(ROW_BGC);
-  tft.setTextColor(TFT_GREEN);
-  tft.setCursor(10, 260);
+  tft.setTextColor(TFT_BLUE);
+  tft.setCursor(10, 266);
   tft.print("Move encoder to change page.");
-  tft.setCursor(10, 280);
+  tft.setCursor(10, 286);
   tft.print("Touch row to listen.");
-  tft.setCursor(10, 300);
+  tft.setCursor(10, 304);
   tft.print("Press encoder to return.");
-
+   tft.setTextColor(TFT_GREEN);
   if (modType != AM) {  // must be AM
     modType = AM;
     loadSi4735parameters();
