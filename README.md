@@ -27,3 +27,5 @@ See the main file SI4732Radio_V0_564.ino for more details.
 
 
 ![Alt text](pics/20250804_183503.jpg)
+
+![Alt text](pics/20260209_152241.jpg).
