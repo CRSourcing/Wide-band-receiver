@@ -625,14 +625,16 @@ void picoMenu() {
   etft.setCursor(185, 244);
   etft.print("Show");
   etft.setCursor(185, 264);
-  etft.print("List");
+  etft.print("Page");
 
   etft.setCursor(10, 125);
-  etft.print("memory.csv loader.");
+  etft.print("Memory.csv loader.");
   etft.setCursor(10, 145);
-  etft.print("loads PicoRX compatible station list");
+  etft.print("looks for file memory.csv on LittleFS");
   etft.setCursor(10, 165);
-  etft.print("from LittleFS.");
+  etft.print("Every page should be consistently");
+  etft.setCursor(10, 185);
+  etft.print("either Shortwave or VHF/UHF");
 
   tRel();
   tPress();
@@ -765,13 +767,13 @@ void tuneSingleChannel() {
       cclw = false;
     }
 
-    runCurrentChannel();
+    playCurrentChannel();
   }
 }
 
 //##########################################################################################################################//
 
-void runCurrentChannel() {
+void playCurrentChannel() {
 
 
 
@@ -784,7 +786,7 @@ void runCurrentChannel() {
 
 
   audioSpectrum();
-  getRSSIAndSNR();  // get RSSI (signalStrength) and SNR, valid for all functions in the main loop
+  getRSSIAndSNR();  
   TSAdBm = 0;       // force to use RSSI for s meter
   calculateAndDisplaySignalStrength();
   readSquelchPot(true);  // true = read and draw position circle
@@ -812,7 +814,7 @@ void runCurrentChannel() {
 
 
 
-
+//##########################################################################################################################//
 #define MAX_LINE_LENGTH 80
 
 void load_channel(int direction, bool reload, int16_t addRows, bool fromStart) {
@@ -1042,8 +1044,8 @@ void drawSingleChannelButtons() {
 //##########################################################################################################################//
 // displays a list of entries from memory.csv
 
-#define ROW_BGC  0x0000 // background color
-#define ENTRIES 12  // rows per page
+#define ROW_BGC 0x0000  // background color
+#define ENTRIES 12      // rows per page
 #define VSPACING 22
 uint32_t frequencies[ENTRIES];
 
@@ -1053,14 +1055,14 @@ void showChannelList() {
   uint16_t pressedEntry = 0;
 
   tft.fillScreen(ROW_BGC);
-  tft.setTextColor(TFT_BLUE);
+  tft.setTextColor(TFT_SKYBLUE);
   tft.setCursor(10, 266);
   tft.print("Move encoder to change page.");
   tft.setCursor(10, 286);
   tft.print("Touch row to listen.");
   tft.setCursor(10, 304);
   tft.print("Press encoder to return.");
-   tft.setTextColor(TFT_GREEN);
+  tft.setTextColor(TFT_GREEN);
   if (modType != AM) {  // must be AM
     modType = AM;
     loadSi4735parameters();
@@ -1086,11 +1088,11 @@ void showChannelList() {
 
     displaySignalBar();
 
-    if (ty) {         // a row was touched
-      
-     ty = constrain(ty, 0, 11 * VSPACING );
-      
-      pressedEntry = startEntry + ty / VSPACING;  
+    if (ty) {  // a row was touched
+
+      ty = constrain(ty, 0, 11 * VSPACING);
+
+      pressedEntry = startEntry + ty / VSPACING;
 
       Serial.printf("ty = %d\n", ty);
 
@@ -1104,10 +1106,10 @@ void showChannelList() {
       redrawIndicators();
       si4735.setHardwareAudioMute(false);
       while (digitalRead(ENCODER_BUTTON) == HIGH)
-        runCurrentChannel();
+        playCurrentChannel();
 
-      extractAndShowRows(startEntry, ENTRIES);   // back to row screen rebuild rows
-      tft.fillRect(0, 264, 480, 56, ROW_BGC);  // overwrite artefacts
+      extractAndShowRows(startEntry, ENTRIES);  // back to row screen rebuild rows
+      tft.fillRect(0, 264, 480, 56, ROW_BGC);   // overwrite artefacts
       tft.setCursor(10, 280);
       tft.print("Touch row to listen.");
       tft.setCursor(10, 300);
@@ -1162,7 +1164,7 @@ void extractAndShowRows(uint16_t startEntry, uint16_t entries) {
 }
 
 //##########################################################################################################################//
-uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) { // show details of a single row
+uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) {  // show details of a single row
   const uint16_t vSpacing = VSPACING;
   const int xPos = 5;
   uint16_t yPos = screenRow * vSpacing;
@@ -1200,24 +1202,21 @@ uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) 
 }
 
 //##########################################################################################################################//
-void displaySignalBar () {
+void displaySignalBar() {
   for (int s = 0; s < ENTRIES; s++) {
     FREQ = frequencies[s];
 
-    if (FREQ < SHORTWAVE_MODE_UPPER_LIMIT) {
       setLO();
-      delay(30);  // needed settle time for LO
-
+      
       uint32_t st = millis();
-      while (millis() < st + 30) {
+      while (millis() < st + 30) { // delay needed so that the SI5351 can settle if delta is big
         tx = 0;
         ty = 0;
         pressed = get_Touch();
 
-        if (pressed)
+        if (pressed || (digitalRead(ENCODER_BUTTON) == LOW) || clw || cclw)
           return;
-        if (digitalRead(ENCODER_BUTTON) == LOW)
-          return;
+      
       }
       si4735.getCurrentReceivedSignalQuality(0);
       SNR = si4735.getCurrentSNR();
@@ -1225,19 +1224,9 @@ void displaySignalBar () {
       si4735.getCurrentReceivedSignalQuality(0);
       signalStrength = si4735.getCurrentRSSI();
 
-    } else {
-      signalStrength = 0;
-      SNR = 0;
-    }
-
-
-tft.fillRect(380, s * VSPACING, 100, 20, TFT_GREY);
-tft.fillRect(380, s * VSPACING, signalStrength, 20,
-             SNR ? TFT_GREENYELLOW : signalStrength << 5);
-   
-
-
-  
+    tft.fillRect(380, s * VSPACING, 100, 20, TFT_GREY);
+    tft.fillRect(380, s * VSPACING, signalStrength, 20,
+                 SNR ? 0x8ff6 : signalStrength << 5);  // strong green when SNR, shade of green when signalStrength only
   }
 }
 
