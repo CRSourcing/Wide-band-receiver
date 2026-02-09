@@ -1054,6 +1054,8 @@ void showChannelList() {
 
   tft.fillScreen(ROW_BGC);
   tft.setTextColor(TFT_GREEN);
+  tft.setCursor(10, 260);
+  tft.print("Move encoder to change page.");
   tft.setCursor(10, 280);
   tft.print("Touch row to listen.");
   tft.setCursor(10, 300);
