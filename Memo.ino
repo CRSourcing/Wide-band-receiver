@@ -1203,13 +1203,18 @@ uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) 
 
 //##########################################################################################################################//
 void displaySignalBar() {
+
+uint16_t dly = 30;
+
   for (int s = 0; s < ENTRIES; s++) {
     FREQ = frequencies[s];
+   if (FREQ > SHORTWAVE_MODE_UPPER_LIMIT)
+    dly = 60; // additional time needed for tuner to settle
 
       setLO();
       
       uint32_t st = millis();
-      while (millis() < st + 30) { // delay needed so that the SI5351 can settle if delta is big
+      while (millis() < st + dly) { // delay needed so that the SI5351 can settle if delta is big
         tx = 0;
         ty = 0;
         pressed = get_Touch();
@@ -1226,7 +1231,7 @@ void displaySignalBar() {
 
     tft.fillRect(380, s * VSPACING, 100, 20, TFT_GREY);
     tft.fillRect(380, s * VSPACING, signalStrength, 20,
-                 SNR ? 0x8ff6 : signalStrength << 5);  // strong green when SNR, shade of green when signalStrength only
+                 SNR ? 0x8ff6 : signalStrength << 5);  // 0x8ff6 = strong green when SNR, shade of green when signalStrength only
   }
 }
 
