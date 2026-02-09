@@ -702,10 +702,10 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
     if (!dly) {
       // Use oversampling instead of delay, 0-3KHz
       for (int j = 0; j < 4; j++) {
-        sum += (float)(analogRead(AUDIO_INPUT_PIN) - dcOffset);
+        sum += (analogRead(AUDIO_INPUT_PIN) - dcOffset);
       }
     } else {
-      sum = (float)analogRead(AUDIO_INPUT_PIN) - dcOffset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
+      sum = analogRead(AUDIO_INPUT_PIN) - dcOffset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
       delayMicroseconds(dly);
     }
 
@@ -723,7 +723,7 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
 
     sum /= (sampleCount / FFTGain);
 
-    RvReal[i] = sum;
+    RvReal[i] =  sum;
     RvImag[i] = 0;
   }
   FFT.windowing(RvReal, sampleCount, FFT_WIN_TYP_HAMMING, FFT_FORWARD);

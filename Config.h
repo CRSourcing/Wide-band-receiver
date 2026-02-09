@@ -142,10 +142,10 @@
 
 // Waterfall
 #define WATERFALL_SCREEN_WIDTH 480
-#define WATERFALL_SCREEN_HEIGHT 227  // more than that will lead to a memory allocation error
+#define WATERFALL_SCREEN_HEIGHT 220  // more than that will lead to a memory allocation error
 #define FRAMEBUFFER_HALF_WIDTH 120   // need to use two half size frame buffers, couldn't allocate a full size 240*231 buffer
 #define FRAMEBUFFER_FULL_WIDTH 240
-#define FRAMEBUFFER_HEIGHT 227  // was 231, but crashed with new Arduino IDE 2.3.5
+#define FRAMEBUFFER_HEIGHT 220  // was 231, but crashed with new Arduino IDE 2.3.5
 #define AUDIO_FRAMEBUFFER_HEIGHT 40
 
 // Fun

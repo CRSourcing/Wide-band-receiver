@@ -374,6 +374,8 @@ void selectButtonStyle() {  // selects btw. different sprites for the buttons
   if (row > 4 || column > 4)
     return;
   buttonSelected = (column - 1) + 4 * (row - 3);
+  
+  Serial.printf("buttonSelected %d, row %d column %d\n", buttonSelected, row, column);
   preferences.putInt("sprite", buttonSelected);  // write selection to EEPROM
 }
 

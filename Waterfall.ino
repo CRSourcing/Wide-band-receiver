@@ -196,7 +196,7 @@ void wIntro(long startPoint, long endPoint) {
   displayDebugInfo = false;
   etft.setTTFFont(Arial_13);
   etft.setTextColor(TFT_GREEN);
-  etft.setCursor(0, 45);
+  etft.setCursor(0, 35);
   tft.fillRect(0, 0, DISP_WIDTH, DISP_HEIGHT, TFT_BLACK);
   etft.println("Slow waterfall for band monitoring.\n");
   etft.println("Use fine tune pot to adjust colors.\n");

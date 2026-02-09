@@ -6,8 +6,6 @@
 //Press SCAN once, then press the memory slots that should be scanned.
 // Press SCAN again and scanning begins.
 
-
-
 //##########################################################################################################################//
 
 int currentPage = 0;
@@ -601,56 +599,165 @@ void loadFreqFromHistory() {
 
 //##########################################################################################################################//
 
-// PicoRX format station list loader, uses memory.csv
+// PicoRX  station list loaders, loads from LittleFS, uses memory.csv compatible with PicoRX station list
+
 
 //##########################################################################################################################//
 
+//##########################################################################################################################//
+
+void picoMenu() {
+
+  draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
+  tft.fillRect(3, 121, 333, 114, TFT_BLACK);
+
+  drawButton(8, 234, TILE_WIDTH, TILE_HEIGHT, TFT_MIDGREEN, TFT_DARKGREEN);
+  etft.setTTFFont(Arial_14);
+  etft.setTextColor(TFT_GREEN);
+  etft.setCursor(20, 254);
+  etft.print("BACK");
+
+  etft.setCursor(102, 244);
+  etft.print("Show");
+  etft.setCursor(102, 264);
+  etft.print("Entry");
+
+  etft.setCursor(185, 244);
+  etft.print("Show");
+  etft.setCursor(185, 264);
+  etft.print("List");
+
+  etft.setCursor(10, 125);
+  etft.print("memory.csv loader.");
+  etft.setCursor(10, 145);
+  etft.print("loads PicoRX compatible station list");
+  etft.setCursor(10, 165);
+  etft.print("from LittleFS.");
+
+  tRel();
+  tPress();
+  readPicoButtons();
+}
 
 
-void loadPicocsv(void) {
+//##########################################################################################################################//
+
+void readPicoButtons() {
+
+
+  int buttonID = getButtonID();
+
+
+
+  if (row > 4 || column > 4 || ty > 293 || ty < 121)
+    return;                                   // outside of keypad area
+  redrawMainScreen = true;                    // save freq for returning from waterfall
+  tft.fillRect(135, 295, 92, 25, TFT_BLACK);  // overwrite frozen spectrum window
+  switch (buttonID) {
+    case 41:
+      return;
+    case 42:
+      tuneSingleChannel();
+      return;
+    case 43:
+      showChannelList();
+      si4735.setHardwareAudioMute(false);
+      return;
+    case 44:
+      return;
+    default:
+      tx = ty = pressed = 0;
+      tRel();
+      return;
+  }
+}
+
+
+
+//##########################################################################################################################//
+void tuneSingleChannel() {
+
+  tft.fillScreen(TFT_BLACK);
+  rebuildMainScreen(false);
+
 
   enum ChannelNav {
-    PREV = false,
-    NEXT = true
-
+    next = 1,
+    current = 0,
+    last = -1,
+    start = -2
   };
 
+  bool loaded = false;
+  const uint8_t button1X = 15;
+  const uint8_t button2X = 95;
+  const uint8_t button3X = 175;
+  const uint8_t button4X = 250;
+  const uint8_t buttonY = 233;
 
- tft.fillRect(3, 121, 333, 170, TFT_BLACK);
+
+  drawSingleChannelButtons();
 
 
-  char buffer[50];
-
-
-  tft.setTextColor(TFT_DARKGREY);
-  tft.fillRect(5, 230, 330, 60, TFT_BLACK);
-  tft.setCursor(25, 250);
-  tft.print("memory.csv loader.");
-  tft.setCursor(25, 270);
-  tft.print("Press enc. to return.");
-
-  load_channel(NEXT);
-
+  load_channel(current, loaded, 1, 0);  // reload last channel
 
   while (true) {
 
-
-
     if (digitalRead(ENCODER_BUTTON) == LOW) {  //return if encoder pressed
-      while (digitalRead(ENCODER_BUTTON) == LOW);      
+      while (digitalRead(ENCODER_BUTTON) == LOW)
+        ;
       redrawMainScreen = true;
+      loaded = true;
       return;
     }
+
+
+
+    pressed = tft.getTouch(&tx, &ty);
+    if (pressed && (tx >= button1X && tx <= (button1X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH)))  // go back to first row
+      load_channel(start, false, 0, 0);
+
+    if (pressed && (tx >= button2X && tx <= (button2X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH))) {  // exit
+      tRel();
+      redrawMainScreen = true;
+      loaded = true;
+      return;
+    }
+
+
+    if (pressed && (tx >= button3X && tx <= (button3X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH))) {  // load from keypad
+
+
+      drawNumPad();
+      drawKeypadButtons();
+      tft.fillRect(4, 4, 470, 40, TFT_BLACK);
+      tft.setCursor(10, 20);
+      tft.print("Enter memory slot + return:");
+      tPress();  // wait until pressed
+      readKeypadButtons();
+      tft.fillRect(4, 4, 470, 40, TFT_BLACK);
+      drawSingleChannelButtons();
+      redrawIndicators();
+      drawBigBtns();
+      load_channel(next, false, keyVal, 1);
+    }
+
+
+    if (pressed && (tx >= button4X && tx <= (button4X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH)))  // add 20 rows
+      load_channel(next, false, 20, 0);
+
+
 
     if (clw || cclw) {
 
       if (clw)
-        load_channel(NEXT);
+        load_channel(next, false, 1, 0);
       else if (cclw)
-        load_channel(PREV);
+        load_channel(last, false, 1, 0);
 
 #ifdef TINYSA_PRESENT
-      sprintf(buffer, "sweep center %ld", (FREQ / 1000000 * 1000000) + tSpan / 2);  // sync TSA center frequency with the next 1MHz step
+      char buffer[50];
+      sprintf(buffer, "sweep center %ld", (FREQ / 1000000 * 1000000) + tSpan / 2);  // sync TSA center frequency
       Serial.println(buffer);
 #endif
 
@@ -658,60 +765,63 @@ void loadPicocsv(void) {
       cclw = false;
     }
 
-
-
-    if (FREQ != FREQ_OLD) {  // If FREQ changes, update Si5351A
-      FREQCheck();           //check whether within FREQ range
-      displayFREQ(FREQ);     // display new FREQ
-      setLO();               // and tune it in
-      resetSmeter = true;    // reset to zero
-      FREQ_OLD = FREQ;
-      //Serial.print("freq changed\n");
-    }
-
-
-    audioSpectrum();
-    getRSSIAndSNR();  // get RSSI (signalStrength) and SNR, valid for all functions in the main loop
-    TSAdBm = 0;       // force to use RSSI for s meter
-    calculateAndDisplaySignalStrength();
-    readSquelchPot(true);  // true = read and draw position circle
-    setSquelch();
-    fineTune();  // read frequency potentiometer
-
-#ifdef NBFM_DEMODULATOR_PRESENT
-    getDiscriminatorVoltage();  // display Tuning meter
-
-#else
-    if (dBm < 0 && (!scanMode) && showMeters)
-      plotNeedle(signalStrength, 2);  // update the SMeter needle
-#endif
-
-    displaySmeterBar(2);  // // update the SMeter bar,
-    if (showMeters) {
-      int vol = peakVol / 1000;
-      if (!audioMuted)
-        plotNeedle2(vol, 3);
-      else
-        plotNeedle2(1, 0);
-    }
-    delay(10);
+    runCurrentChannel();
   }
 }
 
 //##########################################################################################################################//
 
+void runCurrentChannel() {
+
+
+
+  if (FREQ != FREQ_OLD) {  // If FREQ changes, update Si5351A
+    FREQCheck();           //check whether within FREQ range
+    displayFREQ(FREQ);     // display new FREQ
+    setLO();               // and tune it in
+    FREQ_OLD = FREQ;
+  }
+
+
+  audioSpectrum();
+  getRSSIAndSNR();  // get RSSI (signalStrength) and SNR, valid for all functions in the main loop
+  TSAdBm = 0;       // force to use RSSI for s meter
+  calculateAndDisplaySignalStrength();
+  readSquelchPot(true);  // true = read and draw position circle
+  setSquelch();
+  fineTune();  // read frequency potentiometer
+
+#ifdef NBFM_DEMODULATOR_PRESENT
+  getDiscriminatorVoltage();  // display Tuning meter
+
+#else
+  if (dBm < 0 && (!scanMode) && showMeters)
+    plotNeedle(signalStrength, 2);  // update the SMeter needle
+#endif
+
+  displaySmeterBar(2);  // // update the SMeter bar,
+  if (showMeters) {
+    int vol = peakVol / 1000;
+    if (!audioMuted)
+      plotNeedle2(vol, 3);
+    else
+      plotNeedle2(1, 0);
+  }
+  delay(10);
+}
+
+
+
 
 #define MAX_LINE_LENGTH 80
 
-void load_channel(bool next) {
+void load_channel(int direction, bool reload, int16_t addRows, bool fromStart) {
   uint8_t bufI[100];
   uint8_t bufO[80];
-  uint8_t bufFreq[8];
-  static uint16_t pos = 0x5D;  // start after first row
+  static uint16_t offs = 0x5D;  // start after first row
   uint16_t ep = 0;
-  int i = 0;
-  static int row = 0;
-
+  int16_t i = 0;
+  static int16_t row = 1;
 
   File f = LittleFS.open("/memory.csv", "r");
   if (!f) {
@@ -722,60 +832,77 @@ void load_channel(bool next) {
     return;
   }
 
-  size_t fileSize = f.size();  // check out of range
-  if (pos >= fileSize - MAX_LINE_LENGTH) {
-    pos = 0x5D;
+  size_t fileSize = f.size();  // for check out of range
+
+
+
+  if (direction == -2) {  // return to start
+    offs = 0;
+    row = 0;
+    addRows = 1;
+  }
+
+  if (fromStart) {
+    offs = 0;
     row = 0;
   }
 
-  if (!next && pos >= 2 * MAX_LINE_LENGTH) {  // cclw, go back 1 line
-    pos -= 2 * MAX_LINE_LENGTH;
 
 
-    while (bufI[0] != 0x0A) {
-      f.seek(pos, SeekSet);
+  if (direction == -1) {  // cclw, go back 2 rows
+
+    offs -= 2 * MAX_LINE_LENGTH;
+    while (bufI[0] != 0x0A) {  // forward to next seperator
+      f.seek(offs, SeekSet);
       f.read(bufI, 1);
-      pos++;
+
+      offs++;
     }
     row--;
     bufI[0] = 0;
   }
 
 
-  else
-    row++;
+  for (int16_t s = 0; s < addRows; s++) {
+
+    if (direction == 1)
+      row++;
+
+    if (row < 1) {
+      row = 1;
+      offs = 0x5D;
+    }
 
 
+    if (offs >= fileSize - MAX_LINE_LENGTH) {  // wrap
+      offs = 0x5D;
+      row = 1;
+      return;
+    }
 
-  if (row < 0) {
-    row = 0;
-    pos = 0;
+
+    if (!f.seek(offs, SeekSet)) {
+      f.close();
+      Serial_println("file seek error");
+      return;
+    }
+
+    f.read(bufI, sizeof(bufI));
+    while (bufI[i++] != 0x0A)
+      ;  // looking for "." seperator
+
+    ep = i;
+    offs += ep;
+    i = 0;
   }
-
-  if (!f.seek(pos, SeekSet)) {
-    f.close();
-    Serial_println("file seek error");
-    return;
-  }
-
-  f.read(bufI, sizeof(bufI));
-
-
-  while (bufI[i++] != 0x0A)
-    ;  // looking for "." seperator
-
-  ep = i;
-  pos += ep;
 
   for (i = 0; i < ep; i++)  // load row into buffer
     bufO[i] = bufI[i];
 
   bufO[i + 1] = '\0';
 
+  setChannel((char *)bufO, row, reload);
 
-  setChannel((char *)bufO, row);
-  Serial.print("Outbuffer:");
-  Serial.println((char *)bufO);
 
   f.close();
 
@@ -784,7 +911,7 @@ void load_channel(bool next) {
 
 
 //##########################################################################################################################//
-void setChannel(const char *buffer, int row) {
+void setChannel(const char *buffer, int row, bool reload) {
   int x = 30;
   int y = 130;
 
@@ -798,7 +925,7 @@ void setChannel(const char *buffer, int row) {
   strncpy(temp, buffer, sizeof(temp));
   temp[sizeof(temp) - 1] = '\0';
 
-  char *tokens[10];
+  char *tokens[10] = { 0 };
   int count = 0;
   char *p = strtok(temp, ",");
   while (p != NULL && count < 10) {
@@ -810,11 +937,13 @@ void setChannel(const char *buffer, int row) {
   tft.setTextColor(TFT_CYAN);
   tft.fillRect(x + 80, y, 50, 15, TFT_BLACK);
   tft.setCursor(x, y);
-  tft.printf("Entry: %d ", row -1);
+  tft.printf("Entry: %d ", row);
+
+
   y += 40;
 
   // Label
-  if (count > 0 && strcmp(tokens[0], lastLabel) != 0) {
+  if ((count > 0 && strcmp(tokens[0], lastLabel) != 0) || reload == true) {
     tft.fillRect(x - 10, y, 300, 25, TFT_BLACK);  // clear old text
     tft.setCursor(25, y);
     tft.setTextSize(3);
@@ -832,12 +961,12 @@ void setChannel(const char *buffer, int row) {
     tft.setCursor(x, y);
     strncpy(lastFreq, tokens[1], sizeof(lastFreq));
     FREQ = atol((char *)lastFreq);
-    tft.printf("Freq: %dKHz", FREQ / 1000);
+    tft.printf("Freq: %ldKHz", FREQ / 1000);
   }
 
 
   // Mode
-  if ((count > 4 && strcmp(tokens[4], lastMode) != 0) || row == 1){  // modType change or init 
+  if ((count > 4 && strcmp(tokens[4], lastMode) != 0) || reload == true) {  // this may give false positives, if a leading or trailing space exists
     tft.fillRect(250, 130, 83, 15, TFT_BLACK);
     tft.setTextColor(TFT_CYAN);
     tft.setCursor(250, 130);
@@ -863,11 +992,13 @@ void setChannel(const char *buffer, int row) {
     if (strstr(lastMode, "CW") != NULL) {
       modType = CW;
     }
+    if (strstr(lastMode, "FM") != NULL) {
+      modType = NBFM;
+    }
     redrawIndicators();
-
     static uint8_t lastModType = 0;
 
-    if (lastModType != modType) { 
+    if (lastModType != modType || reload == true) {
       loadSi4735parameters();
       lastModType = modType;
     }
@@ -875,3 +1006,237 @@ void setChannel(const char *buffer, int row) {
 
   tft.setTextColor(textColor);
 }
+
+
+
+//##########################################################################################################################//
+
+void drawSingleChannelButtons() {
+  const uint8_t button1X = 15;
+  const uint8_t button2X = 95;
+  const uint8_t button3X = 175;
+  const uint8_t button4X = 250;
+  const uint8_t buttonY = 233;
+
+
+  tft.fillRect(3, 61, 334, 231, TFT_BLACK);
+  draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
+  tft.setTextColor(TFT_GREEN);
+  tft.fillRect(3, 61, 334, 179, TFT_BLACK);
+  etft.setTTFFont(Arial_14);
+  etft.setCursor(button1X + 10, buttonY + 20);
+  etft.print("First");
+  etft.setCursor(button2X + 10, buttonY + 20);
+  etft.print("Exit");
+  etft.setCursor(button3X + 10, buttonY + 20);
+  etft.print("Keyb.");
+  etft.setCursor(button4X + 25, buttonY + 20);
+  etft.print("+20");
+  tft.setTextColor(textColor);
+
+  redrawIndicators();
+}
+
+
+//##########################################################################################################################//
+//##########################################################################################################################//
+// displays a list of entries from memory.csv
+
+#define ROW_BGC  0x0000 // background color
+#define ENTRIES 12  // rows per page
+#define VSPACING 22
+uint32_t frequencies[ENTRIES];
+
+void showChannelList() {
+  uint16_t startEntry = 1;
+  uint16_t lastStartEntry = 0;
+  uint16_t pressedEntry = 0;
+
+  tft.fillScreen(ROW_BGC);
+  tft.setTextColor(TFT_GREEN);
+  tft.setCursor(10, 280);
+  tft.print("Touch row to listen.");
+  tft.setCursor(10, 300);
+  tft.print("Press encoder to return.");
+
+  if (modType != AM) {  // must be AM
+    modType = AM;
+    loadSi4735parameters();
+  }
+
+  si4735.setHardwareAudioMute(true);
+
+  while (true) {
+    if (clw) {
+      startEntry += ENTRIES;
+      clw = false;
+    }
+
+    if (cclw && startEntry >= ENTRIES) {
+      startEntry -= ENTRIES;
+      cclw = false;
+    }
+
+    if (lastStartEntry != startEntry) {
+      extractAndShowRows(startEntry, ENTRIES);
+      lastStartEntry = startEntry;
+    }
+
+    displaySignalBar();
+
+    if (ty) {         // a row was touched
+      
+     ty = constrain(ty, 0, 11 * VSPACING );
+      
+      pressedEntry = startEntry + ty / VSPACING;  
+
+      Serial.printf("ty = %d\n", ty);
+
+      rebuildMainScreen(false);
+      load_channel(0, true, pressedEntry, 1);
+      tft.setCursor(10, 270);
+      tft.print("Press encoder to return.");
+      tft.fillRect(30, 130, 200, 16, ROW_BGC);
+      tft.setCursor(30, 130);
+      tft.printf("Entry: %d ", pressedEntry);
+      redrawIndicators();
+      si4735.setHardwareAudioMute(false);
+      while (digitalRead(ENCODER_BUTTON) == HIGH)
+        runCurrentChannel();
+
+      extractAndShowRows(startEntry, ENTRIES);   // back to row screen rebuild rows
+      tft.fillRect(0, 264, 480, 56, ROW_BGC);  // overwrite artefacts
+      tft.setCursor(10, 280);
+      tft.print("Touch row to listen.");
+      tft.setCursor(10, 300);
+      tft.print("Press encoder to return.");
+      if (modType != AM) {  // must be AM
+        modType = AM;
+        loadSi4735parameters();
+      }
+      si4735.setHardwareAudioMute(true);  // mute again
+    }
+
+
+    if (digitalRead(ENCODER_BUTTON) == LOW) {
+      while (digitalRead(ENCODER_BUTTON) == LOW)
+        ;
+      return;
+    }
+  }
+}
+
+//##########################################################################################################################//
+void extractAndShowRows(uint16_t startEntry, uint16_t entries) {
+  tft.fillRect(0, 0, 480, 264, ROW_BGC);
+  memset(frequencies, 0, sizeof(frequencies));
+
+  File f = LittleFS.open("/memory.csv", "r");
+  if (!f) {
+    Serial.println("Could not load memory.csv");
+    tft.setCursor(10, 200);
+    tft.println("Could not load memory.csv");
+    delay(1000);
+    return;
+  }
+
+  // Skip lines until startEntry
+  for (uint16_t s = 0; s < startEntry; s++) {
+    f.readStringUntil('\n');
+  }
+
+  // show rows
+  for (uint16_t e = 0; e < entries; e++) {
+    if (!f.available()) break;
+
+    String line = f.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0) break;
+
+    frequencies[e] = showRow(line.c_str(), e, startEntry + e);
+  }
+
+  f.close();
+}
+
+//##########################################################################################################################//
+uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) { // show details of a single row
+  const uint16_t vSpacing = VSPACING;
+  const int xPos = 5;
+  uint16_t yPos = screenRow * vSpacing;
+
+  char temp[81];
+  char *tokens[10] = { 0 };
+
+  strncpy(temp, buffer, sizeof(temp));
+  temp[sizeof(temp) - 1] = '\0';
+
+  int count = 0;
+  char *p = strtok(temp, ",");
+  while (p && count < 10) {
+    tokens[count++] = p;
+    p = strtok(NULL, ",");
+  }
+
+  // Absolute row number label
+  tft.setTextColor(TFT_SKYBLUE);
+  tft.setCursor(xPos, yPos);
+  tft.printf("%d ", csvRowNumber);
+
+  // Name
+  tft.setCursor(xPos + 30, yPos);
+  tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+  tft.print(tokens[0] ? tokens[0] : "");
+
+  // Frequency
+  uint32_t f = tokens[1] ? atol(tokens[1]) : 0;
+  tft.setTextColor(TFT_GREEN, ROW_BGC);
+  tft.setCursor(xPos + 220, yPos);
+  tft.printf(" %ld KHz", f / 1000);
+
+  return f;
+}
+
+//##########################################################################################################################//
+void displaySignalBar () {
+  for (int s = 0; s < ENTRIES; s++) {
+    FREQ = frequencies[s];
+
+    if (FREQ < SHORTWAVE_MODE_UPPER_LIMIT) {
+      setLO();
+      delay(30);  // needed settle time for LO
+
+      uint32_t st = millis();
+      while (millis() < st + 30) {
+        tx = 0;
+        ty = 0;
+        pressed = get_Touch();
+
+        if (pressed)
+          return;
+        if (digitalRead(ENCODER_BUTTON) == LOW)
+          return;
+      }
+      si4735.getCurrentReceivedSignalQuality(0);
+      SNR = si4735.getCurrentSNR();
+      delay(5);
+      si4735.getCurrentReceivedSignalQuality(0);
+      signalStrength = si4735.getCurrentRSSI();
+
+    } else {
+      signalStrength = 0;
+      SNR = 0;
+    }
+
+
+tft.fillRect(380, s * VSPACING, 100, 20, TFT_GREY);
+tft.fillRect(380, s * VSPACING, signalStrength, 20,
+             SNR ? TFT_GREENYELLOW : signalStrength << 5);
+   
+
+
+  
+  }
+}
+
+//##########################################################################################################################//

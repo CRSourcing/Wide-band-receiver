@@ -43,14 +43,16 @@ tft.setRotation(1);
  if (!fastBoot) {
  
 #ifdef SHOW_SPLASHSCREEN
-    LittleFS.begin(true);  // bool formatOnFail = false
+    LittleFS.begin(true);  // bool formatOnFail = true
+    if (LittleFS.exists("/splash.jpg")){
     swappedJPEG = true;    // depends on file format
     Serial.print("Loading splash\n");
     drawJpeg("/splash.jpg", 0, 0);
+    } 
+   else 
+     Serial.print("splash not found\n");
     LittleFS.end();
 #endif
-
-
     tft.setTextSize(3);
     tft.setCursor(0, 30);
 

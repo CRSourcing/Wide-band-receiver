@@ -153,7 +153,8 @@ void readMainBtns() {
       tRel();
       break;
     case 24:
-    loadPicocsv(); 
+     picoMenu();
+     rebuildMainScreen(false);
      FREQ_OLD = FREQ - 1;    // trigger update
       return;
     case 31:
