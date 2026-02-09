@@ -1042,7 +1042,7 @@ void drawSingleChannelButtons() {
 
 //##########################################################################################################################//
 //##########################################################################################################################//
-// displays a list of entries from memory.csv
+// displays a list of entries from memory.csv. runs play loop if a row gets touched
 
 #define ROW_BGC 0x0000  // background color
 #define ENTRIES 12      // rows per page
@@ -1053,6 +1053,7 @@ void showChannelList() {
   uint16_t startEntry = 1;
   uint16_t lastStartEntry = 0;
   uint16_t pressedEntry = 0;
+  bool valid = true; // still inside file?
 
   tft.fillScreen(ROW_BGC);
   tft.setTextColor(TFT_SKYBLUE);
@@ -1076,17 +1077,24 @@ void showChannelList() {
       clw = false;
     }
 
-    if (cclw && startEntry >= ENTRIES) {
+    if (cclw && startEntry > ENTRIES) {
       startEntry -= ENTRIES;
       cclw = false;
     }
 
+
     if (lastStartEntry != startEntry) {
-      extractAndShowRows(startEntry, ENTRIES);
+    valid =  extractAndShowRows(startEntry, ENTRIES);
       lastStartEntry = startEntry;
     }
 
+    if (valid)
     displaySignalBar();
+     else {
+    sineTone (800, 100);
+    startEntry -= ENTRIES; // eof reached 
+     } 
+
 
     if (ty) {  // a row was touched
 
@@ -1094,7 +1102,7 @@ void showChannelList() {
 
       pressedEntry = startEntry + ty / VSPACING;
 
-      Serial.printf("ty = %d\n", ty);
+    
 
       rebuildMainScreen(false);
       load_channel(0, true, pressedEntry, 1);
@@ -1105,6 +1113,8 @@ void showChannelList() {
       tft.printf("Entry: %d ", pressedEntry);
       redrawIndicators();
       si4735.setHardwareAudioMute(false);
+      
+      
       while (digitalRead(ENCODER_BUTTON) == HIGH)
         playCurrentChannel();
 
@@ -1131,7 +1141,7 @@ void showChannelList() {
 }
 
 //##########################################################################################################################//
-void extractAndShowRows(uint16_t startEntry, uint16_t entries) {
+bool extractAndShowRows(uint16_t startEntry, uint16_t entries) {
   tft.fillRect(0, 0, 480, 264, ROW_BGC);
   memset(frequencies, 0, sizeof(frequencies));
 
@@ -1141,26 +1151,32 @@ void extractAndShowRows(uint16_t startEntry, uint16_t entries) {
     tft.setCursor(10, 200);
     tft.println("Could not load memory.csv");
     delay(1000);
-    return;
+    return false;
   }
 
-  // Skip lines until startEntry
+  // Skip lines til startEntry
   for (uint16_t s = 0; s < startEntry; s++) {
     f.readStringUntil('\n');
   }
 
   // show rows
   for (uint16_t e = 0; e < entries; e++) {
-    if (!f.available()) break;
+    if (!f.available()) 
+     return false;
 
     String line = f.readStringUntil('\n');
     line.trim();
-    if (line.length() == 0) break;
+    if (line.length() == 0) 
+      return false;
 
     frequencies[e] = showRow(line.c_str(), e, startEntry + e);
+  
   }
 
   f.close();
+
+return true;
+
 }
 
 //##########################################################################################################################//
@@ -1195,9 +1211,8 @@ uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) 
   // Frequency
   uint32_t f = tokens[1] ? atol(tokens[1]) : 0;
   tft.setTextColor(TFT_GREEN, ROW_BGC);
-  tft.setCursor(xPos + 220, yPos);
+  tft.setCursor(xPos + 215, yPos);
   tft.printf(" %ld KHz", f / 1000);
-
   return f;
 }
 
@@ -1206,10 +1221,15 @@ void displaySignalBar() {
 
 uint16_t dly = 30;
 
+ clw = false;
+ cclw = false;
+
   for (int s = 0; s < ENTRIES; s++) {
+    
+    
     FREQ = frequencies[s];
    if (FREQ > SHORTWAVE_MODE_UPPER_LIMIT)
-    dly = 60; // additional time needed for tuner to settle
+    dly = 60; // additional time needed for tuner pll and relay to settle
 
       setLO();
       
@@ -1219,9 +1239,9 @@ uint16_t dly = 30;
         ty = 0;
         pressed = get_Touch();
 
-        if (pressed || (digitalRead(ENCODER_BUTTON) == LOW) || clw || cclw)
+        if (pressed || (digitalRead(ENCODER_BUTTON) == LOW) || clw || cclw) {
           return;
-      
+        }  
       }
       si4735.getCurrentReceivedSignalQuality(0);
       SNR = si4735.getCurrentSNR();
