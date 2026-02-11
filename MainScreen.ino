@@ -95,7 +95,7 @@ void drawMainButtons() {
   } 
  #endif 
   
-  else {
+  if (! TVTunerActive) {
   
  #ifdef SW_ATTENUATOR_PRESENT
     etft.setTextColor(TFT_GREEN);
