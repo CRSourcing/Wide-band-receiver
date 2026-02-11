@@ -4,7 +4,7 @@
 //IMPORTANT: To compile, select the "ESP32 Dev Module" and the "No OTA (2MB APP, 2MB SPIFFS)" partition scheme.
 // Comment/uncomment compiler directives according to your hardware:
 
-#define TV_TUNER_PRESENT  // If this option is commented out, a shortwave receiver version will compile. In this case max. FREQ = 50MHz.
+//#define TV_TUNER_PRESENT  // If this option is commented out, a shortwave receiver version will compile. In this case max. FREQ = 50MHz.
 
 #define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
@@ -23,6 +23,7 @@
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
 //#define FLIP_IMAGE // Uncomment this if the image is upside down
+//#define TFT_INVERSION_ON// Uncomment if the screen is inverted
 
 //#define PRINT_STORAGE_DEBUG_MESSAGES // Creates serial debug messages about files on LittleFS and SDcard.
 //##########################################################################################################################//
@@ -546,7 +547,7 @@ void loop() {
 
 #ifdef SW_ATTENUATOR_PRESENT
   if (!TVTunerActive)
-    setShortwaveAGC();  // TV tuner AGC reduces tuner gain for better IP3, shows value intile
+    setShortwaveAGC();  // shortwave AGC
 #endif
 
   saveCurrentSettings();  // save settings after 1 minute if freq has not changed
