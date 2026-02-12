@@ -17,7 +17,7 @@ void analogMeter(int ySh) {
     return;
 
   if (ySh < 50)  // frame upper meter
-    tft.pushImage(345, 53, 130, 76, (uint16_t *)meterFrame);
+    tft.pushImage(345, 52, 130, 76, (uint16_t *)meterFrame);
   else
     tft.pushImage(345, 132, 130, 76, (uint16_t *)meterFrame);
 

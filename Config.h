@@ -237,7 +237,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.564";         // version
+const char ver[] = "V.551";         // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -366,6 +366,9 @@ bool noMixer = false;               // run with antenna directly connected to SI
 bool vfo1Active = true;
 bool showTouchCoordinates = false;  // debug
 int loopDelay = 0;                  // stabilize loop at not less than 10ms
+int16_t cRow = 1;                   // channel row when displaying memory.csv file
+
+
 
 // Waterfall
 const int wfSensitivity = 50;                 // is a divider, more means less sensitivity
@@ -424,8 +427,6 @@ uint16_t buttonSelected = 4;  // 4-11
 // Web
 uint8_t imageSelector = 0;
 bool swappedJPEG = false;
-const char* ssid = "YourSSID";
-const char* password = "YourPW";
 int yShift = 0;
 int xShift = 0;
 int reportSelector = 0;

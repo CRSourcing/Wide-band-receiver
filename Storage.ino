@@ -49,8 +49,7 @@ void drawSDBtns() {
     { 263, 268, "  "}, 
     { 183, 245, " " }, 
     { 183, 268, "  "}, 
-    { 100, 245, "  "}, 
-    { 100, 268, "  "}
+  
   */
   };
 
@@ -66,6 +65,13 @@ void drawSDBtns() {
   drawButton(8, 236, 74, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setCursor(20, 254);
   etft.print("BACK");
+
+  etft.setTextColor(TFT_YELLOW);
+  etft.setCursor(105, 245);
+  etft.print("Use");
+  etft.setCursor(105, 268);
+  etft.print("WIFI");
+
   etft.setTextColor(textColor);
   tDoublePress();
 }
@@ -116,13 +122,15 @@ void readSDBtns() {
     case 41:
       return;
     case 42:
+      startUploader();
+      runUpLoader();
       break;
     case 43:
       break;
     case 44:
       break;
     default:
-     resetMainScreen();
+      resetMainScreen();
       return;
   }
 
@@ -140,16 +148,16 @@ void readSDCard(bool close) {  // 0 = read and close,  1 = leave open
   tRel();
 
   int ctr = 0;
- 
-tft.fillScreen(TFT_BLACK);
-tft.setCursor(0, 0);
-tft.endWrite();
 
-digitalWrite(TFT_CS, HIGH);
-digitalWrite(TOUCH_CS, HIGH);
-digitalWrite(SD_CS, LOW);  // use GPIO33 for CS SDcard and set it low
+  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(0, 0);
+  tft.endWrite();
 
-while (!SD.begin(SD_CS, spiSD, 2000000))  {
+  digitalWrite(TFT_CS, HIGH);
+  digitalWrite(TOUCH_CS, HIGH);
+  digitalWrite(SD_CS, LOW);  // use GPIO33 for CS SDcard and set it low
+
+  while (!SD.begin(SD_CS, spiSD, 2000000)) {
 
     ctr++;
     tft.print("Mounting SD card...\n");
@@ -198,11 +206,6 @@ void loadLists() {
   }
 
   loadAllCSVFiles();  // Load all CSV files
-
-
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-  printLoadedData();  // Print loaded data
-#endif
 }
 
 //##########################################################################################################################//
@@ -478,9 +481,6 @@ std::vector<String> splitCSVLine(const String& line) {
     tokens.push_back(lastToken);
   }
 
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-  Serial_printf("DEBUG: Parsed %d tokens from line: %s\n", tokens.size(), line.c_str());
-#endif
   return tokens;
 }
 
@@ -511,9 +511,6 @@ void loadCSVtoStruct(const char* filename) {
     // Identify structure based on filename
     if (strcmp(filename, "BandInfo.csv") == 0) {
       if (tokens.size() == 5) {
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-        Serial_println("INFO: Updating BandInfo structure...");
-#endif
         bandList.push_back({
           strdup(tokens[0].c_str()),             // bandName
           tokens[1].toInt(),                     // startFreqKHz
@@ -521,18 +518,12 @@ void loadCSVtoStruct(const char* filename) {
           static_cast<bool>(tokens[3].toInt()),  // isAmateurRadioBand
           tokens[4].toInt()                      // bandNumber
         });
-      } else {
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-        Serial_print("WARNING: Skipped malformed line (expected 5 tokens): ");
-        Serial_println(line);
-#endif
       }
-    } else if (strcmp(filename, "MemoInfo.csv") == 0) {
+    }
+
+    else if (strcmp(filename, "MemoInfo.csv") == 0) {
       if (tokens.size() == 5) {
 
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-        Serial_println("INFO: Updating MemoInfo structure...");
-#endif
         memoList.push_back({
           tokens[0].toInt(),          //memoNumber
           strdup(tokens[1].c_str()),  // memoName
@@ -542,35 +533,17 @@ void loadCSVtoStruct(const char* filename) {
         });
 
       } else {
-
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-        Serial_print("Line error, expected 5 tokens");
-        Serial_println(line);
-#endif
       }
     }
 
     else if (strcmp(filename, "SlowScanFrequencies.csv") == 0) {
       if (tokens.size() == 3) {
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-        Serial_println("INFO: Updating SlowScanFrequencies structure...");
-#endif
         slowScanList.push_back({
           tokens[0].toInt(),         // freq
           tokens[1].toInt(),         // modT
           strdup(tokens[2].c_str())  // desc
         });
-      } else {
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-        Serial_print("WARNING: Skipped malformed line (expected 3 tokens): ");
-        Serial_println(line);
-#endif
       }
-    } else {
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-      Serial_print("WARNING: Unknown file ");
-      Serial_println(filename);
-#endif
     }
   }
 
@@ -608,7 +581,7 @@ void loadAllCSVFiles() {
 }
 
 //##########################################################################################################################//
-void printLoadedData() { // debug helper
+void printLoadedData() {  // debug helper
 
 
   Serial_printf("\n--- Band Info (%d entries) ---\n", bandList.size());
@@ -765,13 +738,6 @@ void reloadMemoList() {
       memo.memoModType = tokens[3].toInt();
       memo.memoBandwidth = tokens[4].toInt();
       memoList.push_back(memo);
-
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-      Serial_printf("Added Memo: Number=%d, Name=%s, Freq=%d, ModType=%d, Bandwidth=%d\n",
-                    memo.memoNumber, memo.memoName, memo.memoFreq,
-                    memo.memoModType, memo.memoBandwidth);
-#endif
-
     } else {
       Serial_printf("reloadMemoList: Skipping token error %s\n", line.c_str());
     }
@@ -810,15 +776,6 @@ void formatLittleFSWithWarning() {
 //##########################################################################################################################//
 
 void createMemoInfoCSVIfNotExist() {
-  const char* filename = "/MemoInfo.csv";
-  if (LittleFS.exists(filename)) {
-
-#ifdef PRINT_STORAGE_DEBUG_MESSAGES
-    Serial_println("createMemoInfoCSVIfNotExist: MemoInfo.csv already found on LittleFS");
-#endif
-    return;
-  }
-
   File mfile = LittleFS.open("/MemoInfo.csv", FILE_WRITE);
   if (!mfile) {
     Serial_println("Failed to open MemoInfo.csv for writing");
@@ -834,8 +791,6 @@ void createMemoInfoCSVIfNotExist() {
   mfile.close();
   Serial_println("MemoInfo.csv created");
 }
-
-
 
 //##########################################################################################################################//
 
@@ -873,48 +828,264 @@ void deleteRecursive(fs::FS& fs, const char* path) {
 
 //##########################################################################################################################//
 
-void displayLogsFromBuffer(uint16_t x, uint16_t y) { // displays the Serial_ log buffer
-    // Read max 400 char
-    String logs = logBuffer.read().substring(0, 400);
-    //logBuffer.clear();  // Empty the buffer after reading
+void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ log buffer
+  // Read max 400 char
+  String logs = logBuffer.read().substring(0, 400);
+  //logBuffer.clear();  // Empty the buffer after reading
 
-    uint16_t currentY = y;
-    uint8_t charCount = 0;
-    
+  uint16_t currentY = y;
+  uint8_t charCount = 0;
 
-    tft.setTextSize(1);
- 
-    tft.fillRect(345, 48, 130, 242, TFT_BLACK);
-    tft.setTextColor(TFT_RED);
-    tft.setCursor(x, 53);
-    tft.print ("Events:");
-    tft.setTextColor(TFT_GREEN);
-    tft.setCursor(x, currentY);
-     
-    for (unsigned int i = 0; i < logs.length(); i++) {
-        // Handle newlines
-        if (logs[i] == '\n') {
-            currentY += tft.fontHeight();
-            tft.setCursor(x, currentY);
-            charCount = 0;
-            continue;
-        }
-        
-        // Wrap every 20 characters
-        if (charCount >= 20) {
-            currentY += tft.fontHeight();
-            tft.setCursor(x, currentY);
-            charCount = 0;
-        }
-        
-       if(currentY >= 290)
-        return; 
 
-        tft.print(logs[i]);
-        charCount++;
+  tft.setTextSize(1);
+
+  tft.fillRect(345, 48, 130, 242, TFT_BLACK);
+  tft.setTextColor(TFT_RED);
+  tft.setCursor(x, 53);
+  tft.print("Events:");
+  tft.setTextColor(TFT_GREEN);
+  tft.setCursor(x, currentY);
+
+  for (unsigned int i = 0; i < logs.length(); i++) {
+    // Handle newlines
+    if (logs[i] == '\n') {
+      currentY += tft.fontHeight();
+      tft.setCursor(x, currentY);
+      charCount = 0;
+      continue;
     }
 
-    tft.setTextColor(textColor);
-    tft.setTextSize(2);
+    // Wrap every 20 characters
+    if (charCount >= 20) {
+      currentY += tft.fontHeight();
+      tft.setCursor(x, currentY);
+      charCount = 0;
+    }
+
+    if (currentY >= 290)
+      return;
+
+    tft.print(logs[i]);
+    charCount++;
+  }
+
+  tft.setTextColor(textColor);
+  tft.setTextSize(2);
 }
 
+
+
+//##########################################################################################################################//
+//##########################################################################################################################//
+// WIFI LittleFS uploader
+
+WebServer server(80);
+
+void handleRoot() {
+  String html = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 File Manager</title>
+  <style>
+    .progress-container { margin: 5px 0; }
+    .progress-bar {
+      width: 0%; height: 20px; background: blue; text-align: center; color: white;
+    }
+  </style>
+</head>
+<body>
+  <h2>LittleFS upload/download utility</h2>
+  <input type="file" id="files" multiple>
+  <button onclick="uploadFiles()">Upload</button>
+  <div id="status"></div>
+  <hr>
+  <h3>Stored Files:</h3>
+  <ul id="fileList">
+)rawliteral";
+
+  // File listing
+  File root = LittleFS.open("/");
+  File file = root.openNextFile();
+  while (file) {
+    String name = file.name();
+    String displayName = name;
+    if (displayName.startsWith("/")) displayName = displayName.substring(1);
+
+    size_t size = file.size();
+    html += "<li>" + displayName + " (" + String(size) + " bytes) ";
+    html += "<a href='/download?file=" + displayName + "'>Download</a> ";
+    html += "<a href='/delete?file=" + displayName + "'>Delete</a></li>";
+    file = root.openNextFile();
+  }
+
+  html += R"rawliteral(
+  </ul>
+<script>
+function refreshFileList() {
+  fetch("/")
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const newList = doc.querySelector("#fileList");
+      document.querySelector("#fileList").innerHTML = newList.innerHTML;
+    });
+}
+
+function uploadFiles() {
+  const files = document.getElementById('files').files;
+  const statusDiv = document.getElementById('status');
+  statusDiv.innerHTML = '';
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const container = document.createElement('div');
+    container.className = 'progress-container';
+    const label = document.createElement('div');
+    label.textContent = 'Uploading ' + file.name;
+    const bar = document.createElement('div');
+    bar.className = 'progress-bar';
+    container.appendChild(label);
+    container.appendChild(bar);
+    statusDiv.appendChild(container);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/upload", true);
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        const percent = (e.loaded / e.total) * 100;
+        bar.style.width = percent + "%";
+        bar.textContent = Math.round(percent) + "%";
+        bar.style.background = "blue"; // consistent during upload
+      }
+    };
+    xhr.onload = function() {
+      if (xhr.status == 200) {
+        bar.style.background = "blue"; // success
+        label.textContent = "Uploaded " + file.name;
+        refreshFileList(); // update listing immediately
+      } else {
+        bar.style.background = "red"; // error
+        label.textContent = "Error uploading " + file.name;
+      }
+    };
+    const formData = new FormData();
+    formData.append("file", file);
+    xhr.send(formData);
+  }
+}
+</script>
+</body>
+</html>
+)rawliteral";
+
+  server.send(200, "text/html", html);
+}
+
+void handleUpload() {
+  HTTPUpload& upload = server.upload();
+
+  if (upload.status == UPLOAD_FILE_START) {
+    String filename = upload.filename;
+    if (!filename.startsWith("/")) filename = "/" + filename;
+    Serial.printf("Upload start: %s\n", filename.c_str());
+    File f = LittleFS.open(filename, FILE_WRITE);
+    if (!f) {
+      Serial.println("Error: Failed to open file for writing");
+      server.send(500, "text/plain", "Failed to open file");
+      return;
+    }
+    f.close();
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    String filename = upload.filename;
+    if (!filename.startsWith("/")) filename = "/" + filename;
+    File f = LittleFS.open(filename, FILE_APPEND);
+    if (f) {
+      f.write(upload.buf, upload.currentSize);
+      f.close();
+      Serial.printf("Writing chunk: %d bytes\n", upload.currentSize);
+    }
+  } else if (upload.status == UPLOAD_FILE_END) {
+    String filename = upload.filename;
+    if (!filename.startsWith("/")) filename = "/" + filename;
+    Serial.printf("Upload complete: %s (%d bytes)\n", filename.c_str(), upload.totalSize);
+    server.send(200, "text/plain", "Upload successful: " + filename);
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    Serial.println("Upload aborted by client");
+    server.send(400, "text/plain", "Upload aborted");
+  }
+}
+
+void handleDownload() {
+  if (!server.hasArg("file")) {
+    server.send(400, "text/plain", "Missing file parameter");
+    return;
+  }
+  String filename = server.arg("file");
+  if (!filename.startsWith("/")) filename = "/" + filename;
+  File f = LittleFS.open(filename, FILE_READ);
+  if (!f) {
+    server.send(404, "text/plain", "File not found: " + filename);
+    return;
+  }
+  server.streamFile(f, "application/octet-stream");
+  f.close();
+}
+
+void handleDelete() {
+  if (!server.hasArg("file")) {
+    server.send(400, "text/plain", "Missing file parameter");
+    return;
+  }
+  String filename = server.arg("file");
+  if (!filename.startsWith("/")) filename = "/" + filename;
+  if (LittleFS.remove(filename)) {
+    server.sendHeader("Location", "/");
+    server.send(303);  // Redirect back to root
+  } else {
+    server.send(500, "text/plain", "Failed to delete file: " + filename);
+  }
+}
+
+void startUploader() {
+
+  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(0, 0);
+  tft.setTextColor(TFT_WHITE);
+  if (!LittleFS.begin(true)) {
+    tft.println("LittleFS mount failed");
+    return;
+  }
+
+  WiFi.begin(ssid, password);
+  tft.println("Utility to transfer files to LittleFS.\n");
+  tft.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    tft.print(".");
+  }
+  tft.println("\n\nWiFi connected.");
+  tft.print("\nOpen IP in your browser:");
+  tft.print(WiFi.localIP());
+
+  server.on("/", HTTP_GET, handleRoot);
+  server.on(
+    "/upload", HTTP_POST, []() {}, handleUpload);
+  server.on("/download", HTTP_GET, handleDownload);
+  server.on("/delete", HTTP_GET, handleDelete);
+
+  server.begin();
+  tft.println("\nHTTP server started.");
+  tft.println("\nMove encoder to return.");
+}
+
+void runUpLoader() {
+
+  while (true) {
+
+    server.handleClient();
+    if (clw || cclw)
+      ESP.restart();
+  }
+}

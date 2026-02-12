@@ -149,9 +149,11 @@ void waterFall(bool useKeypad) {
       xPos = 0;
     }
 
-    // Check for button press to exit loop
+    // Check for encoder press to exit loop
     if (digitalRead(ENCODER_BUTTON) == LOW)
       break;
+  
+
   }
 
   FREQ = FREQ_OLD;

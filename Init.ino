@@ -299,7 +299,7 @@ void drawBigBtns() {
   tft.fillRect(345, 55, 130, 236, TFT_BLACK);
 
   if (!showMeters) {
-    drawButton(345, 49, 130, 78, TFT_BLUE, TFT_NAVY);   // UP button
+    drawButton(345, 50, 130, 78, TFT_BLUE, TFT_NAVY);   // UP button
     drawButton(345, 129, 130, 78, TFT_BLUE, TFT_NAVY);  // DOWN button
     drawButton(345, 209, 130, 78, TFT_BLUE, TFT_NAVY);  // MODE button
   }
@@ -336,7 +336,7 @@ void drawBigBtns() {
 
 
   else {
-    drawButton(345, 49, 130, 78, TFT_BLUE, TFT_NAVY);
+    drawButton(345, 50, 130, 78, TFT_BLUE, TFT_NAVY);
     drawButton(345, 129, 130, 78, TFT_BLUE, TFT_NAVY);
     drawButton(345, 209, 130, 78, TFT_BLUE, TFT_NAVY);
     tft.setTextColor(TFT_SKYBLUE);

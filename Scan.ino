@@ -6,14 +6,14 @@ void setScanRange() {
     redrawMainScreen = true;
     return;
   }
-  tft.fillRect(5, 3, 470, 52, TFT_BLACK);
+  tft.fillRect(5, 3, 470, 40, TFT_BLACK);
   tft.setCursor(12, 7);
-  tft.print("1 and RETURN = stop mode");
+  tft.print("Press 1 and RETURN for stop mode");
   tft.setCursor(12, 26);
-  tft.print("2 and RETURN = cont. mode");
+  tft.print("Press 2 and RETURN for cont. mode");
   tPress();
   readKeypadButtons();
-  tft.fillRect(5, 3,470, 52, TFT_BLACK);
+  tft.fillRect(5, 3,470, 40, TFT_BLACK);
   redrawMainScreen = true;
   mainScreen();
   tft.setCursor(10, 123);
