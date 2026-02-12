@@ -66,11 +66,11 @@ void drawSDBtns() {
   etft.setCursor(20, 254);
   etft.print("BACK");
 
-  etft.setTextColor(TFT_YELLOW);
-  etft.setCursor(105, 245);
-  etft.print("Use");
-  etft.setCursor(105, 268);
+  etft.setTextColor(TFT_SKYBLUE);
+  etft.setCursor(100, 245);
   etft.print("WIFI");
+  etft.setCursor(100, 265);
+  etft.print("Upload");
 
   etft.setTextColor(textColor);
   tDoublePress();
@@ -882,6 +882,11 @@ void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ lo
 WebServer server(80);
 
 void handleRoot() {
+size_t total = LittleFS.totalBytes(); 
+size_t used = LittleFS.usedBytes(); 
+size_t free = total - used;
+
+
   String html = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -900,9 +905,16 @@ void handleRoot() {
   <button onclick="uploadFiles()">Upload</button>
   <div id="status"></div>
   <hr>
-  <h3>Stored Files:</h3>
-  <ul id="fileList">
+   <h3>Storage Info:</h3>
 )rawliteral";
+
+html += "<p>Total: " + String(total) + " bytes</p>"; 
+html += "<p>Used: " + String(used) + " bytes</p>"; 
+html += "<p>Free: " + String(free) + " bytes</p>"; 
+html += "<hr><h3>Stored Files:</h3><ul id='fileList'>";
+
+
+
 
   // File listing
   File root = LittleFS.open("/");
@@ -1076,8 +1088,8 @@ void startUploader() {
   server.on("/delete", HTTP_GET, handleDelete);
 
   server.begin();
-  tft.println("\nHTTP server started.");
-  tft.println("\nMove encoder to return.");
+
+  tft.println("\n\n\nMove encoder when finished uploading.");
 }
 
 void runUpLoader() {
@@ -1085,7 +1097,9 @@ void runUpLoader() {
   while (true) {
 
     server.handleClient();
-    if (clw || cclw)
+    if (clw || cclw){
+      fastBoot = true;
       ESP.restart();
+    }
   }
 }
