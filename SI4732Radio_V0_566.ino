@@ -27,8 +27,8 @@
 //#define TFT_INVERSION_ON// Uncomment if the image is inverted.
 
 
-const char* ssid = "yourSSID";        // WIFI credentials needed for web tools and LittleFS uploader
-const char* password = "yourPassword";// WIFI credentials needed for web tools and LittleFS uploader
+const char* ssid = "MMV2025";        // WIFI credentials needed for web tools and LittleFS uploader
+const char* password = "Pekita#2020";// WIFI credentials needed for web tools and LittleFS uploader
 
 //##########################################################################################################################//
 
@@ -205,7 +205,7 @@ If so, press the encoder to save, or move the encoder to recalibrate. Proper cal
    In More Config -> Tuner +-ppm adjust for strongest signal, press encoder to save. This setting is unfortunately somewhat temperature dependent.
 9. Additionally for SSB in VHF/UHF calibrate the TV tuner BFO's for zero Hz audible tone.
 
-10.   
+10. Tap on "More -> Storage". Use either SD card or the WIFI uploader to transfer the files in the \data folder to LittleFS.
 
 --------------
 
@@ -347,43 +347,48 @@ Touch the upper meter to enable AFC in AM or NBFM. The AFC is not sticky and wil
 
 */
 
+// Libraries and headers:
 
-#include <Arduino.h>
-#include <driver/gptimer.h>
-#include <driver/ledc.h>
-#include <FS.h>
-#include <TFT_eSPI_ext.h>  // Need to install from https://github.com/FrankBoesing/TFT_eSPI_ext
-#include <font_Arial.h>
-#include <HTTPClient.h>
-#include <JPEGDecoder.h>
-#include <LittleFS.h>
-#include <PNGdec.h>
-#include <Preferences.h>
-#include <si5351.h>
-#include <SPI.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <TFT_eSPI.h>
-#include <unordered_map>
-#include <vector>
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WiFiClientSecure.h>
-#include <Wire.h>
-#include <WebServer.h>
+// Built-in 
+#include <Arduino.h>          // Core Arduino framework
+#include <driver/gptimer.h>   // ESP-IDF driver (part of ESP32 core)
+#include <driver/ledc.h>      // ESP-IDF driver (part of ESP32 core)
+#include <FS.h>               // File system abstraction (ESP32 core)
+#include <HTTPClient.h>       // HTTP client (ESP32 core)
+#include <LittleFS.h>         // LittleFS support (ESP32 core)
+#include <Preferences.h>      // NVS storage (ESP32 core)
+#include <SPI.h>              // SPI bus (Arduino core)
+#include <stdint.h>           // Standard C header
+#include <stdio.h>            // Standard C header
+#include <string.h>           // Standard C header
+#include <unordered_map>      // Standard C++ STL
+#include <vector>             // Standard C++ STL
+#include <WiFi.h>             // Wi-Fi (ESP32 core)
+#include <WiFiClient.h>       // TCP client (ESP32 core)
+#include <WiFiClientSecure.h> // Secure TCP client (ESP32 core)
+#include <Wire.h>             // I²C bus (Arduino core)
+#include <WebServer.h>        // Web server (ESP32 core)
+#include "SD.h"               // SD card support (ESP32 core)
 
-#include "arduinoFFT.h"
-#include "DacESP32.h"
-#include "FS.h"
-#include "patch_full.h"
-#include "Rotary.h"
-#include "SD.h"
-#include "SI4735.h"
-#include "Sprites.h"
-#include "nxfont24.h"
-#include "logSerial.h"
-#include "Config.h"  //Macros and global variables
+// Needs to be installed separately (via Arduino Library Manager or GitHub)
+#include <TFT_eSPI.h>         // Library Manager: "TFT_eSPI" by Bodmer
+#include <TFT_eSPI_ext.h>     // GitHub only: https://github.com/FrankBoesing/TFT_eSPI_ext
+#include <font_Arial.h>       // Comes with TFT_eSPI_ext repo
+#include <JPEGDecoder.h>      // Library Manager: "JPEGDecoder" by Bodmer
+#include <PNGdec.h>           // Library Manager: "PNGdec" by Larry Bank
+#include <si5351.h>           // Library Manager: "Si5351Arduino" by Jason Milldrum
+#include "arduinoFFT.h"       // Library Manager: "arduinoFFT" by kosme
+#include "DacESP32.h"         // Library Manager: "DacESP32" (ESP32 DAC audio library)
+#include "Rotary.h"           // Library Manager: "Rotary Encoder" by Brian Low
+#include "SI4735.h"           // Library Manager: "SI4735" by Ricardo Caratti
+
+// Project-specific (local headers included with project)
+#include "patch_full.h"       // Project-specific
+#include "Sprites.h"          // Project-specific 
+#include "nxfont24.h"         // Project-specific font
+#include "logSerial.h"        // Project-specific logging
+#include "Config.h"           // Project-specific macros and globals
+
 
 //##########################################################################################################################//
 //CODE START
