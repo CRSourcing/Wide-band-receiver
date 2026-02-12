@@ -383,10 +383,10 @@ Touch the upper meter to enable AFC in AM or NBFM. The AFC is not sticky and wil
 #include "SI4735.h"           // Library Manager: "SI4735" by Ricardo Caratti
 
 // Project-specific (local headers included with project)
-#include "patch_full.h"       // Project-specific
-#include "Sprites.h"          // Project-specific 
-#include "nxfont24.h"         // Project-specific font
-#include "logSerial.h"        // Project-specific logging
+#include "patch_full.h"       // Project-specific SSB patch
+#include "Sprites.h"          // Project-specific bitmaps and sprites
+#include "nxfont24.h"         // Project-specific nixie font
+#include "logSerial.h"        // Project-specific  serial logging
 #include "Config.h"           // Project-specific macros and globals
 
 
