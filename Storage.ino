@@ -1001,10 +1001,10 @@ void handleUpload() {
   if (upload.status == UPLOAD_FILE_START) {
     String filename = upload.filename;
     if (!filename.startsWith("/")) filename = "/" + filename;
-    Serial.printf("Upload start: %s\n", filename.c_str());
+    Serial_printf("Upload start: %s\n", filename.c_str());
     File f = LittleFS.open(filename, FILE_WRITE);
     if (!f) {
-      Serial.println("Error: Failed to open file for writing");
+      Serial_println("Error: Failed to open file for writing");
       server.send(500, "text/plain", "Failed to open file");
       return;
     }
@@ -1016,15 +1016,15 @@ void handleUpload() {
     if (f) {
       f.write(upload.buf, upload.currentSize);
       f.close();
-      Serial.printf("Writing chunk: %d bytes\n", upload.currentSize);
+      Serial_printf("Writing chunk: %d bytes\n", upload.currentSize);
     }
   } else if (upload.status == UPLOAD_FILE_END) {
     String filename = upload.filename;
     if (!filename.startsWith("/")) filename = "/" + filename;
-    Serial.printf("Upload complete: %s (%d bytes)\n", filename.c_str(), upload.totalSize);
+    Serial_printf("Upload complete: %s (%d bytes)\n", filename.c_str(), upload.totalSize);
     server.send(200, "text/plain", "Upload successful: " + filename);
   } else if (upload.status == UPLOAD_FILE_ABORTED) {
-    Serial.println("Upload aborted by client");
+    Serial_println("Upload aborted by client");
     server.send(400, "text/plain", "Upload aborted");
   }
 }
@@ -1054,7 +1054,7 @@ void handleDelete() {
   if (!filename.startsWith("/")) filename = "/" + filename;
   if (LittleFS.remove(filename)) {
     server.sendHeader("Location", "/");
-    server.send(303);  // Redirect back to root
+    server.send(303);  // back to root
   } else {
     server.send(500, "text/plain", "Failed to delete file: " + filename);
   }
@@ -1071,7 +1071,7 @@ void startUploader() {
   }
 
   WiFi.begin(ssid, password);
-  tft.println("Utility to transfer files to LittleFS.\n");
+  tft.println("Transfers files from/to LittleFS.\n");
   tft.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -1089,16 +1089,14 @@ void startUploader() {
 
   server.begin();
 
-  tft.println("\n\n\nMove encoder when finished uploading.");
+  tft.println("\n\n\nMove encoder when finished.");
 }
 
 void runUpLoader() {
 
   while (true) {
-
     server.handleClient();
     if (clw || cclw){
-      fastBoot = true;
       ESP.restart();
     }
   }

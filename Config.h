@@ -425,7 +425,7 @@ uint16_t buttonSelected = 4;  // 4-11
 
 
 // Web
-uint8_t imageSelector = 0;
+uint8_t downloadSelector = 0;
 bool swappedJPEG = false;
 int yShift = 0;
 int xShift = 0;
@@ -437,10 +437,12 @@ const char* host2 = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/339
 //const char* host3 = "https://www.sws.bom.gov.au/Images/SOLROT/noscript/SOL_IMG_2.jpg";
 const char* host3 = "https://www.sws.bom.gov.au/Images/SOLROT/noscript/SOL_IMG_9.jpg";
 const char* host4 = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/CAM/GEOCOLOR/1000x1000.jpg";
-const char* host5 = "https://services.swpc.noaa.gov/images/animations/d-rap/global/d-rap/latest.png";
+const char* host5 = "https://services.swpc.noaa.gov/images/animations/d-rap/global/latest.png";
 
 const char* al = "https://services.swpc.noaa.gov/products/alerts.json";     // Spaceweather alerts from NOAA
 const char* fr = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";  // Forecast from NOAA
+
+const char* eibi = "https://www.eibispace.de/dx/sked-b25.csv"; //EIBI SW station list
 
 //##########################################################################################################################//
 // structures

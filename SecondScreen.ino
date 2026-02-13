@@ -38,8 +38,8 @@ void drawSecBtns() {
     { 270, 155, "3D" },
     { 18, 190, "Assign" },
     { 18, 210, "VFO" },
-    { 100, 190, "" },
-    { 100, 210, "" },
+    { 100, 190, "Search" },
+    { 100, 210, "EiBi" },
     { 190, 200, "BFO" },
     { 182, 208, " " },
     { 273, 200, "Attn." },
@@ -126,6 +126,7 @@ void readSecBtns() {
       vfoMenu();
       break;
     case 32:
+     showEiBiStations(FREQ);
       break;
     case 33:
       setBFO();
@@ -391,3 +392,130 @@ void clearNotification() {
 
   tft.fillRect(5, 75, 330, 16, TFT_BLACK);
 }
+
+
+//##########################################################################################################################//
+
+
+
+
+void showEiBiStations(uint32_t FREQ) {
+  
+  
+  
+  float targetFreq = (float)FREQ / 1000.0;
+  if (targetFreq > 30000) 
+      return;
+
+
+  File file = LittleFS.open("/sked-b25.lst", FILE_READ);
+  if (!file) {
+    Serial_println("Failed to open file");
+    return;
+  }
+
+
+
+
+
+  etft.setTTFFont(Arial_14);
+
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_YELLOW);
+  tft.setCursor(0, 0);
+  tft.printf("Listing stations at %5.1f KHz...\n", targetFreq );
+  tft.println(); 
+
+
+
+  bool found = false;
+
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0) continue;
+
+    // Each row must chave 10 semicolons
+    int semicolons = 0;
+    for (int i = 0; i < line.length(); i++) {
+      if (line[i] == ';') semicolons++;
+    }
+    if (semicolons != 10) continue;
+
+    // Extract frequency (first field)
+    int sepIndex = line.indexOf(';');
+    if (sepIndex == -1) continue;
+    float freq = line.substring(0, sepIndex).toFloat();
+
+    // Small frequency error allowed
+    if (abs(freq - targetFreq) < 0.5) {
+      found = true;
+
+      // Extract fields, only the first 5 are interesting
+      String fields[5];
+      int start = 0;
+      for (int f = 0; f < 5; f++) {
+        int idx = line.indexOf(';', start);
+        if (idx == -1) {
+          fields[f] = line.substring(start);
+          break;
+        } else {
+          fields[f] = line.substring(start, idx);
+          start = idx + 1;
+        }
+      }
+
+     const uint16_t cls[5] = {TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_WHITE, TFT_WHITE};
+     const uint8_t colWidths[4] = {10, 6, 4, 19}; 
+
+
+for (int f = 1; f < 5; f++) {
+  tft.setTextColor(cls[f-1]);
+
+  String field = fields[f];
+  if (field.length() > colWidths[f-1]) {
+    field = field.substring(0, colWidths[f-1]); // cut lengths
+  }
+
+  tft.printf("%-*s", colWidths[f-1], field.c_str());
+}
+tft.println(); 
+
+    }
+  }
+
+  file.close();
+
+   tft.fillRect(0,0,480, 16, TFT_BLACK); 
+   tft.setCursor (0,0);
+   tft.setTextColor(TFT_YELLOW);
+   tft.print("UTC - UTC ");
+   tft.setTextColor(TFT_GREEN);
+   tft.print("Days ");  
+    tft.setTextColor(TFT_CYAN);
+   tft.print("Cntry ");
+   tft.setTextColor(TFT_WHITE);
+   tft.print("Station name ");
+
+
+  if (!found) {
+    tft.fillScreen(TFT_BLACK);
+    tft.setCursor(0, 0);
+    tft.setTextColor(TFT_RED);
+    tft.println("No stations found.");
+    delay(1000);
+    rebuildMainScreen(false);
+     return;
+  }
+
+  while (true) { 
+  
+  uint16_t z = tft.getTouchRawZ();
+  
+  if ((z > 300) || clw || cclw || digitalRead(ENCODER_BUTTON) == LOW) { // touch, encoder moved or pressed
+     rebuildMainScreen(false);
+     return;
+  }
+ }
+}
+

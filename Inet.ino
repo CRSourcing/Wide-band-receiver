@@ -20,7 +20,7 @@ void connectWIFI() {
 //##########################################################################################################################//
 
 
-void getimage(bool fill) {  // downloads a jpg or png file
+void downloadFile(bool fill) {  // downloads a jpg or png file
 
   if (fill)
     tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
@@ -30,20 +30,28 @@ void getimage(bool fill) {  // downloads a jpg or png file
     LittleFS.format();
     ESP.restart();
   } else
-    tft.printf("\n\nLittleFS mounted\nDownloading...");
+    tft.printf("\n\nLittleFS mounted\n\nDownloading...");
 
-  File file = LittleFS.open("/image.img", FILE_WRITE);
+  
+File file;  
 
-  if (!file) {
+if (downloadSelector < 6) {
+    file = LittleFS.open("/image.img", FILE_WRITE);
+} else {
+    file = LittleFS.open("/sked-b25.lst", FILE_WRITE); // EiBi station list must not end with .csv (no automatic load)
+
+}
+
+if (!file) {
     tft.print("Failed to open file for writing\n");
     return;
-  }
+}
 
   WiFiClientSecure client;
   HTTPClient http;
   client.setInsecure();  // Do not use HTTPS certificate
 
-  switch (imageSelector) {  // use the predefined URL's
+  switch (downloadSelector) {  // use the predefined URL's
     case 0:
       break;
     case 1:
@@ -61,9 +69,14 @@ void getimage(bool fill) {  // downloads a jpg or png file
     case 5:
       http.begin(client, host5);
       break;
+      case 6:
+      http.begin(client, eibi);
+      break;  
   }
 
-  int httpCode = http.GET();
+  int16_t httpCode = http.GET();
+
+  Serial.printf("HTTP code %d\n", httpCode);
   if (httpCode == HTTP_CODE_OK) {
     http.writeToStream(&file);
     tft.println("\nDownload successful");
@@ -73,6 +86,7 @@ void getimage(bool fill) {  // downloads a jpg or png file
 
   file.close();
   http.end();  // Close connection
+  delay(1000);
 }
 
 
@@ -138,8 +152,8 @@ void drawIBtns() {
   };
 
   Button buttons[] = {
-    { 20, 190, "" },
-    { 20, 210, "" },
+    { 20, 133, "EiBi" },
+    { 20, 153, "List" },
     { 100, 190, "SW" },
     { 100, 210, "Fade" },
     { 190, 200, "Earth" },
@@ -181,23 +195,31 @@ void readIBtns() {
     pressSound = false;  // avoid squeaking sound while rebooting
 
   switch (buttonID) {
+    case 21:
+    downloadSelector = 6; // EiBi station list
+    connectWIFI();
+    downloadFile(true);
+    WiFi.disconnect();
+    preferences.putBool("fB", true);  // set fastboot
+    ESP.restart();
+    break;
     case 31:  // propagation forecast
       break;
     case 32:  // SW fade map
-      imageSelector = 1;
+      downloadSelector = 1;
       swappedJPEG = false;
       xShift = -40;
       JPEGWrapper(15);
       break;
     case 33:  // globe view
-      imageSelector = 2;
+      downloadSelector = 2;
       swappedJPEG = true;
       xShift = +60;
       yShift = -10;
       JPEGWrapper(15);
       break;
     case 34:  // sun image
-      imageSelector = 3;
+      downloadSelector = 3;
       swappedJPEG = true;
       yShift = -70;
       JPEGWrapper(15);
@@ -207,14 +229,14 @@ void readIBtns() {
       reportWrapper(30);
       break;
     case 42:
-      imageSelector = 4;  // Central America sat image
+      downloadSelector = 4;  // Central America sat image
       swappedJPEG = true;
       xShift = -420;
       yShift = -620;
       JPEGWrapper(15);
       break;
     case 43:
-      imageSelector = 5;  // condition map
+      downloadSelector = 5;  // condition map
       xShift = 0;
       yShift = -15;
       PNGWrapper(30);
@@ -282,7 +304,7 @@ void JPEGWrapper(int cycle) {  // JPG wrapper, cycle = reload time in minutes
 
   while (true) {
     connectWIFI();
-    getimage(false);
+    downloadFile(false);
     WiFi.disconnect();
     displayJpeg();
     for (long i = 0; i < cycle * 600; i++) {
@@ -299,7 +321,7 @@ void PNGWrapper(int cycle) {
 
   while (true) {
     connectWIFI();
-    getimage(false);
+    downloadFile(false);
     WiFi.disconnect();
     displayPNG();
     for (long i = 0; i < cycle * 600; i++) {
