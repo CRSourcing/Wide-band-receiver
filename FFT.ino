@@ -759,7 +759,6 @@ void updateDisp() {
   const int width   = FRAMEBUFFER_STRETCHED_WIDTH;
   const int height  = lower - upper;
 
- 
   // Push  entire framebuffer 
   tft.pushImage(startX, upper, width, height, framebuffer1);
 }
@@ -878,8 +877,6 @@ void audioScan() {  //  240 channels spectrum in slow scan mode
   for (int strX = 0; strX < FRAMEBUFFER_FULL_WIDTH; strX++) {
     stretchedX[strX] = round(strX * stretch);  // Precalculate stretchedX;
   }
-
-
 
   FFTSample(512, 0, false);
 

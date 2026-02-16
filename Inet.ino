@@ -152,8 +152,8 @@ void drawIBtns() {
   };
 
   Button buttons[] = {
-    { 20, 133, "EiBi" },
-    { 20, 153, "List" },
+    { 20, 190, "EiBi" },
+    { 20, 210, "List" },
     { 100, 190, "SW" },
     { 100, 210, "Fade" },
     { 190, 200, "Earth" },
@@ -196,14 +196,14 @@ void readIBtns() {
 
   switch (buttonID) {
     case 21:
+    break;
+    case 31:  
     downloadSelector = 6; // EiBi station list
     connectWIFI();
     downloadFile(true);
     WiFi.disconnect();
     preferences.putBool("fB", true);  // set fastboot
     ESP.restart();
-    break;
-    case 31:  // propagation forecast
       break;
     case 32:  // SW fade map
       downloadSelector = 1;

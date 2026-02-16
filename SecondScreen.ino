@@ -395,14 +395,11 @@ void clearNotification() {
 
 
 //##########################################################################################################################//
-
-
-
-
+// EiBi list viewer
 void showEiBiStations(uint32_t FREQ) {
   
   
-  
+
   float targetFreq = (float)FREQ / 1000.0;
   if (targetFreq > 30000) 
       return;

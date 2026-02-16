@@ -1,4 +1,5 @@
 
+
 void SDCard() {  // SDCard functions are here
 
   if (!altStyle)  // clear  background
@@ -68,9 +69,9 @@ void drawSDBtns() {
 
   etft.setTextColor(TFT_SKYBLUE);
   etft.setCursor(100, 245);
-  etft.print("WIFI");
+  etft.print("USE");
   etft.setCursor(100, 265);
-  etft.print("Upload");
+  etft.print("WIFI");
 
   etft.setTextColor(textColor);
   tDoublePress();
@@ -186,8 +187,6 @@ void readSDCard(bool close) {  // 0 = read and close,  1 = leave open
 
   tft.print("\nTouch to continue");
   tDoublePress();
-
-  drawSdJpeg("/armap.jpg", 0, 0);  // draw Jpeg for testing
 
   tDoublePress();
 
@@ -877,21 +876,25 @@ void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ lo
 
 //##########################################################################################################################//
 //##########################################################################################################################//
-// WIFI LittleFS uploader
-
+// WIFI upload/download to LittleFS or SDCard
 WebServer server(80);
 
-void handleRoot() {
-size_t total = LittleFS.totalBytes(); 
-size_t used = LittleFS.usedBytes(); 
-size_t free = total - used;
+bool useLittleFS = true;
+fs::FS* storage;
+File uploadFile;
 
+// ------------------ Handlers ------------------
+
+void handleRoot() {
+  size_t total = useLittleFS ? LittleFS.totalBytes() : 0;
+  size_t used = useLittleFS ? LittleFS.usedBytes() : 0;
+  size_t free = total - used;
 
   String html = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ESP32 File Manager</title>
+  <title>Receiver upload/download utility</title>
   <style>
     .progress-container { margin: 5px 0; }
     .progress-bar {
@@ -900,35 +903,45 @@ size_t free = total - used;
   </style>
 </head>
 <body>
-  <h2>LittleFS upload/download utility</h2>
+  <h2>Receiver upload/download utility</h2>
+)rawliteral";
+
+  html += "<p>Backend: " + String(useLittleFS ? "LittleFS" : "SD") + "</p>";
+  html += "<form action='/switch' method='get'>";
+  html += "<button type='submit'>Switch to " + String(useLittleFS ? "SDCard" : "LittleFS") + "</button>";
+  html += "</form>";
+
+  if (useLittleFS) {
+    html += "<p>Total: " + String(total) + " bytes</p>";
+    html += "<p>Used: " + String(used) + " bytes</p>";
+    html += "<p>Free: " + String(free) + " bytes</p>";
+  }
+
+  html += R"rawliteral(
+  <hr>
+  <h3>Upload Files:</h3>
   <input type="file" id="files" multiple>
   <button onclick="uploadFiles()">Upload</button>
   <div id="status"></div>
   <hr>
-   <h3>Storage Info:</h3>
+  <h3>Stored Files:</h3>
+  <ul id='fileList'>
 )rawliteral";
 
-html += "<p>Total: " + String(total) + " bytes</p>"; 
-html += "<p>Used: " + String(used) + " bytes</p>"; 
-html += "<p>Free: " + String(free) + " bytes</p>"; 
-html += "<hr><h3>Stored Files:</h3><ul id='fileList'>";
-
-
-
-
   // File listing
-  File root = LittleFS.open("/");
-  File file = root.openNextFile();
-  while (file) {
-    String name = file.name();
-    String displayName = name;
-    if (displayName.startsWith("/")) displayName = displayName.substring(1);
-
-    size_t size = file.size();
-    html += "<li>" + displayName + " (" + String(size) + " bytes) ";
-    html += "<a href='/download?file=" + displayName + "'>Download</a> ";
-    html += "<a href='/delete?file=" + displayName + "'>Delete</a></li>";
-    file = root.openNextFile();
+  File root = storage->open("/");
+  if (root) {
+    File file = root.openNextFile();
+    while (file) {
+      String name = file.name();
+      if (name.startsWith("/")) name = name.substring(1);
+      size_t size = file.size();
+      html += "<li>" + name + " (" + String(size) + " bytes) ";
+      html += "<a href='/download?file=" + name + "'>Download</a> ";
+      html += "<a href='/delete?file=" + name + "'>Delete</a></li>";
+      file = root.openNextFile();
+    }
+    root.close();
   }
 
   html += R"rawliteral(
@@ -969,16 +982,15 @@ function uploadFiles() {
         const percent = (e.loaded / e.total) * 100;
         bar.style.width = percent + "%";
         bar.textContent = Math.round(percent) + "%";
-        bar.style.background = "blue"; // consistent during upload
       }
     };
     xhr.onload = function() {
       if (xhr.status == 200) {
-        bar.style.background = "blue"; // success
+        bar.style.background = "blue";
         label.textContent = "Uploaded " + file.name;
-        refreshFileList(); // update listing immediately
+        refreshFileList();
       } else {
-        bar.style.background = "red"; // error
+        bar.style.background = "red";
         label.textContent = "Error uploading " + file.name;
       }
     };
@@ -994,41 +1006,28 @@ function uploadFiles() {
 
   server.send(200, "text/html", html);
 }
+//##########################################################################################################################//
 
 void handleUpload() {
   HTTPUpload& upload = server.upload();
+  String filename = upload.filename;
+  if (!filename.startsWith("/")) filename = "/" + filename;
 
   if (upload.status == UPLOAD_FILE_START) {
-    String filename = upload.filename;
-    if (!filename.startsWith("/")) filename = "/" + filename;
-    Serial_printf("Upload start: %s\n", filename.c_str());
-    File f = LittleFS.open(filename, FILE_WRITE);
-    if (!f) {
-      Serial_println("Error: Failed to open file for writing");
-      server.send(500, "text/plain", "Failed to open file");
-      return;
-    }
-    f.close();
+    uploadFile = storage->open(filename, FILE_WRITE);
   } else if (upload.status == UPLOAD_FILE_WRITE) {
-    String filename = upload.filename;
-    if (!filename.startsWith("/")) filename = "/" + filename;
-    File f = LittleFS.open(filename, FILE_APPEND);
-    if (f) {
-      f.write(upload.buf, upload.currentSize);
-      f.close();
-      Serial_printf("Writing chunk: %d bytes\n", upload.currentSize);
-    }
+    if (uploadFile) uploadFile.write(upload.buf, upload.currentSize);
   } else if (upload.status == UPLOAD_FILE_END) {
-    String filename = upload.filename;
-    if (!filename.startsWith("/")) filename = "/" + filename;
-    Serial_printf("Upload complete: %s (%d bytes)\n", filename.c_str(), upload.totalSize);
-    server.send(200, "text/plain", "Upload successful: " + filename);
+    if (uploadFile) {
+      uploadFile.close();
+      server.send(200, "text/plain", "Upload successful: " + filename);
+    }
   } else if (upload.status == UPLOAD_FILE_ABORTED) {
-    Serial_println("Upload aborted by client");
+    if (uploadFile) uploadFile.close();
     server.send(400, "text/plain", "Upload aborted");
   }
 }
-
+//##########################################################################################################################//
 void handleDownload() {
   if (!server.hasArg("file")) {
     server.send(400, "text/plain", "Missing file parameter");
@@ -1036,15 +1035,15 @@ void handleDownload() {
   }
   String filename = server.arg("file");
   if (!filename.startsWith("/")) filename = "/" + filename;
-  File f = LittleFS.open(filename, FILE_READ);
+  File f = storage->open(filename, FILE_READ);
   if (!f) {
-    server.send(404, "text/plain", "File not found: " + filename);
+    server.send(404, "text/plain", "File not found");
     return;
   }
   server.streamFile(f, "application/octet-stream");
   f.close();
 }
-
+//##########################################################################################################################//
 void handleDelete() {
   if (!server.hasArg("file")) {
     server.send(400, "text/plain", "Missing file parameter");
@@ -1052,51 +1051,73 @@ void handleDelete() {
   }
   String filename = server.arg("file");
   if (!filename.startsWith("/")) filename = "/" + filename;
-  if (LittleFS.remove(filename)) {
+  if (storage->remove(filename)) {
     server.sendHeader("Location", "/");
-    server.send(303);  // back to root
+    server.send(303);
   } else {
-    server.send(500, "text/plain", "Failed to delete file: " + filename);
+    server.send(500, "text/plain", "Failed to delete file");
   }
 }
+//##########################################################################################################################//
+void handleSwitch() {
+  useLittleFS = !useLittleFS;
+  if (useLittleFS) {
+    LittleFS.begin(true);
+    storage = &LittleFS;
+    tft.println("\nSwitched to LittleFS");
+  } else {
+
+    tft.println("\nSwitched to SD");
+    readSDCard(true);
+    storage = &SD;
+  }
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+//##########################################################################################################################//
 
 void startUploader() {
-
   tft.fillScreen(TFT_BLACK);
   tft.setCursor(0, 0);
-  tft.setTextColor(TFT_WHITE);
-  if (!LittleFS.begin(true)) {
-    tft.println("LittleFS mount failed");
-    return;
+
+  if (useLittleFS) {
+    if (!LittleFS.begin(true)) {
+      tft.println("LittleFS mount failed");
+      delay(1000);
+      return;
+    }
+    storage = &LittleFS;
+  } else {
+
+
+    readSDCard(true);
+    storage = &SD;
   }
 
   WiFi.begin(ssid, password);
-  tft.println("Transfers files from/to LittleFS.\n");
-  tft.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     tft.print(".");
   }
-  tft.println("\n\nWiFi connected.");
-  tft.print("\nOpen IP in your browser:");
-  tft.print(WiFi.localIP());
+  tft.println("\n\nLittleFS and SDCard file utility.\n\nWiFi is now connected.\n\nOpen IP in browser: " + WiFi.localIP().toString());
 
   server.on("/", HTTP_GET, handleRoot);
   server.on(
     "/upload", HTTP_POST, []() {}, handleUpload);
   server.on("/download", HTTP_GET, handleDownload);
   server.on("/delete", HTTP_GET, handleDelete);
-
+  server.on("/switch", HTTP_GET, handleSwitch);
   server.begin();
-
-  tft.println("\n\n\nMove encoder when finished.");
 }
 
-void runUpLoader() {
 
+//##########################################################################################################################//
+void runUpLoader() {
   while (true) {
     server.handleClient();
-    if (clw || cclw){
+    uint16_t z = tft.getTouchRawZ();
+    if ((z > 300) || clw || cclw || digitalRead(ENCODER_BUTTON) == LOW) {  // touch, encoder moved or pressed
       ESP.restart();
     }
   }

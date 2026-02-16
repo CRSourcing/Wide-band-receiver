@@ -1053,6 +1053,7 @@ void showChannelList() {
   uint16_t startEntry = 1;
   uint16_t lastStartEntry = 0;
   uint16_t pressedEntry = 0;
+  uint32_t freqSav = FREQ;
   bool valid = true;  // eof check
 
   tft.fillScreen(ROW_BGC);
@@ -1144,6 +1145,7 @@ while (true) {
     if (digitalRead(ENCODER_BUTTON) == LOW) {
       while (digitalRead(ENCODER_BUTTON) == LOW)
         ;
+      FREQ = freqSav;
       return;
     }
   }

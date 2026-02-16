@@ -2,11 +2,11 @@
 
 
 // Settings
-#define SAMPLE_RATE 10000
+#define SAMPLE_RATE 6000
 #define SAMPLE_INTERVAL (1000000 / SAMPLE_RATE)
 #define RECORD_TIME 9999  // seconds
 #define ADC_PIN 36        // Analog sample pin
-#define BUFFER_SIZE 2048  // buffer for writing onto SD
+#define BUFFER_SIZE 4096  // buffer for writing onto SD
 
 // WAV file header structure
 typedef struct {
@@ -157,7 +157,8 @@ void wavRecord() {
         buffer[b] = (analogRead(ADC_PIN) + offsetComp) >> 4;  // 8 bit recording, need to compensate the FFT transistorcollector voltage offset from midpoint (2048)
 
         while ((int32_t)(micros() - nextSampleTime) < 0) {  // delay needed to match SAMPLE_INTERVAL
-           __asm__ volatile ("nop");
+         // __asm__ volatile ("nop");
+        buffer[b] = (analogRead(ADC_PIN) + offsetComp) >> 4; 
         }
 
         samplesRecorded++;
