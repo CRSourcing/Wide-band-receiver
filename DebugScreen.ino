@@ -149,7 +149,7 @@ void readDbgBtns() {
       }
       break;
     case 44:
-     setDac1();
+      setDac1();
       break;
     default:
       resetMainScreen();
@@ -176,16 +176,16 @@ void setLOLevel() {
   };
 
   Button buttons[] = {
-    { 203, 245, "6" }, 
-    { 193, 265, "dBm" }, 
-    { 120, 245, "3" }, 
-    { 110, 265, "dBm" }, 
-    { 290, 245, "10" }, 
-    { 280, 265, "dBm" }, 
-    { 20, 188, "" }, 
-    { 20, 210, "" }, 
-    { 20, 132, "" }, 
-    { 20, 152, "" }, 
+    { 203, 245, "6" },
+    { 193, 265, "dBm" },
+    { 120, 245, "3" },
+    { 110, 265, "dBm" },
+    { 290, 245, "10" },
+    { 280, 265, "dBm" },
+    { 20, 188, "" },
+    { 20, 210, "" },
+    { 20, 132, "" },
+    { 20, 152, "" },
     { 20, 255, "BACK" }
   };
 
@@ -470,19 +470,29 @@ void showADCs() {
 
   // labels
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setCursor(50 + width + 4, yPos1 - trH + 0);  tft.print("2.5V");
-  tft.setCursor(50 + width + 4, yPos1 - trH + 16); tft.print("2.1V");
-  tft.setCursor(50 + width + 4, yPos1 - trH + 32); tft.print("1.7V");
-  tft.setCursor(50 + width + 4, yPos1 - trH + 48); tft.print("1.2V");
-  tft.setCursor(50 + width + 4, yPos1 - trH + 63); tft.print("0.8V");
+  tft.setCursor(50 + width + 4, yPos1 - trH + 0);
+  tft.print("2.5V");
+  tft.setCursor(50 + width + 4, yPos1 - trH + 16);
+  tft.print("2.1V");
+  tft.setCursor(50 + width + 4, yPos1 - trH + 32);
+  tft.print("1.7V");
+  tft.setCursor(50 + width + 4, yPos1 - trH + 48);
+  tft.print("1.2V");
+  tft.setCursor(50 + width + 4, yPos1 - trH + 63);
+  tft.print("0.8V");
 
 
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.setCursor(50 + width + 4, yPos2 - trH + 0);  tft.print("3.3V");
-  tft.setCursor(50 + width + 4, yPos2 - trH + 16); tft.print("2.5V");
-  tft.setCursor(50 + width + 4, yPos2 - trH + 32); tft.print("1.7V");
-  tft.setCursor(50 + width + 4, yPos2 - trH + 48); tft.print("0.8V");
-  tft.setCursor(50 + width + 4, yPos2 - trH + 63); tft.print("0V");
+  tft.setCursor(50 + width + 4, yPos2 - trH + 0);
+  tft.print("3.3V");
+  tft.setCursor(50 + width + 4, yPos2 - trH + 16);
+  tft.print("2.5V");
+  tft.setCursor(50 + width + 4, yPos2 - trH + 32);
+  tft.print("1.7V");
+  tft.setCursor(50 + width + 4, yPos2 - trH + 48);
+  tft.print("0.8V");
+  tft.setCursor(50 + width + 4, yPos2 - trH + 63);
+  tft.print("0V");
 
   tft.setTextSize(2);
   tft.setTextColor(textColor);
@@ -490,7 +500,7 @@ void showADCs() {
   tft.setCursor(0, 0);
   tft.print("GPIO 36+39, ~5ms/div, move enc. to leave");
 
-  while (!(clw + cclw)) { // leave when encoder moved
+  while (!(clw + cclw)) {  // leave when encoder moved
     memset(screenBuf1, 0, width * trH * sizeof(uint16_t));
     memset(screenBuf2, 0, width * trH * sizeof(uint16_t));
 
@@ -518,11 +528,11 @@ void showADCs() {
     }
 
     // Write and use Besenham algorithm to connect
-    int prevY1 = trH  - 1 - ((analogRead(36) - dcOffset) >> 5) - 32; 
+    int prevY1 = trH - 1 - ((analogRead(36) - dcOffset) >> 5) - 32;
     int prevY2 = trH - 1 - (analogRead(39) >> 6);
 
     for (int x = 1; x < width; x++) {
-      int currY1 = trH  - 1 - ((analogRead(36) - dcOffset) >> 5) - 32; // use double vertical resolution
+      int currY1 = trH - 1 - ((analogRead(36) - dcOffset) >> 5) - 32;  // use double vertical resolution
       int currY2 = trH - 1 - (analogRead(39) >> 6);
 
       int dy1 = abs(currY1 - prevY1);
@@ -556,7 +566,6 @@ void showADCs() {
   // needs reboot since buffers use memory already allocated for sprites!?
   preferences.putBool("fB", true);
   ESP.restart();
-
 }
 
 //##########################################################################################################################//
@@ -566,16 +575,16 @@ void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner
   static int DAC = 200;
   encLockedtoSynth = false;
 
-      tft.fillCircle(155, 162, 3, TFT_BLACK); // overwrite strength indicator
-      tft.setTextColor(textColor); 
-      tft.fillRect(10, 62, 325, 55, TFT_BLACK);
-      tft.setCursor(10, 65);
-      tft.print("Set DAC1"); 
-  
+  tft.fillCircle(155, 162, 3, TFT_BLACK);  // overwrite strength indicator
+  tft.setTextColor(textColor);
+  tft.fillRect(10, 62, 325, 55, TFT_BLACK);
+  tft.setCursor(10, 65);
+  tft.print("Set DAC1");
+
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
     if (DAC != oldDAC) {
-       tft.fillCircle(155, 162, 3, TFT_BLACK); 
+      tft.fillCircle(155, 162, 3, TFT_BLACK);
 
       tft.fillRect(10, 107, 323, 20, TFT_BLACK);
       tft.setCursor(10, 107);
@@ -604,16 +613,6 @@ void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner
     ;
   encLockedtoSynth = true;
   clearStatusBar();
-
-
-
 }
 
 #endif
-
-
-
-
-
-
-

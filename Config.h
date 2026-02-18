@@ -171,6 +171,7 @@
 #define SD_CS 33  // Connect CS to GPIO33 (also used for encoder press button), all other connections in parallel to SPI bus.
 // Format SDcard as FAT32
 
+
 //FFT
 #define SAMPLES 256
 #define FFT_SPEED_OVER_PRECISION
@@ -214,6 +215,8 @@ SI4735 si4735;
 Preferences preferences;  // EEPROM save data
 PNG png;
 File myfile;
+SdFat sd; // SdFat library 
+FsFile f;
 SPIClass spiSD = SPIClass(VSPI);                // for SDcard
 DacESP32 dac2(GPIO_NUM_26), dac1(GPIO_NUM_25);  // dac2 for sine wave oscillator, dac1 for tuner AGC or SW RF attenuator
 
@@ -237,7 +240,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.551";         // version
+const char ver[] = "V.571";         // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size

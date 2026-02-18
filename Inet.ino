@@ -152,8 +152,8 @@ void drawIBtns() {
   };
 
   Button buttons[] = {
-    { 20, 190, "EiBi" },
-    { 20, 210, "List" },
+    { 20, 190, "Downl." },
+    { 20, 210, "EiBi" },
     { 100, 190, "SW" },
     { 100, 210, "Fade" },
     { 190, 200, "Earth" },

@@ -39,7 +39,7 @@ void drawCf2Btns() {
 #ifndef NBFM_DEMODULATOR_PRESENT
     { 185, 190, "NBFM" },
     { 188, 210, "Shift" },
-#else 
+#else
     { 185, 190, "Zero" },
     { 188, 210, "Discr." },
 #endif
@@ -96,8 +96,7 @@ void readCf2Btns() {
       tft.printf("Audio Waterfall: %s\n", showAudioWaterfall ? "Active" : "OFF");
       if (showAudioWaterfall) {
         tft.setCursor(10, 83);
-        tft.printf("after %ds inactivity", TIME_UNTIL_ANIMATIONS
-);
+        tft.printf("after %ds inactivity", TIME_UNTIL_ANIMATIONS);
       }
       delay(1000);
       break;
@@ -182,28 +181,28 @@ void touchCal() {
   tft.setCursor(0, 30);
   tft.print("Calibration complete!\nTouch screen with stylus\nto test different areas.\nDot must appear close to stylus\nPRESS encoder to save\nOr MOVE encoder to recalibrate\n");
   tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
-  
+
 
   while (1) {
-        if ((digitalRead(ENCODER_BUTTON) == LOW))
-          break;
-        
-        if (clw || cclw){
-        clw = false;
-        cclw = false;
-        tft.fillScreen(TFT_BLACK);
-        tft.setCursor(0, 20);
-        tft.print("Recalibration\nTouch screen with stylus\nto test different areas\n\n");
-        tft.calibrateTouch(calData, TFT_WHITE, TFT_RED, 15); 
-        tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
-        }
-        
-        get_Touch();
-        if (pressed)
-          tft.fillCircle (tx,ty,3, TFT_YELLOW);
-        pressed = false;
-        delay(10);
-         tft.fillCircle (tx,ty,3, TFT_BLACK);
+    if ((digitalRead(ENCODER_BUTTON) == LOW))
+      break;
+
+    if (clw || cclw) {
+      clw = false;
+      cclw = false;
+      tft.fillScreen(TFT_BLACK);
+      tft.setCursor(0, 20);
+      tft.print("Recalibration\nTouch screen with stylus\nto test different areas\n\n");
+      tft.calibrateTouch(calData, TFT_WHITE, TFT_RED, 15);
+      tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
+    }
+
+    get_Touch();
+    if (pressed)
+      tft.fillCircle(tx, ty, 3, TFT_YELLOW);
+    pressed = false;
+    delay(10);
+    tft.fillCircle(tx, ty, 3, TFT_BLACK);
   }
 
   //write to flash
@@ -216,10 +215,9 @@ void touchCal() {
   // Apply calibration data
   tft.setTouch(calData);
 
- tft.print("Calibration data saved.");
+  tft.print("Calibration data saved.");
 
-delay(1000);
-
+  delay(1000);
 }
 
 //##########################################################################################################################//
@@ -420,7 +418,7 @@ void zeroDiscriminator(void) {
   tft.setTextSize(1);
   displayText(10, 64, 0, 0, "Tune to strong signal w. precise frequency.");
   displayText(10, 76, 0, 0, "Adjust encoder for lowest reading.");
-   displayText(10, 90, 0, 0, "Press encoder to leave.");
+  displayText(10, 90, 0, 0, "Press encoder to leave.");
   tft.setTextSize(2);
   tft.setCursor(10, 105);
   tft.printf("Voltage: %d", afcVoltage * 5);
@@ -444,7 +442,7 @@ void zeroDiscriminator(void) {
 
       tft.fillRect(10, 105, 325, 20, TFT_BLACK);
       tft.setCursor(10, 105);
-      tft.printf("Voltage: %d", afcVoltage * 5); // discriminator voltage gets divided by 5 to feed the meter, so this should match
+      tft.printf("Voltage: %d", afcVoltage * 5);  // discriminator voltage gets divided by 5 to feed the meter, so this should match
     }
 
 

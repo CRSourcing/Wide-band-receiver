@@ -400,26 +400,28 @@ void showEiBiStations(uint32_t FREQ) {
   
   
 
-  float targetFreq = (float)FREQ / 1000.0;
-  if (targetFreq > 30000) 
-      return;
-
-
-  File file = LittleFS.open("/sked-b25.lst", FILE_READ);
-  if (!file) {
-    Serial_println("Failed to open file");
-    return;
-  }
-
-
-
-
-
   etft.setTTFFont(Arial_14);
-
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_YELLOW);
   tft.setCursor(0, 0);
+
+
+  float targetFreq = (float)FREQ / 1000.0;
+  if (targetFreq > 30000) {
+      tft.println("Shortwave only.");
+      delay(1000);
+      rebuildMainScreen(false);
+      return;
+  }
+
+  File file = LittleFS.open("/sked-b25.lst", FILE_READ);
+  if (!file) {
+    tft.println("Failed to open file\n Open WebTools and download Eibi list");
+    delay(1000);
+    rebuildMainScreen(false); 
+    return;
+  }
+
   tft.printf("Listing stations at %5.1f KHz...\n", targetFreq );
   tft.println(); 
 

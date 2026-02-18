@@ -39,19 +39,20 @@ void drawSDBtns() {
     { 265, 151, "to SD" },
     { 20, 188, "Show" },
     { 14, 210, "LittleFS" },
-    { 100, 188, "Delete" },
-    { 100, 210, "SDfiles" },
-    { 183, 190, "Record" },
-    { 183, 210, "Audio" },
+    { 100, 188, "" },
+    { 100, 210, "" },
     /*
+    { 183, 190, "" },
+    { 183, 210, "" },
+    
     { 265, 190, "  "}, 
     { 270, 210, "  "}, 
-    { 265, 245, "  "}, 
-    { 263, 268, "  "}, 
-    { 183, 245, " " }, 
-    { 183, 268, "  "}, 
-  
-  */
+    */
+    { 265, 245, "Play" },
+    { 263, 268, "Audio" },
+
+    { 183, 245, "Record" },
+    { 183, 268, "Audio" }
   };
 
 
@@ -67,11 +68,11 @@ void drawSDBtns() {
   etft.setCursor(20, 254);
   etft.print("BACK");
 
-  etft.setTextColor(TFT_SKYBLUE);
-  etft.setCursor(100, 245);
-  etft.print("USE");
-  etft.setCursor(100, 265);
+  etft.setTextColor(TFT_GREEN);
+  etft.setCursor(105, 245);
   etft.print("WIFI");
+  etft.setCursor(100, 265);
+  etft.print("Sync");
 
   etft.setTextColor(textColor);
   tDoublePress();
@@ -110,13 +111,8 @@ void readSDBtns() {
         rebuildMainScreen(1);
       break;
     case 32:
-      deleteRecursive(SD, "/");
-      preferences.putBool("fB", true);
-      ESP.restart();
       break;
     case 33:
-      wavRecord();
-      rebuildMainScreen(1);
       break;
     case 34:
       break;
@@ -127,8 +123,11 @@ void readSDBtns() {
       runUpLoader();
       break;
     case 43:
+      wavRecord();
+      rebuildMainScreen(1);
       break;
     case 44:
+      playWavFile();
       break;
     default:
       resetMainScreen();
@@ -185,10 +184,12 @@ void readSDCard(bool close) {  // 0 = read and close,  1 = leave open
   if (close)
     return;
 
-  tft.print("\nTouch to continue");
-  tDoublePress();
 
-  tDoublePress();
+  while (true) {
+    uint16_t z = tft.getTouchRawZ();
+    if ((z > 300) || clw || cclw || digitalRead(ENCODER_BUTTON) == LOW)  // touch, encoder moved or pressed
+      break;
+  }
 
   SD.end();
   preferences.putBool("fB", true);
@@ -793,39 +794,7 @@ void createMemoInfoCSVIfNotExist() {
 
 //##########################################################################################################################//
 
-void deleteRecursive(fs::FS& fs, const char* path) {
 
-  mountSDCard();
-
-  File root = fs.open(path);
-  if (!root) {
-    Serial_println("Failed to open directory");
-    return;
-  }
-  if (!root.isDirectory()) {
-    Serial_println("Not a directory");
-    return;
-  }
-
-  File file = root.openNextFile();
-  while (file) {
-    String filePath = String(path) + "/" + file.name();
-    if (file.isDirectory()) {
-      deleteRecursive(fs, filePath.c_str());
-      fs.rmdir(filePath.c_str());
-      Serial_printf("Removed folder: %s\n", filePath.c_str());
-    } else {
-      fs.remove(filePath.c_str());
-      Serial_printf("Deleted file: %s\n", filePath.c_str());
-    }
-    file = root.openNextFile();
-  }
-  root.close();
-}
-
-
-
-//##########################################################################################################################//
 
 void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ log buffer
   // Read max 400 char
@@ -903,7 +872,7 @@ void handleRoot() {
   </style>
 </head>
 <body>
-  <h2>Receiver upload/download utility</h2>
+  <h2>Receiver upload/download utility. Copies files to/from LittleFS or SD Card.</h2>
 )rawliteral";
 
   html += "<p>Backend: " + String(useLittleFS ? "LittleFS" : "SD") + "</p>";
@@ -1064,10 +1033,8 @@ void handleSwitch() {
   if (useLittleFS) {
     LittleFS.begin(true);
     storage = &LittleFS;
-    tft.println("\nSwitched to LittleFS");
+    listLittleFSFiles();
   } else {
-
-    tft.println("\nSwitched to SD");
     readSDCard(true);
     storage = &SD;
   }
@@ -1100,7 +1067,8 @@ void startUploader() {
     delay(500);
     tft.print(".");
   }
-  tft.println("\n\nLittleFS and SDCard file utility.\n\nWiFi is now connected.\n\nOpen IP in browser: " + WiFi.localIP().toString());
+  tft.println("\n\nUpload/download files via WIFI.\n\nWiFi is now connected.\n\nOpen IP in browser: " + WiFi.localIP().toString());
+  tft.println("\n\nMove encoder when finished.");
 
   server.on("/", HTTP_GET, handleRoot);
   server.on(

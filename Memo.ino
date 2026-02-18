@@ -662,7 +662,7 @@ void readPicoButtons() {
     case 43:
       showChannelList();
       si4735.setHardwareAudioMute(false);
-      cRow = 0; // reset channel row
+      cRow = 0;  // reset channel row
       return;
     case 44:
       return;
@@ -716,7 +716,7 @@ void tuneSingleChannel() {
 
     pressed = tft.getTouch(&tx, &ty);
     if (pressed && (tx >= button1X && tx <= (button1X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH)))  // go back to first row
-      load_channel(start, false, 0, false,true);
+      load_channel(start, false, 0, false, true);
 
     if (pressed && (tx >= button2X && tx <= (button2X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH))) {  // exit
       tRel();
@@ -740,7 +740,7 @@ void tuneSingleChannel() {
       drawSingleChannelButtons();
       redrawIndicators();
       drawBigBtns();
-      load_channel(next, false, keyVal, true,true);
+      load_channel(next, false, keyVal, true, true);
     }
 
 
@@ -754,7 +754,7 @@ void tuneSingleChannel() {
       if (clw)
         load_channel(next, false, 1, false, true);
       else if (cclw)
-        load_channel(last, false, 1, false,true);
+        load_channel(last, false, 1, false, true);
 
       clw = false;
       cclw = false;
@@ -1114,19 +1114,19 @@ void showChannelList() {
       redrawIndicators();
       si4735.setHardwareAudioMute(false);
 
-while (true) {
-    playCurrentChannel();
+      while (true) {
+        playCurrentChannel();
 
-    if (digitalRead(ENCODER_BUTTON) == LOW) 
-       break;
+        if (digitalRead(ENCODER_BUTTON) == LOW)
+          break;
 
-    if (clw || cclw) {
-        pressedEntry += clw ? 1 : -1;
-        load_channel(0, true, pressedEntry, true, false);
-        clw = false;
-        cclw = false;
-    }
-}
+        if (clw || cclw) {
+          pressedEntry += clw ? 1 : -1;
+          load_channel(0, true, pressedEntry, true, false);
+          clw = false;
+          cclw = false;
+        }
+      }
 
       extractAndShowRows(startEntry, ENTRIES);  // back to row screen rebuild rows
       tft.fillRect(0, 264, 480, 56, ROW_BGC);   // overwrite artefacts
