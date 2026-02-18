@@ -26,8 +26,8 @@
 //#define TFT_INVERSION_ON// Uncomment if the image is inverted.
 
 
-const char* ssid = "MMV2025";        // WIFI credentials needed for web tools and LittleFS uploader
-const char* password = "Pekita#2020";// WIFI credentials needed for web tools and LittleFS uploader
+const char* ssid = "YourSSID";        // WIFI credentials needed for web tools and LittleFS uploader
+const char* password = "YourPw";// WIFI credentials needed for web tools and LittleFS uploader
 
 //##########################################################################################################################//
 
