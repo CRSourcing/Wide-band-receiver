@@ -1,4 +1,4 @@
-Please upload the files in this folder to the ESP32 LittleFS. Either copy to SDcard and upload via receiver menu, or, or use arduino ide with the LittleFS Uploader (https://github.com/earlephilhower/arduino-littlefs-upload).
+Please upload the files in this folder to the ESP32 LittleFS. Either use "WIFI Sync", or or use arduino ide with the LittleFS Uploader (https://github.com/earlephilhower/arduino-littlefs-upload).
 
 Edit the CSV files as you please (for example frequencies and station names), but do not change the format.
 
