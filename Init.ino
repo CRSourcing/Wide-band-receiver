@@ -5,9 +5,9 @@ void bootScreen() {
   tft.init();
 
 #ifdef FLIP_IMAGE
- tft.setRotation(3);
+  tft.setRotation(3);
 #else
-tft.setRotation(1);
+  tft.setRotation(1);
 #endif
 
 
@@ -39,18 +39,17 @@ tft.setRotation(1);
 
   tft.fillScreen(TFT_BLACK);
   fastBoot = preferences.getBool("fB", 0);
- 
- if (!fastBoot) {
- 
+
+  if (!fastBoot) {
+
 #ifdef SHOW_SPLASHSCREEN
     LittleFS.begin(true);  // bool formatOnFail = true
-    if (LittleFS.exists("/splash.jpg")){
-    swappedJPEG = true;    // depends on file format
-    Serial.print("Loading splash\n");
-    drawJpeg("/splash.jpg", 0, 0);
-    } 
-   else 
-     Serial.print("splash not found\n");
+    if (LittleFS.exists("/splash.jpg")) {
+      swappedJPEG = true;  // depends on file format
+      Serial.print("Loading splash\n");
+      drawJpeg("/splash.jpg", 0, 0);
+    } else
+      Serial.print("splash not found\n");
     LittleFS.end();
 #endif
     tft.setTextSize(3);
@@ -91,10 +90,9 @@ tft.setRotation(1);
       si4735.setDeviceI2CAddress(1);
     }
   }
-   
- if (fastBoot) 
-   preferences.putBool("fB", false);  // remove fastboot flag
 
+  if (fastBoot)
+    preferences.putBool("fB", false);  // remove fastboot flag
 }
 //##########################################################################################################################//
 
@@ -193,7 +191,7 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
 
 
 #ifdef SI5351_GENERATES_CLOCKS
-  si4735.setPowerUp(0, 0, 0, 0, 1, 5); 
+  si4735.setPowerUp(0, 0, 0, 0, 1, 5);
 
 #else
   si4735.setPowerUp(0, 0, 0, 1, 1, 5);
@@ -232,7 +230,7 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
   digitalWrite(IF_FILTER_BANDWIDTH_PIN, HIGH);  // default use wide IF filter
   digitalWrite(NBFM_MUTE_PIN, LOW);             // LOW means the NBFM demodulator is muted
 
-  loadSi4735parameters(); // finally load the parameters 
+  loadSi4735parameters();  // finally load the parameters
 }
 
 //##########################################################################################################################//
@@ -244,7 +242,7 @@ void tinySAInit() {
   //delay(50);
 
 #ifdef TINYSA_PRESENT
-  loadRFMode();
+  initTSA();
   delay(50);
   Serial_println("marker 2 peak");
 #endif
@@ -314,8 +312,8 @@ void drawBigBtns() {
   }
 
 
-    tft.setTextFont(4); 
-    tft.setTextSize(1); 
+  tft.setTextFont(4);
+  tft.setTextSize(1);
   if (!scanMode) {
     if (!showMeters) {
       tft.setTextColor(TFT_GREEN);
@@ -329,8 +327,8 @@ void drawBigBtns() {
       tft.setTextColor(textColor);
     tft.setCursor(375, 240);
     tft.print("MODE");
- 
-    
+
+
   }
 
 
@@ -355,7 +353,7 @@ void drawBigBtns() {
     tft.setTextSize(2);
     tft.setTextColor(textColor);
   }
-  tft.setTextFont(1);  
+  tft.setTextFont(1);
   tft.setTextSize(2);
 }
 
@@ -366,7 +364,7 @@ void drawBigBtns() {
 void loadLastSettings() {
 
 
-  pinMode(ENCODER_BUTTON, INPUT_PULLUP);  // needed during while(true)
+  pinMode(ENCODER_BUTTON, INPUT_PULLUP);  // needed during while (true)
 
 
 
@@ -388,14 +386,14 @@ void loadLastSettings() {
   showAudioWaterfall = preferences.getBool("audiowf", 0);    // Audio waterfall after 2 minutes of inactivity
   showPanorama = preferences.getBool("showPan", 0);          // show +- 500 KHz when squelch closed
   NBFMOffset = preferences.getInt("NBFMOffset", 0);          // Offset to demodulate NBFM on flank
-  showMeters = preferences.getBool("sM", 0);                 // meters cause a lot of traffic on SPI (and noise)
+  showMeters = preferences.getBool("sM", 0);                 // meters cause a lot of traffic on SPI(and noise)
   tunerOffsetPPM = preferences.getInt("tunerOffsetPPM", 0);  // tuner crystal frequency correction
   RFGainCorrection = preferences.getInt("rfgc", 6);          // adjust gain for preamp/filter
   FFTGain = preferences.getInt("FFTGain", 100);              // initial gain for FFT analysis
-  discriminatorZero = preferences.getInt("dZero", 100);
+  discriminatorZero = preferences.getInt("dZero", 2048);
   initialGain = preferences.getUChar("agcS", 200);  // tuner agc start value.
   funEnabled = preferences.getBool("fun", 0);
-  useNixieDial = preferences.getBool("dial", 0); 
+  useNixieDial = preferences.getBool("dial", 0);
 
   Serial_printf("\n%-35s %s\n", "Settings loaded:", "");
   Serial_printf("%-35s %ld Khz\n", "FREQ:", FREQ / 1000);
@@ -419,59 +417,57 @@ void loadLastSettings() {
   Serial_printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
   tRel();
 
-if (! fastBoot) { // provide option to calibrate touchscreen
- 
-  for (int i = 0; i < 2000; i++) {
-    delay(1);
-    get_Touch();
+  if (!fastBoot) {  // provide option to calibrate touchscreen
 
-    if (pressed) {
-      tft.setTextSize(1);
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(0, 0);
-      tft.println("Settings loaded:\n");
-      tft.printf("FREQ: %ld Khz\n", FREQ / 1000);
-      tft.printf("IF: %d Khz\n", SI4735TUNED_FREQ);
-      tft.printf("Mod Type: %d\n", modType);
-      tft.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
-      tft.printf("Mini Window Mode: %d\n", miniWindowMode);
-      tft.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
-      tft.printf("Sprite Style: %d\n", buttonSelected);
-      tft.printf("Loop bands when tuning: %s\n", loopBands ? "Yes" : "No");
-      tft.printf("Show analog meters: %s\n", showMeters ? "Yes" : "No");
-      tft.printf("Smooth Waterfall Colors: %s\n", smoothColorGradient ? "Yes" : "No");
-      tft.printf("Audio Waterfall after inactivity: %s\n", showAudioWaterfall ? "Yes" : "No");
-      tft.printf("Touch tune mode: %d\n", preferences.getChar("tGr", 0));
-      tft.printf("Master Volume: %d\n", preferences.getChar("Vol", 50));
-      tft.printf("NBFM Offset: %d\n", NBFMOffset);
-      tft.printf("RF Gain Correction: %d\n", RFGainCorrection);
-      tft.printf("TV Tuner Offset: %dppm\n", tunerOffsetPPM);
-      tft.printf("Show panorama when squelch closed %s\n", showPanorama ? "Yes" : "No");
-      tft.printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
-      tft.printf("%-35s %d\n", "Tuner AGC start value", initialGain);
-      tft.setTextSize(2);
-      tft.setTextColor(TFT_RED);
-      tft.print("\nPress encoder for touch calibration,\nor touch the screen to continue.");
-      tft.setTextColor(textColor);
+    for (int i = 0; i < 2000; i++) {
+      delay(1);
+      get_Touch();
 
-      tRel();
+      if (pressed) {
+        tft.setTextSize(1);
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(0, 0);
+        tft.println("Settings loaded:\n");
+        tft.printf("FREQ: %ld Khz\n", FREQ / 1000);
+        tft.printf("IF: %d Khz\n", SI4735TUNED_FREQ);
+        tft.printf("Mod Type: %d\n", modType);
+        tft.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
+        tft.printf("Mini Window Mode: %d\n", miniWindowMode);
+        tft.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
+        tft.printf("Sprite Style: %d\n", buttonSelected);
+        tft.printf("Loop bands when tuning: %s\n", loopBands ? "Yes" : "No");
+        tft.printf("Show analog meters: %s\n", showMeters ? "Yes" : "No");
+        tft.printf("Smooth Waterfall Colors: %s\n", smoothColorGradient ? "Yes" : "No");
+        tft.printf("Audio Waterfall after inactivity: %s\n", showAudioWaterfall ? "Yes" : "No");
+        tft.printf("Touch tune mode: %d\n", preferences.getChar("tGr", 0));
+        tft.printf("Master Volume: %d\n", preferences.getChar("Vol", 50));
+        tft.printf("NBFM Offset: %d\n", NBFMOffset);
+        tft.printf("RF Gain Correction: %d\n", RFGainCorrection);
+        tft.printf("TV Tuner Offset: %dppm\n", tunerOffsetPPM);
+        tft.printf("Show panorama when squelch closed %s\n", showPanorama ? "Yes" : "No");
+        tft.printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
+        tft.printf("%-35s %d\n", "Tuner AGC start value", initialGain);
+        tft.setTextSize(2);
+        tft.setTextColor(TFT_RED);
+        tft.print("\nPress encoder for touch calibration,\nor touch the screen to continue.");
+        tft.setTextColor(textColor);
 
-      while (1) {
-        if (digitalRead(ENCODER_BUTTON) == LOW) {
-          touchCal();
-          return;
-        }
+        tRel();
 
-        else if (get_Touch()) {
-          pressed = false;
-          return;
+        while (true) {
+          if (digitalRead(ENCODER_BUTTON) == LOW) {
+            touchCal();
+            return;
+          }
+          
+          else if (get_Touch()) {
+            pressed = false;
+            return;
+          }
         }
       }
     }
   }
-}
-
-
 }
 
 //##########################################################################################################################//

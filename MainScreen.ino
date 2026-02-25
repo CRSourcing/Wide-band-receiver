@@ -45,8 +45,8 @@ void drawMainButtons() {
     draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
 
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char *label;
   };
 
@@ -119,18 +119,18 @@ void readMainBtns() {
 
   int buttonID = getButtonID();
 
-  if (row > 4 || column > 4 || ty > 293 || ty < 121)
-    return;                                   // outside of keypad area
-  redrawMainScreen = true;                    // save freq for returning from waterfall
+  if (!buttonID)
+    return;  // outside of area                 
+  redrawMainScreen = true; 
   tft.fillRect(135, 295, 92, 25, TFT_BLACK);  // overwrite frozen spectrum window
   switch (buttonID) {
     case 21:
 #ifdef TINYSA_PRESENT
-      tinySAScreen();
+  tinySAScreen();
+#else
+  setIFBandwidth();
 #endif
-#ifndef TINYSA_PRESENT
-      setIFBandwidth();
-#endif
+
       tRel();
       break;
 
@@ -260,11 +260,8 @@ void setBandwidth(int mode) {  // mode 0 = bandwidth selected from menu. mode -1
 
     tDoublePress();
 
-    delay(10);  // Wait until pressed
-
-    row = 1 + ((ty - 20) / vTouchSpacing);
-    column = 1 + (tx / HorSpacing);
-
+    delay(10); 
+    getButtonID();
 
     if (row == 3) {
 
@@ -413,12 +410,22 @@ void ScanMode() {
 int getButtonID(void) {
 
 
-  if (ty > 293)  // no buttons there
-    return 0;
-  column = 1 + (tx / HorSpacing);  // get row and column
+// y 1st row buttons : 121 - 171
+// y 2nd row buttons : 178 - 228
+// y 3rd row buttons : 235 - 285
+// vTouchSpacing = 68
+// buttonHeight = 50;
+
+
+    
+  column = 1 + (tx / HorSpacing);  // get row and column     
   row = 1 + ((ty - 35) / vTouchSpacing);
-  int buttonID = row * 10 + column;
-  return buttonID;
+  
+  
+  if (row > 4 || column > 4 || ty > 293 || ty < 121) // outside area
+    return 0;  
+  else
+    return row * 10 + column;
 }
 
 //##########################################################################################################################//

@@ -19,8 +19,8 @@ void drawCf1Btns() {
 
 
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char *text;
   };
 
@@ -73,7 +73,7 @@ void readCf1Btns() {
 
   int buttonID = getButtonID();
 
-  if (row > 4 || column > 4)
+   if (! buttonID)
     return;  // outside of key area
   tft.setTextColor(TFT_GREEN);
   switch (buttonID) {

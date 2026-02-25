@@ -21,8 +21,8 @@ void drawSecBtns() {
 
 
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char* label;
   };
 
@@ -87,13 +87,8 @@ void readSecBtns() {
   if (!pressed) return;
 
   int buttonID = getButtonID();
-  
-
-  if (row < 2 || row > 4 || column > 4 || tx > 345){
-    tRel();
-    tx = ty = pressed = 0;
+   if (!buttonID)
     return;  // outside of area
-  } 
 
   tft.setTextColor(textColor);
   switch (buttonID) {
@@ -282,14 +277,14 @@ void setBFO() {  // uses seperate BFO offsets for USB/LSB Hi and Low injection. 
   // using 4 BFO's for SSB:
 
 
-  if (modType == USB && LOAboveRF)
+  if (modType == USB && singleConversionMode )
     offset = preferences.getInt("B1", 0);
-  if (modType == USB && !LOAboveRF)
+  if (modType == USB && !singleConversionMode )
     offset = preferences.getInt("B2", 0);
 
-  if (modType == LSB && LOAboveRF)
+  if (modType == LSB && singleConversionMode )
     offset = preferences.getInt("B3", 0);
-  if (modType == LSB && !LOAboveRF)
+  if (modType == LSB && !singleConversionMode )
     offset = preferences.getInt("B4", 0);
 
 
@@ -330,14 +325,14 @@ void setBFO() {  // uses seperate BFO offsets for USB/LSB Hi and Low injection. 
     ;
 
 
-  if (modType == USB && LOAboveRF)
+  if (modType == USB && singleConversionMode )
     offset = preferences.putInt("B1", offset);
-  if (modType == USB && !LOAboveRF)
+  if (modType == USB && !singleConversionMode )
     offset = preferences.putInt("B2", offset);
 
-  if (modType == LSB && LOAboveRF)
+  if (modType == LSB && singleConversionMode )
     offset = preferences.putInt("B3", offset);
-  if (modType == LSB && !LOAboveRF)
+  if (modType == LSB && !singleConversionMode )
     offset = preferences.putInt("B4", offset);
 
 
@@ -356,7 +351,7 @@ void setBFO() {  // uses seperate BFO offsets for USB/LSB Hi and Low injection. 
 //##########################################################################################################################//
 
 
-void selectButtonStyle() {  // selects btw. different sprites for the buttons
+void selectButtonStyle() {  // selects btw. different bitmaps for the buttons
  
   tRel();
   tft.fillRect(2, 61, 337, 228, TFT_BLACK);
@@ -370,14 +365,12 @@ void selectButtonStyle() {  // selects btw. different sprites for the buttons
     tft.pushImage(8 + (i - 4) * 83, 235, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t*)buttonImages[i]);
   }
   tPress();
-  column = 1 + (tx / HorSpacing);  // get row and column
-  row = 1 + ((ty - 20) / vTouchSpacing);
+
+  getButtonID();
   if (row > 4 || column > 4)
     return;
   buttonSelected = (column - 1) + 4 * (row - 3);
-  
-  Serial.printf("buttonSelected %d, row %d column %d\n", buttonSelected, row, column);
-  preferences.putInt("sprite", buttonSelected);  // write selection to EEPROM
+  preferences.putInt("sprite", buttonSelected);  // write selection to flash
 }
 
 //##########################################################################################################################//
@@ -400,88 +393,100 @@ void showEiBiStations(uint32_t FREQ) {
   
   
 
-  etft.setTTFFont(Arial_14);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(0, 0);
-
-
   float targetFreq = (float)FREQ / 1000.0;
-  if (targetFreq > 30000) {
-      tft.println("Shortwave only.");
-      delay(1000);
-      rebuildMainScreen(false);
+  if (targetFreq > 30000) 
       return;
-  }
+
 
   File file = LittleFS.open("/sked-b25.lst", FILE_READ);
   if (!file) {
-    tft.println("Failed to open file\n Open WebTools and download Eibi list");
-    delay(1000);
-    rebuildMainScreen(false); 
+    Serial_println("Failed to open file");
     return;
   }
 
+  etft.setTTFFont(Arial_14);
+
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_YELLOW);
+  tft.setCursor(0, 0);
   tft.printf("Listing stations at %5.1f KHz...\n", targetFreq );
   tft.println(); 
 
 
 
-  bool found = false;
+bool found = false;
+bool duplicate = false;
 
-  while (file.available()) {
-    String line = file.readStringUntil('\n');
-    line.trim();
-    if (line.length() == 0) continue;
+String prevF4 = "";  // store prev station name to check for duplicates
 
-    // Each row must chave 10 semicolons
-    int semicolons = 0;
-    for (int i = 0; i < line.length(); i++) {
-      if (line[i] == ';') semicolons++;
-    }
-    if (semicolons != 10) continue;
+while (file.available()) {
+  String line = file.readStringUntil('\n');
+  line.trim();
+  if (line.length() == 0) continue;
 
-    // Extract frequency (first field)
-    int sepIndex = line.indexOf(';');
-    if (sepIndex == -1) continue;
-    float freq = line.substring(0, sepIndex).toFloat();
+  // Each row must have 10 semicolons!
+  int semicolons = 0;
+  for (int i = 0; i < line.length(); i++) {
+    if (line[i] == ';') semicolons++;
+  }
+  if (semicolons != 10) continue;
 
-    // Small frequency error allowed
-    if (abs(freq - targetFreq) < 0.5) {
-      found = true;
+  // Extract freq
+  int sepIndex = line.indexOf(';');
+  if (sepIndex == -1) continue;
+  float freq = line.substring(0, sepIndex).toFloat();
 
-      // Extract fields, only the first 5 are interesting
-      String fields[5];
-      int start = 0;
-      for (int f = 0; f < 5; f++) {
-        int idx = line.indexOf(';', start);
-        if (idx == -1) {
-          fields[f] = line.substring(start);
-          break;
-        } else {
-          fields[f] = line.substring(start, idx);
-          start = idx + 1;
-        }
+  // Small frequency error allowed
+  if (abs(freq - targetFreq) < 0.5) {
+    found = true;
+
+    // Extract first 5 fields
+    String fields[5];
+    int start = 0;
+    for (int f = 0; f < 5; f++) {
+      int idx = line.indexOf(';', start);
+      if (idx == -1) {
+        fields[f] = line.substring(start);
+        break;
+      } else {
+        fields[f] = line.substring(start, idx);
+        start = idx + 1;
       }
-
-     const uint16_t cls[5] = {TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_WHITE, TFT_WHITE};
-     const uint8_t colWidths[4] = {10, 6, 4, 19}; 
-
-
-for (int f = 1; f < 5; f++) {
-  tft.setTextColor(cls[f-1]);
-
-  String field = fields[f];
-  if (field.length() > colWidths[f-1]) {
-    field = field.substring(0, colWidths[f-1]); // cut lengths
-  }
-
-  tft.printf("%-*s", colWidths[f-1], field.c_str());
-}
-tft.println(); 
-
     }
+
+    // Compare station name with prev station name
+    if (fields[4] == prevF4) {
+      if(! duplicate){
+      tft.setTextColor(TFT_YELLOW);
+       tft.println("INFO: Additional times found.");
+       tft.println();
+      } 
+      duplicate = true;
+      continue;  // no new line to avoid cluttering
+    }
+  else
+    duplicate = false; 
+
+    prevF4 = fields[4];
+  
+
+    // Print to TFT
+    const uint16_t cls[5] = {TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_WHITE, TFT_WHITE};
+    const uint8_t colWidths[4] = {10, 6, 4, 19};
+
+    for (int f = 1; f < 5; f++) {
+      tft.setTextColor(cls[f-1]);
+      String field = fields[f];
+      if (field.length() > colWidths[f-1]) {
+        field = field.substring(0, colWidths[f-1]); // cut length 
+      }
+      tft.printf("%-*s", colWidths[f-1], field.c_str());
+    }
+    tft.println();
+    tft.println();
   }
+}
+
 
   file.close();
 
@@ -501,7 +506,7 @@ tft.println();
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.setTextColor(TFT_RED);
-    tft.println("No stations found.");
+    tft.println("No stations found.\n");
     delay(1000);
     rebuildMainScreen(false);
      return;
@@ -517,4 +522,3 @@ tft.println();
   }
  }
 }
-

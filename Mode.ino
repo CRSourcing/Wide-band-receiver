@@ -139,12 +139,9 @@ void selectModulation() {
   } else
     tPress();
 
-
-  uint16_t row = 0, column = 0;
-  column = 1 + (tx / HorSpacing);  // get row and column
-  row = 1 + ((ty - 20) / vTouchSpacing);
-  int buttonID = row * 10 + column;
-
+  int buttonID = getButtonID();
+   if (!buttonID)
+    return;  // outside of area
 
   switch (buttonID) {
 
@@ -210,7 +207,9 @@ void selectModulation() {
 
 //##########################################################################################################################//
 
-void loadSi4735parameters() {
+void loadSi4735parameters() { //for SSB this needs to consider whether in single or double conversion mode
+                              //we are using high side injection (LO above RF) --> in single conversion mode the sidebands get inverted.
+                              // double conversion mode means that the sidebands get inverted twice which brings them back to normal     
 
   si4735.setVolume(0);  // avoid volume peaks, especially when loading SSB patch
 
@@ -245,29 +244,24 @@ void loadSi4735parameters() {
   }
 
 
+  int offset = 0; // load corresponding BFO offset
 
 
-  //usblsb	upper or lower side band; 1 = LSB; 2 = USB
 
-  int offset = 0;
-
-  if (modType == USB && LOAboveRF)
+  if (modType == USB && singleConversionMode )
     offset = preferences.getInt("B1", 0);
-  if (modType == USB && !LOAboveRF)
+  if (modType == USB && !singleConversionMode )
     offset = preferences.getInt("B2", 0);
 
-  if (modType == LSB && LOAboveRF)
+  if (modType == LSB && singleConversionMode )
     offset = preferences.getInt("B3", 0);
-  if (modType == LSB && !LOAboveRF)
+  if (modType == LSB && !singleConversionMode )
     offset = preferences.getInt("B4", 0);
 
 
-
-
-
   if (modType == USB) {
-    if (LOAboveRF) {                                      // sidebands get inverted if LOAboveRF
-      si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 1);  // Set LSB mode, USB with sideband inverted == LSB
+    if (singleConversionMode ) {  // sidebands get inverted when in singleConversionMode 
+      si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 1);  // Set LSB mode
       si4735.setSSBBfo(offset);
     } else {
       si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 2);  // Set USB mode
@@ -278,15 +272,14 @@ void loadSi4735parameters() {
 
 
   if (modType == LSB) {
-    if (LOAboveRF) {                                      // sidebands get inverted if LOAboveRF
-      si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 2);  // set USB, LSB with sideband inverted == USB //
+    if (singleConversionMode ) { // sidebands get inverted when in singleConversionMode 
+      si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 2);  
       si4735.setSSBBfo(offset);
     } else {
       si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 1);
       si4735.setSSBBfo(offset);  // Normal LSB
     }
   }
-
 
 
   if (modType == SYNC) {
@@ -300,7 +293,6 @@ void loadSi4735parameters() {
   }
 
 
-  
   if (modType == CW) {
     digitalWrite(NBFM_MUTE_PIN, LOW);  //set pin LOW to mute the NBFM demodulator
     loadSSB();
@@ -315,6 +307,9 @@ void loadSi4735parameters() {
   }
 
 
+
+
+
   if (modType == NBFM) {
     SI4735WBFMTune = false;
     bandWidth = lastAMBandwidth;
@@ -326,7 +321,7 @@ void loadSi4735parameters() {
 #endif
 
 #ifdef NBFM_DEMODULATOR_PRESENT
-    si4735.setAM(520, 29900, SI4735TUNED_FREQ, 1);  // initiate the AM subsystem for squelch and RSSI                        //  pseudo mute the SI4732 by setting the volume to 0;
+    si4735.setAM(520, 29900, SI4735TUNED_FREQ, 1);  // initiate the AM subsystem for squelch and RSSI
     digitalWrite(NBFM_MUTE_PIN, HIGH);              // set pin HIGH to unmute the NBFM demodulator
 #endif
   }
@@ -394,7 +389,7 @@ void tuneWBFMSI4735() {  // WBFM tunes SI4735 directly
   if (FREQ < FREQ_OLD)
     si4735.frequencyDown();
 
-  FREQ = 10000 * si4735.getCurrentFrequency();
+  FREQ = 10000 * si4735.getCurrentFrequency(); // update FREQ
 }
 
 
@@ -439,24 +434,21 @@ void printModulation() {
 
 //###############################################################################################//
 
-void use1MhzEncoderStep() {  // press encoder for 1MHz steps, press again, or use a marker to get back to previous step sizw.
+void use1MhzEncoderStep() {
+  // Toggle encoder step size between 1 MHz and STEPSIZE
+  if (digitalRead(ENCODER_BUTTON) == LOW) {
+    use1MHzSteps = !use1MHzSteps;   // flip the state
 
-  if (digitalRead(ENCODER_BUTTON) == LOW && use1MHzSteps == false) {
-    use1MHzSteps = true;
-    OLDSTEP = STEP;
-    STEP = 1000000;
-    displaySTEP(false);
-    while (digitalRead(ENCODER_BUTTON) == LOW)
-      ;
-    delay(100);
-  }
+    if (use1MHzSteps) {
+      OLDSTEP = STEP;
+      STEP = 1000000l;
+    } else {
+      STEP = OLDSTEP;
+    }
 
-  if (digitalRead(ENCODER_BUTTON) == LOW && use1MHzSteps == true) {
-    use1MHzSteps = false;
-    STEP = OLDSTEP;
     displaySTEP(false);
-    while (digitalRead(ENCODER_BUTTON) == LOW)
-      ;
+
+    while (digitalRead(ENCODER_BUTTON) == LOW) { }
     delay(100);
   }
 }

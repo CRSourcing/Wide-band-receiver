@@ -68,10 +68,6 @@ void readTSAButtons() {
   
   tRel();
 
-
-
-
-
   int buttonID = getButtonID();
 
   if (row < 2 || row > 4 || column > 4)
@@ -105,8 +101,10 @@ void readTSAButtons() {
       tft.fillRect(232, 294, 247, 25, TFT_BLACK);
       tft.fillCircle(470, 20, 2, TFT_BLACK); // overwrite communication indicator
       syncEnabled = !syncEnabled;
+      tft.setCursor(10, 70);
+      tft.print("TSA sync will read markers.");
       tft.setCursor(10, 90);
-      tft.printf("Sync with TinySA %s\n", syncEnabled ? "Enabled" : "Disabled");
+      tft.printf("Sync: %s\n", syncEnabled ? "Enabled" : "Disabled");
       delay(500);
       preferences.putBool("useTSADBm", syncEnabled);
       if (syncEnabled)

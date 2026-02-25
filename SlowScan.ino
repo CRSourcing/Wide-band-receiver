@@ -163,6 +163,7 @@ bool readSlowScanButtons() {
 
   if (pressed || clw || cclw) {
     int buttonID = getButtonID();
+   
 
   if (cclw){
      buttonID = 22;

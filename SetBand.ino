@@ -5,8 +5,8 @@ void setBand(bool isWaterfall) {  // Use Select Band button to set start freq to
   int h = 8, row, column;
   int page = 0;
 
-  int x_positions[] = { 15, 98, 181, 264 };
-  int y_positions[] = { 70, 128, 186, 244 };
+ const int x_positions[] = { 15, 98, 181, 264 };
+ const  int y_positions[] = { 70, 128, 186, 244 };
 
   tRel();
   while (true) {

@@ -242,11 +242,9 @@ void readVfoBtns() {
 
 
   int buttonID = getButtonID();
-
-
-
-  if (row > 4 || column > 4 || ty > 293 || ty < 121)
-    return;                                   // outside of keypad area
+   if (!buttonID)
+    return;  // outside of area
+                                  // outside of keypad area
   redrawMainScreen = true;                    // save freq for returning from waterfall
   tft.fillRect(135, 295, 92, 25, TFT_BLACK);  // overwrite frozen spectrum window
   switch (buttonID) {
@@ -444,7 +442,7 @@ void displayFreqNixie(uint32_t frequency, uint16_t x, uint16_t y) {
 
   snprintf(freqStr, sizeof(freqStr), "%lu", frequency);
 
-  // Display each character
+  // Display characters
   for (digits = 0; freqStr[digits] != '\0'; digits++) {
     char c = freqStr[digits];
 

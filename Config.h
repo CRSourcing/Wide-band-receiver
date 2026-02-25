@@ -6,8 +6,6 @@
 #endif
 
 
-
-
 #ifdef TV_TUNER_PRESENT
 
 #define LOW_BAND_LOWER_LIMIT 50000000  // TV tuner bands limits tested with tuner UR1316
@@ -16,8 +14,6 @@
 #define HIGH_BAND_UPPER_LIMIT 875000000      // sensitivity decreases rapidly > 850MHz
 #define SHORTWAVE_MODE_UPPER_LIMIT 50000000  //above 50MHz tuner is in use
 #define HIGHEST_ALLOWED_FREQUENCY HIGH_BAND_UPPER_LIMIT
-
-#define TUNER_UR1316  // Tuner type 1
 
 #else
 #define HIGHEST_ALLOWED_FREQUENCY 50000000  // 50MHz
@@ -122,9 +118,6 @@
 #define TUNER_AGC_PIN 25           // tuner AGC pin
 
 
-#ifndef NBFM_DEMODULATOR_PRESENT
-#define tinySA_PIN 27  // GPIO for relay driver that selects input for the tinySA
-#endif
 
 #ifdef NBFM_DEMODULATOR_PRESENT
 #define TUNING_VOLTAGE_READ_PIN 27  // Tuning voltage read pin
@@ -273,6 +266,7 @@ long keyVal = 0;       // scan mode frequencies delivered from touchpad
 
 
 bool TVTunerActive = false;     //will get set to true when tuner in use
+bool lowSideInjection = false;  // for debugging, will change injection mode
 uint8_t initialGain = 180;     // adjust tuner gain when no signal received, depending on gain of the LNA. Must be as low as possible to reduce cross modulation
 uint8_t agcVal = initialGain;  // starting point of the AGC
 uint32_t OLDPLLFREQ = -1;
@@ -304,12 +298,11 @@ bool SI4732found = false;
 bool altStyle = false;         // false = use sprites, true = use tiles
 bool displayDebugInfo = true;  // display clock info and looptimer
 bool showScanRange = true;     // show scan range after entered
-bool LOAboveRF = true;         // true = LO above RF, false = LO below RF
+bool singleConversionMode  = true; // true = single conversion (shortwave)
 bool WBFMactive = false;       // to switch back to AM/SSB after WBFM
 bool loopBands = false;        // if true then FREQ will cycle when a band end is reached
 bool use1MHzSteps = false;     // use 1MHz Steps after encoder pressed;
 bool showFREQ = true;          // false supresses FREQ display
-bool setFilterManually = false;
 bool roundToStep = true;   // round  FREQ up or down to the next STEP when STEP or modulation gets changed
 int selected_band = -1;    // number of the selected band  -1 means no band selected
 bool showMeters = false;   // shows analog meters on right side
@@ -328,7 +321,7 @@ int TSAdBm = 0;        // dBm coming from tinySA readings
 
 const int HorSpacing = 86;     // buttons horizontal distance
 const int VerSpacing = 65;     // buttons vertical distance
-const int vTouchSpacing = 72;  // adjust vertical touch spacing
+const int vTouchSpacing = 68;  // vertical touch spacing divider
 bool loadHistory = false;      // right panel available
 
 uint8_t bandWidth = 0;

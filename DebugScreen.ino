@@ -25,14 +25,9 @@ void drawDbgBtns() {
   displayLogsFromBuffer(348, 63);
 
 
-  if (altStyle)
-    etft.setTextColor(textColor);
-  else
-    etft.setTextColor(TFT_ORANGE);
-
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char* label;
   };
 
@@ -45,8 +40,8 @@ void drawDbgBtns() {
     { 20, 245, "" },
     { 190, 188, "I2C" },
     { 180, 210, "Speed" },
-    { 270, 188, "Play" },
-    { 270, 210, ".wav" },
+    { 270, 188, "L0 <" },
+    { 270, 210, "IF" },
     { 20, 188, "No" },
     { 20, 210, "Mixer" },
     { 100, 188, "AGC" },
@@ -87,11 +82,12 @@ void drawDbgBtns() {
 void readDbgBtns() {
 
 
-  if (!pressed) return;
+  if (!pressed) 
+   return;
   int buttonID = getButtonID();
 
-  if (row < 2 || row > 4 || column > 4)
-    return;  // outside of area
+ if (!buttonID)// outside of area
+   return;
 
   switch (buttonID) {
 
@@ -132,7 +128,13 @@ void readDbgBtns() {
       setI2CBusSpeed();
       break;
     case 34:
-      wavPlayer();
+      lowSideInjection =!lowSideInjection; 
+      if (lowSideInjection) {
+        tft.setCursor(10, 105);
+        tft.print("LO frequency below RF");
+        delay(1000);
+      }  
+      FREQ_OLD --; // trigger display update
       break;
     case 41:
       return;
@@ -141,7 +143,7 @@ void readDbgBtns() {
       break;
     case 43:
       tRel();
-      while (1) {  // produce noise on the SPI bus
+      while (true) {  // produce noise on the SPI bus
         long x = random(480);
         long y = random(320);
         uint32_t val = random(0xFFFF);
@@ -201,13 +203,9 @@ void setLOLevel() {
 
   while (true) {
     tDoublePress();
-
     int buttonID = getButtonID();
-
-    if (row < 2 || row > 4 || column > 4)
-      return;  // outside of area
-
-
+ if (!buttonID)
+    return;  // outside of area
 
     switch (buttonID) {
       case 41:
@@ -272,9 +270,6 @@ void setI2CBusSpeed() {
       cclw = false;
     }
   }
-
-
-
 
   while (digitalRead(ENCODER_BUTTON) == LOW)
     ;

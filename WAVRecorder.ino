@@ -1,7 +1,7 @@
 // wav recorder and player. Depends heavily on the quality of the SD card. Uses <SdFat.h> library for faster writing
 
 // Settings
-#define SAMPLE_RATE 8000 // 4KHz
+#define SAMPLE_RATE 8000  // 4KHz
 #define SAMPLE_INTERVAL (1000000 / SAMPLE_RATE)
 #define RECORD_TIME 9999
 #define BUFFER_SIZE 4096  // buffer for writing onto SD, bigger = better, less "plops".
@@ -38,10 +38,10 @@ void mountSDCard() {
   digitalWrite(TFT_CS, LOW);  // GPIO33 for SD CS
   uint16_t ctr = 0;
 
-  while (!sd.begin(SD_CS, SD_SCK_MHZ(25))) { // <SdFat.h> 
+  while (!sd.begin(SD_CS, SD_SCK_MHZ(25))) {  // <SdFat.h>
     ctr++;
     displayText(300, 300, 179, 15, "Mounting SDcard");
-  
+
     if (ctr == 10) {
       Serial_print(" Mount failed!\n");
       displayText(300, 300, 179, 16, "Mount failed");
@@ -73,6 +73,8 @@ void wavRecord() {
   tft.print("Creates consecutive .wav");
   tft.setCursor(8, 240);
   tft.print("files on SDCard.");
+  tft.setCursor(8, 260);
+  tft.print("8 Bit Mono, 8000 sampl/sec");
 
   char tempVol = si4735.getVolume();
   bool circle = false;
@@ -110,23 +112,23 @@ void wavRecord() {
   uint8_t buffer[BUFFER_SIZE];
   uint32_t samplesRecorded = 0;
   int16_t offsetComp = 2048 - dcOffset;
-  uint16_t ctr = 0;  
+  uint16_t ctr = 0;
 
 
   while (!(clw + cclw)) {  //encoder moved
-   
-   ctr ++;
-   
-   if (ctr == 2) { // indroduces delay before the squelch closes
-    ctr = 0;
-    si4735.getCurrentReceivedSignalQuality(0);
-    signalStrength = si4735.getCurrentRSSI();
-    readSquelchPot(0);
-   if (signalStrength > currentSquelch)
-     si4735.setAudioMute(false);
-    else
-    si4735.setAudioMute(true);
-   }
+
+    ctr++;
+
+    if (ctr == 2) {  // indroduces delay before the squelch closes
+      ctr = 0;
+      si4735.getCurrentReceivedSignalQuality(0);
+      signalStrength = si4735.getCurrentRSSI();
+      readSquelchPot(0);
+      if (signalStrength > currentSquelch)
+        si4735.setAudioMute(false);
+      else
+        si4735.setAudioMute(true);
+    }
 
 
     if (signalStrength > currentSquelch) {
@@ -151,9 +153,7 @@ void wavRecord() {
       }
 
       f.write((uint8_t*)buffer, BUFFER_SIZE);
-   }
-
-
+    }
 
     else {
       tft.fillCircle(5, 310, 5, TFT_BLACK);
@@ -165,7 +165,7 @@ void wavRecord() {
   clw = false;
   cclw = false;
 
-  f.flush(); 
+  f.flush();
   f.close();
   si4735.setVolume(tempVol);
   mutestat = audioMuted;
@@ -211,7 +211,7 @@ void createWavHeader8bit(WavHeader_8bit* header, uint32_t sampleCount) {
 //##########################################################################################################################//
 
 
-#define B_SIZE 2048 
+#define B_SIZE 2048
 
 void playWavFile() {
 
@@ -219,7 +219,7 @@ void playWavFile() {
   uint8_t bufferB[B_SIZE];
 
 
-  String selected = selectWavFile();
+  String selected = selectFileWithExtension(".wav");
 
   FsFile f = sd.open(selected.c_str(), O_READ);
   if (!f) {
@@ -230,7 +230,6 @@ void playWavFile() {
     redrawIndicators();
     return;
   }
-
 
   WavHeader_8bit header;
   f.read((uint8_t*)&header, sizeof(header));
@@ -317,28 +316,26 @@ void wavPlayer() {
 
 //##########################################################################################################################//
 
-
-
-String selectWavFile() {
-
+String selectFileWithExtension(const char* extension) {
   mountSDCard();
 
-  // List all wav's
+  // List all files having const char* extension
   FsFile dir = sd.open("/");
   if (!dir) {
     Serial.println("Failed to open root directory!");
+    redrawIndicators();
     return "";
   }
 
-  std::vector<String> wavFiles;
+  std::vector<String> files;
   FsFile file;
   while (file.openNext(&dir, O_RDONLY)) {
     if (!file.isDir()) {
       char name[64];
       file.getName(name, sizeof(name));
       String fname = String(name);
-      if (fname.endsWith(".wav")) {
-        wavFiles.push_back(fname);
+      if (fname.endsWith(extension)) {
+        files.push_back(fname);
       }
     }
     file.close();
@@ -346,14 +343,13 @@ String selectWavFile() {
 
   dir.close();
 
-  if (wavFiles.empty()) {
+  if (files.empty()) {
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_RED);
     tft.setCursor(10, 150);
-    tft.print("No .wav files found!\n");
+    tft.printf("No %s files found!\n", extension);
     return "";
   }
-
 
   int selected = 0;
   int indx = 0;
@@ -363,30 +359,24 @@ String selectWavFile() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(10, 0);
-  tft.print("Select file and press encoder.");
+  tft.printf("Select %s file and press encoder.", extension);
 
   while (true) {
-
     if (once || clw || cclw) {
-
-
-
-      for (int i = 0; i < maxRows && (indx + i) < (int)wavFiles.size(); i++) {
+      for (int i = 0; i < maxRows && (indx + i) < (int)files.size(); i++) {
         int y = 30 + i * 22;
         if ((indx + i) == selected) {
-
           tft.setTextColor(TFT_YELLOW);
         } else {
           tft.setTextColor(TFT_GREY);
         }
-
         tft.setCursor(10, y);
-        tft.print(wavFiles[indx + i]);
+        tft.print(files[indx + i]);
       }
       once = false;
     }
 
-    // Encoder
+    // up / down
     if (cclw) {
       if (selected > 0) {
         selected--;
@@ -395,7 +385,7 @@ String selectWavFile() {
       cclw = 0;
     }
     if (clw) {
-      if (selected < (int)wavFiles.size() - 1) {
+      if (selected < (int)files.size() - 1) {
         selected++;
         if (selected >= indx + maxRows) indx++;
       }
@@ -403,9 +393,12 @@ String selectWavFile() {
     }
 
     if (digitalRead(ENCODER_BUTTON) == LOW) {
-      return wavFiles[selected];
+      return files[selected];
     }
 
     delay(10);
   }
 }
+
+
+//##########################################################################################################################//

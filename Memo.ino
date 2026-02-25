@@ -113,14 +113,12 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
     if (!isRead)  // Save Memo
       tDoublePress();
 
-    column = 1 + (tx / HorSpacing);      // get column
-    row = 1 + ((ty - 40) / VerSpacing);  // get row
+    getButtonID();
 
     if (row == 4 && column == 4 && currentPage == totalPages - 1) {  // Last page reached, or Exit pressed
       selected_band = -1;                                            //
       resetMainScreen();
       tRel();
-
       mainScreen();
       return;
     }
@@ -193,8 +191,10 @@ int tuneMemo() {  //tunes through memory bank with encoder.
 
 #ifdef TINYSA_PRESENT
       char buffer[50];
-      sprintf(buffer, "sweep center %ld", FREQ);
-      Serial_println(buffer);
+      if (FREQ <= 350000000l) {
+       sprintf(buffer, "sweep center %ld", FREQ);
+       Serial_println(buffer);
+      } 
 #endif
 
 
@@ -642,15 +642,14 @@ void picoMenu() {
 
 //##########################################################################################################################//
 
-void readPicoButtons() {
+void readPicoButtons() { // use PicoRX format station list
 
 
   int buttonID = getButtonID();
 
-
-
-  if (row > 4 || column > 4 || ty > 293 || ty < 121)
-    return;                                   // outside of keypad area
+ if (!buttonID)
+    return;  // outside of area
+                                 
   redrawMainScreen = true;                    // save freq for returning from waterfall
   tft.fillRect(135, 295, 92, 25, TFT_BLACK);  // overwrite frozen spectrum window
   switch (buttonID) {
@@ -820,7 +819,7 @@ void playCurrentChannel() {
 void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromStart, bool showEntryNumber) {
   uint8_t bufI[100];
   uint8_t bufO[80];
-  static uint16_t offs = 0x5D;  // start after row zero
+  static uint16_t offs = 0x5D;  // row zero does not contain valid data, so start with row 1
   uint16_t ep = 0;
   int16_t i = 0;
 
@@ -856,7 +855,6 @@ void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromS
     while (bufI[0] != 0x0A) {  // forward to next seperator
       f.seek(offs, SeekSet);
       f.read(bufI, 1);
-
       offs++;
     }
     cRow--;
@@ -903,7 +901,6 @@ void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromS
   bufO[i + 1] = '\0';
 
   setChannel((char *)bufO, cRow, reloadModType, showEntryNumber);
-
 
   f.close();
 
@@ -1013,31 +1010,48 @@ void setChannel(const char *buffer, int cRow, bool reloadModType, bool showEntry
 
 //##########################################################################################################################//
 
+const int MAIN_X = 3;
+const int MAIN_Y = 61;
+const int MAIN_W = 334;
+
+const int CURSOR_Y = 253;
+
+// Labels
+const char LABEL_FIRST[]  = "First";
+const char LABEL_EXIT[]   = "Exit";
+const char LABEL_KEYB[]   = "Keyb.";
+const char LABEL_PLUS20[] = "+20";
+
 void drawSingleChannelButtons() {
-  const uint8_t button1X = 15;
-  const uint8_t button2X = 95;
-  const uint8_t button3X = 175;
-  const uint8_t button4X = 250;
-  const uint8_t buttonY = 233;
+  // overwrite the step indicator
+  tft.fillRect(340, 26, 135, 18, TFT_BLACK);
 
+  // clear main area
+  tft.fillRect(MAIN_X, MAIN_Y, MAIN_W, 231, TFT_BLACK);
 
-  tft.fillRect(3, 61, 334, 231, TFT_BLACK);
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
-  tft.setTextColor(TFT_GREEN);
-  tft.fillRect(3, 61, 334, 179, TFT_BLACK);
-  etft.setTTFFont(Arial_14);
-  etft.setCursor(button1X + 10, buttonY + 20);
-  etft.print("First");
-  etft.setCursor(button2X + 10, buttonY + 20);
-  etft.print("Exit");
-  etft.setCursor(button3X + 10, buttonY + 20);
-  etft.print("Keyb.");
-  etft.setCursor(button4X + 25, buttonY + 20);
-  etft.print("+20");
-  tft.setTextColor(textColor);
 
+  tft.setTextColor(TFT_GREEN);
+  tft.fillRect(MAIN_X, MAIN_Y, MAIN_W, 179, TFT_BLACK);
+
+  etft.setTTFFont(Arial_14);
+
+  etft.setCursor(25, CURSOR_Y);
+  etft.print(LABEL_FIRST);
+
+  etft.setCursor(105, CURSOR_Y);
+  etft.print(LABEL_EXIT);
+
+  etft.setCursor(185, CURSOR_Y);
+  etft.print(LABEL_KEYB);
+
+  etft.setCursor(275, CURSOR_Y);
+  etft.print(LABEL_PLUS20);
+
+  tft.setTextColor(textColor);
   redrawIndicators();
 }
+
 
 
 //##########################################################################################################################//
@@ -1047,7 +1061,7 @@ void drawSingleChannelButtons() {
 #define ROW_BGC 0x0000  // background color
 #define ENTRIES 12      // rows per page
 #define VSPACING 22
-uint32_t frequencies[ENTRIES];
+uint32_t frequencies[ENTRIES]; // 12 entries per page fill screen nicely
 
 void showChannelList() {
   uint16_t startEntry = 1;
@@ -1057,16 +1071,15 @@ void showChannelList() {
   bool valid = true;  // eof check
 
   tft.fillScreen(ROW_BGC);
+
   tft.setTextColor(TFT_SKYBLUE);
-  tft.setCursor(10, 266);
-  tft.print("Move encoder to change page.");
-  tft.setCursor(10, 286);
-  tft.print("Touch row to listen.");
-  tft.setCursor(10, 304);
-  tft.print("Press encoder to return.");
+  displayText(10, 266, 310, 16, "Move encoder to change page."); 
+  displayText(10, 286, 310, 16, "Touch row to listen."); 
+  displayText(10, 304, 310, 16, "Press encoder to return.");
   tft.setTextColor(TFT_GREEN);
-  if (modType != AM) {  // must be AM
-    modType = AM;
+ 
+  if (modType != AM) {  // must use AM demodulator
+     modType = AM;
     loadSi4735parameters();
   }
 
@@ -1117,11 +1130,13 @@ void showChannelList() {
       while (true) {
         playCurrentChannel();
 
-        if (digitalRead(ENCODER_BUTTON) == LOW)
+        if (digitalRead(ENCODER_BUTTON) == LOW) {
+          freqSav = FREQ; // use the current channel as future frequency
           break;
+        }
 
         if (clw || cclw) {
-          pressedEntry += clw ? 1 : -1;
+          pressedEntry += clw ? 1 : -1; // 1 up or down
           load_channel(0, true, pressedEntry, true, false);
           clw = false;
           cclw = false;
@@ -1158,7 +1173,6 @@ bool extractAndShowRows(uint16_t startEntry, uint16_t entries) {
 
   File f = LittleFS.open("/memory.csv", "r");
   if (!f) {
-    Serial.println("Could not load memory.csv");
     tft.setCursor(10, 200);
     tft.println("Could not load memory.csv");
     delay(1000);

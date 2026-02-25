@@ -82,17 +82,20 @@ void tune() {  // selects tuning method depending on frequency and programs si53
       TVTunerActive = false;
 
 
-      if (!LOAboveRF) {
-        LOAboveRF = true;  // single conversion with LO above the IF, needed to select SSB mode
+      if (!singleConversionMode ) {
+        singleConversionMode  = true;  // single conversion with LO above the IF, update needed to select BFO's 
         loadSi4735parameters();
       }
 
 
       OLDPLLFREQ = -1;
-      digitalWrite(IF_INPUT_RELAY, HIGH);  // switch bandpass to AD831
-      LO_RX = abs((SI4735TUNED_FREQ * 1000) + FREQ);
-
-
+      digitalWrite(IF_INPUT_RELAY, HIGH);  // connect bandpass with AD831
+      
+      
+      if(! lowSideInjection)
+         LO_RX = abs((SI4735TUNED_FREQ * 1000) + FREQ); // normal mode with LO above RF
+      else 
+         LO_RX = abs((SI4735TUNED_FREQ * 1000) - FREQ); // debugging mode with LO above RF
       
 
       si5351.set_freq(LO_RX * 100ULL, SI5351_CLK2);
@@ -104,8 +107,8 @@ void tune() {  // selects tuning method depending on frequency and programs si53
     if (FREQ > SHORTWAVE_MODE_UPPER_LIMIT) {
       TVTunerActive = true;
 
-      if (LOAboveRF) {
-        LOAboveRF = false;  // double conversion, 2 * LOAboveRF  cancel themselves out
+      if (singleConversionMode ) {
+        singleConversionMode  = false;  // double conversion, 2 * sideband inversion  cancel themselves out
         loadSi4735parameters();
       }
 
@@ -132,9 +135,7 @@ void tune() {  // selects tuning method depending on frequency and programs si53
       setBandSwitchByte();        // set band byte
       dac1.outputVoltage((uint8_t) initialGain); // relevant if we come from shortwave and dac1 is set to a low voltage    
 
-#ifdef TUNER_UR1316  
-
-      /* For UR1316
+/*
 If fwanted > fcurrent, use telegram as :
 Start – ADB – ACK - DB1 – ACK – DB2 – ACK - CB – ACK - BB – ACK – Stop
 
@@ -156,7 +157,7 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
         I2CDataPacket[2] = dividerByte1;
         I2CDataPacket[3] = dividerByte2;
       }
-#endif
+
 
       Wire.endTransmission();  // End any communication with the SI chip(s), otherwise NACK errors
       delay(5);
@@ -176,10 +177,10 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
     // now program the SI5351
 
 
-
-    LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
-
-    //LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // optional: expression for LO below RF
+    if (!lowSideInjection) 
+       LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
+    else 
+       LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // for debugging expression for LO below RF
 
     si5351.set_freq((LO_RX + errorComp) * 100ULL, SI5351_CLK2);  // add the tuner  offset correction
 
@@ -228,14 +229,15 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
     static unsigned char oldRSSI = initialGain;
     static unsigned char newRSSI = 0;
     unsigned char adj =  signalStrength * 2;
+    const unsigned char minGain = 70; 
 
     newRSSI = (255 - adj + 5);   // test formula
 
   if (newRSSI > initialGain) // max allowed gain
       newRSSI = initialGain;
 
-  if (newRSSI < 70) // min. allowed gain
-      newRSSI = 70;
+  if (newRSSI < minGain) // min. allowed gain
+      newRSSI = minGain;
 
      agcVal = newRSSI;                                       
 
@@ -248,20 +250,17 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
 
     tft.setTextColor(TFT_SKYBLUE);
     tft.setTextSize(1);
-    tft.fillRect(143, 140, 19, 9, TFT_BLACK);
+    tft.fillRect(143, 140, 16, 24, TFT_BLACK);
     tft.setCursor(143, 140);
     tft.printf("%d", signalStrength);
-  
     tft.setTextColor(TFT_WHITE);
-    tft.setTextSize(1);
-    tft.fillRect(143, 155, 19, 9, TFT_BLACK);
     tft.setCursor(143, 155);
     tft.printf("%d",oldRSSI);
     tft.setTextSize(2);
      tft.setTextColor(textColor);
 
     if (newRSSI > oldRSSI) {
-    dac1.outputVoltage((uint8_t)oldRSSI);  // stronger signal
+    dac1.outputVoltage((uint8_t)oldRSSI);  // stronger signal, gradual increase during each call
     oldRSSI++;
     }
 
@@ -285,12 +284,9 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
     tft.setTextColor(textColor);
     tft.fillRect(10, 60, 328, 64, TFT_BLACK);
     tft.setCursor(10, 63);
-    tft.print("Set encoder for max.");
+    tft.print("Use encoder to set gain");
     tft.setCursor(10, 83);
-    tft.print("gain. Press enc. to leave.");
-    tft.setCursor(10, 104);
-    tft.printf("Gain: %d", (initialGain - 100) / 2);
-
+    tft.print("limit. Press enc. to leave.");
 
     while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
@@ -298,7 +294,7 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
       if (oldinitialGain != initialGain) {
         tft.fillRect(10, 104, 323, 20, TFT_BLACK);
         tft.setCursor(10, 104);
-        tft.printf("Max Gain:%d Max DAC:%d", (initialGain - 100) / 2, agcVal);
+        tft.printf("Gain limit: %d   DAC:%d", (initialGain - 100) / 2, agcVal);
         oldinitialGain = initialGain;
       }
 
@@ -308,8 +304,8 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
       if (cclw)
         initialGain -= 5;
 
-      if (initialGain > 180)
-        initialGain = 180;
+      if (initialGain > 200) // DAC 200 means full gain, reduction kicks in at around 180
+        initialGain = 200;
 
       if (initialGain < 70)
         initialGain = 70;

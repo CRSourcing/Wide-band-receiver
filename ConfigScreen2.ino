@@ -18,8 +18,8 @@ void drawCf2Btns() {
 
 
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char* label;
   };
 
@@ -77,7 +77,7 @@ void readCf2Btns() {
   if (!pressed) return;
   int buttonID = getButtonID();
 
-  if (row < 2 || row > 4 || column > 4)
+ if (!buttonID)
     return;  // outside of area
 
   switch (buttonID) {
@@ -183,7 +183,7 @@ void touchCal() {
   tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
 
 
-  while (1) {
+  while (true) {
     if ((digitalRead(ENCODER_BUTTON) == LOW))
       break;
 

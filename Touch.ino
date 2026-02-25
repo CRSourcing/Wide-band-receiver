@@ -74,7 +74,6 @@ bool readKeypadButtons() {
 
   showFreqHistory();
 
-
   while (index < 8) {  //6 digits frequency input
     tPress();
 
@@ -85,8 +84,7 @@ bool readKeypadButtons() {
       return false;
     }
 
-    column = 1 + (tx / HorSpacing);  //  get row and column
-    row = 1 + ((ty - 40) / vTouchSpacing);
+    getButtonID();
 
     confirmTouch(row, column);  // draws an empty button for 200ms to confirm touch
 

@@ -242,7 +242,7 @@ bool listenToWaterfall(long endPoint, long startPoint) {
     tft.print("SET");
     tft.setTextColor(TFT_WHITE);
 
-    while (1) {
+    while (true) {
       pressed = get_Touch();
       if (ty < 260) {  // back to SCAN mode
         tft.fillRect(220, 288, 60, 31, TFT_BLACK);
@@ -963,9 +963,8 @@ void drawScale(int xCursorStart, int traceWidth, int startPoint, float div, int 
   tft.setTextColor(TFT_WHITE);
   tft.drawFastHLine(xCursorStart, height, traceWidth + xCursorStart, TFT_WHITE);  // top lines
   tft.drawFastHLine(xCursorStart, height + 1, traceWidth + xCursorStart, TFT_WHITE);
-  tft.drawFastVLine(traceWidth - 1, height + 1, 5, TFT_WHITE);
   for (int i = xCursorStart; i < traceWidth + xCursorStart; i += traceWidth / 10) {  //draw ticks
-    tft.drawFastVLine(i, height + 2, 5, TFT_WHITE);
+    tft.drawFastVLine(i + 1, height + 2, 5, TFT_WHITE);
     tft.setCursor(i, height + 9);
     if (i < traceWidth && startPoint >= 0)
       tft.printf("%.1f\n", (scale + startPoint) / (float)tSpan);  // labels

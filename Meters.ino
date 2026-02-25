@@ -13,7 +13,7 @@ From tft_espi library (examples)
 
 void analogMeter(int ySh) {
 
-  if (scanMode)  // space occupied
+  if (scanMode)  // no space available
     return;
 
   if (ySh < 50)  // frame upper meter

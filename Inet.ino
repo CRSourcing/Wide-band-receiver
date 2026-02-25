@@ -146,8 +146,8 @@ void drawIBtns() {
   tft.fillRect(3, 119, 334, 58, TFT_BLACK);  // overwrite row 3 from mainscreen
   draw12Buttons(TFT_BLUE, TFT_NAVY);         // draw new buttons
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char *label;
   };
 

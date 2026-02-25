@@ -1,6 +1,6 @@
 
 
-void SDCard() {  // SDCard functions are here
+void SDCard() {  // SDCard functions are here except play and record 
 
   if (!altStyle)  // clear  background
     tft.fillRect(2, 61, 337, 228, TFT_BLACK);
@@ -23,8 +23,8 @@ void drawSDBtns() {
 
 
   struct Button {
-    int x;
-    int y;
+    const int x;
+    const int y;
     const char* label;
   };
 
@@ -84,10 +84,9 @@ void readSDBtns() {
 
   if (!pressed) return;
   int buttonID = getButtonID();
-
-  if (row < 2 || row > 4 || column > 4)
+ 
+ if (!buttonID)
     return;  // outside of area
-
   switch (buttonID) {
 
     case 21:
@@ -845,7 +844,8 @@ void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ lo
 
 //##########################################################################################################################//
 //##########################################################################################################################//
-// WIFI upload/download to LittleFS or SDCard
+// WIFI upload/download files to LittleFS or SDCard
+
 WebServer server(80);
 
 bool useLittleFS = true;

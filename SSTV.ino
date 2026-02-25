@@ -533,7 +533,7 @@ void waitForVerticalSyncPulse() {  // Wait for transmission start
   tft.setCursor(10, 300);
   tft.print("Press encoder to skip");
 
-  while (1) {
+  while (true) {
 
 
 
