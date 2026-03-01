@@ -804,11 +804,11 @@ void displaySTEP(bool update) {
     tft.setTextColor(TFT_RED);
 
 
-  uint16_t xPos = 345;
+  uint16_t xPos = 340;
   uint16_t yPos = 26;
 
   // Clear previous text
-  tft.fillRect(xPos - 10, yPos, 140, 20, TFT_BLACK);
+  tft.fillRect(xPos, yPos, 135, 20, TFT_BLACK);
   tft.setCursor(xPos, yPos);
   tft.setTextSize(2);
 
