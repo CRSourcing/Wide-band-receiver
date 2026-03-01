@@ -693,8 +693,8 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
 
   peakVol = 0;
   const int centerLineH = 308;  // centerline position
-  const int amplPreset = 5;     // amplification preset for miniosci
-  float sum = 0;
+  const int amplPreset = 2;     // amplification preset. This depends on the amplification of the FFT amplifier trannsistor and may need to get adjusted 
+  int32_t sum = 0;
 
   for (int i = 0; i < sampleCount; i++) {  // sampling loop
     sum = 0;
@@ -702,28 +702,27 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
     if (!dly) {
       // Use oversampling instead of delay, 0-3KHz
       for (int j = 0; j < 4; j++) {
-        sum += (analogRead(AUDIO_INPUT_PIN) - dcOffset);
+        sum += (analogRead(AUDIO_INPUT_PIN) - gpio36_Offset);
       }
     } else {
-      sum = analogRead(AUDIO_INPUT_PIN) - dcOffset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
+      sum = analogRead(AUDIO_INPUT_PIN) - gpio36_Offset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
       delayMicroseconds(dly);
     }
 
 
     if (drawOsci) {
 
-      int am = sum / ((1024 - FFTGain) / amplPreset);  // calculate and limit amplitude
+      int am = (amplPreset * sum) / (255 - FFTGain ) ;  // calculate and limit amplitude
+      
       am = constrain(am, -12, 12);
-
-
       if (i < 86)
         tft.drawPixel(135 + i, centerLineH + am, TFT_WHITE);  // draw trace
     }
     // Adjust and store the averaged value
 
-    sum /= (sampleCount / FFTGain);
-
-    RvReal[i] = sum;
+    sum /= sampleCount / FFTGain;
+    
+    RvReal[i] = (float) sum;
     RvImag[i] = 0;
   }
   FFT.windowing(RvReal, sampleCount, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
@@ -733,6 +732,9 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
   for (int i = 2; i < SAMPLES / 2; i++) {
     peakVol += (int)RvReal[i];
   }
+  peakVol = constrain (peakVol, 0, 100000);
+
+
 }
 //##########################################################################################################################//
 

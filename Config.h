@@ -233,7 +233,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.571";         // version
+const char ver[] = "V.572";         // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -266,7 +266,7 @@ long keyVal = 0;       // scan mode frequencies delivered from touchpad
 
 
 bool TVTunerActive = false;     //will get set to true when tuner in use
-bool lowSideInjection = false;  // for debugging, will change injection mode
+bool lowSideInjection = false;  // for debugging, this will change injection mode
 uint8_t initialGain = 180;     // adjust tuner gain when no signal received, depending on gain of the LNA. Must be as low as possible to reduce cross modulation
 uint8_t agcVal = initialGain;  // starting point of the AGC
 uint32_t OLDPLLFREQ = -1;
@@ -284,7 +284,7 @@ long MAX_FREQ = 50000000;
 
 bool tinySACenterMode = false;  // tinySA in RF mode synchronizes with receiver frequency
 bool tinySAfound = false;
-bool syncEnabled = false;     // uses Marker 1 for Smeter and dBm and uV indicators
+bool syncEnabled = true;     // uses tinySA markers for Smeter and dBm and uV indicators
 bool serialDebugTSA = false;  // used to debug incoming TSA messages
 bool showAGCGraph = false;
 bool scanMode = false;
@@ -397,9 +397,9 @@ int audioTreshold = 45;
 //FFT
 int Rpeak[256] = { 0 };
 float pk;  // peak frequency
-long peakVol = 0;
+long peakVol = 0; // volume meter
 int FFTGain = 100;  //  adjustable through config menue
-int dcOffset;       // dc offset of pin 36, should be around 1.65V
+int gpio36_Offset;       // dc offset of pin 36, should be around 1.65V
 
 // touch tune
 bool touchTune = false;

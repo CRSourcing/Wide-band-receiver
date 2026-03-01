@@ -467,14 +467,14 @@ void convertTodBm(char* extractedSS) {
     if (syncEnabled && TSAdBm) {  // we have a valid dBm read from the TSA
       
       if (tinySAfound == false) {
-        tft.fillRect(230, 296, 244, 24, TFT_BLACK); 
+        tft.fillRect(230, 296, 244, 24, TFT_BLACK); // erase "No sync..."
         tinySAfound = true;
       }  
      calculateAndDisplaySignalStrength();
     }
 
 
-    if (syncEnabled && !TSAdBm) {
+    if (syncEnabled && !TSAdBm) { 
       tinySAfound = false;
       tft.fillRect(230, 296, 244, 24, TFT_BLACK);
       tft.setCursor(235, 302);
@@ -541,6 +541,7 @@ void cfgTSA() {  // Touch "Cfg" in lower right corner to open Config Menu
   
   if(! useNixieDial)
     tft.fillRect(330, 3, 135, 20, TFT_BLACK);  // clear microvolt indicator area
+  
   tft.fillRect(3, 61, 336, 230, TFT_BLACK);  // clear  area for buttons
 
   drawButton(35, 95, TILE_WIDTH, TILE_HEIGHT, TFT_BTNCTR, TFT_BTNBDR);   //div +

@@ -1004,6 +1004,7 @@ void panoramaScan(bool show1MhzSegment) {  // shows panorama and waterfall while
 
   long savFreq = FREQ;
 
+
   if (show1MhzSegment == false && FREQ >= tSpan / 2)
     startPoint = FREQ - (tSpan / 2);  // +- 500KHz
 
@@ -1014,6 +1015,8 @@ void panoramaScan(bool show1MhzSegment) {  // shows panorama and waterfall while
       loadSi4735parameters();
     }
 
+     lastAMBandwidth = bandWidth;  
+    si4735.setBandwidth(2, 1); // 3 KHz
     si4735.setAudioMute(true);
     startPoint = FREQ / 1000000 * 1000000;  //start with full MHz
   }
@@ -1169,6 +1172,8 @@ void panoramaScan(bool show1MhzSegment) {  // shows panorama and waterfall while
             tft.setSwapBytes(false);
             FREQ = savFreq;
             FREQ_OLD -= 1;  // force display update
+            bandWidth = lastAMBandwidth;
+            si4735.setBandwidth(bandWidth, 1); // reload bandwidth
             return;
           }
 

@@ -204,8 +204,8 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
 
   si4735.setAudioMuteMcuPin(MUTEPIN);
   digitalWrite(MUTEPIN, HIGH);
-  dcOffset = analogRead(AUDIO_INPUT_PIN);  // need to measure the collector voltage of the tft amplifier to center mini oscilloscope
-  Serial_printf("FFT DC Offset %d\n", dcOffset);
+  gpio36_Offset = analogRead(AUDIO_INPUT_PIN);  // need to measure the collector voltage of the tft amplifier to center mini oscilloscope
+  Serial_printf("FFT DC Offset %d\n", gpio36_Offset);
 
 
   if (modType == USB || modType == LSB)
@@ -308,7 +308,7 @@ void drawBigBtns() {
 
     analogMeter(ySh);   // Draw upper analogue meter
     analogMeter(ySh2);  // Draw lower analogue meter
-    plotNeedle2(0, 0);
+    plotNeedle2(1, 0);
   }
 
 
@@ -373,10 +373,10 @@ void loadLastSettings() {
   bandWidth = preferences.getInt("lastBw", 0);        // last bandwidth
   modType = preferences.getChar("lastMod", 1);        //last modulation type
   altStyle = preferences.getBool("lastStyle", 0);     //plain or sprite style
-  pressSound = preferences.getBool("pressSound", 0);  // short beep when pressed
+  pressSound = preferences.getBool("pressSound", 1);  // short beep when pressed
   miniWindowMode = preferences.getChar("spectr", 3);  // audio spectrum analyzer mode
 #ifdef TINYSA_PRESENT
-  syncEnabled = preferences.getBool("useTSADBm", 0);  // use tinySA for DBm
+  syncEnabled = preferences.getBool("useTSADBm", 1);  // use tinySA for DBm
 #endif
   SNRSquelch = preferences.getBool("SNRSquelch", 0);         // SNR OR RSSI can open squelch
   buttonSelected = preferences.getInt("sprite", 1);          // load sprite for buttons

@@ -523,11 +523,11 @@ void showADCs() {
     }
 
     // Write and use Besenham algorithm to connect
-    int prevY1 = trH - 1 - ((analogRead(36) - dcOffset) >> 5) - 32;
+    int prevY1 = trH - 1 - ((analogRead(36) - gpio36_Offset) >> 5) - 32;
     int prevY2 = trH - 1 - (analogRead(39) >> 6);
 
     for (int x = 1; x < width; x++) {
-      int currY1 = trH - 1 - ((analogRead(36) - dcOffset) >> 5) - 32;  // use double vertical resolution
+      int currY1 = trH - 1 - ((analogRead(36) - gpio36_Offset) >> 5) - 32;  // use double vertical resolution
       int currY2 = trH - 1 - (analogRead(39) >> 6);
 
       int dy1 = abs(currY1 - prevY1);

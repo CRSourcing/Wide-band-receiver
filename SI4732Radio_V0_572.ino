@@ -24,12 +24,12 @@
 #define SW_ATTENUATOR_PRESENT  // uncommment only if a voltage controlled attenuator is present in the shortwave RF path.
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
-#define FLIP_IMAGE // Uncomment this if the image is upside down.
+//#define FLIP_IMAGE // Uncomment this if the image is upside down.
 //#define TFT_INVERSION_ON// Uncomment if the image is inverted.
 
 
-const char* ssid = "YourSSID";          // WIFI credentials needed for web tools and LittleFS uploader
-const char* password = "YourPw";  // WIFI credentials needed for web tools and LittleFS uploader
+const char* ssid = "MMV2025";          // WIFI credentials needed for web tools and LittleFS uploader
+const char* password = "Pekita#2020";  // WIFI credentials needed for web tools and LittleFS uploader
 
 //##########################################################################################################################//
 
@@ -91,7 +91,7 @@ have at least 80dB attenuation in the FM radio band, otherwise mix products caus
 A 9th order Chebychev filter is adequate.
 
 AD831 gets fed with CLK2 from the SI5351. 
-The SI5351 oscillates 21.4MHz above the desired frequency (LO above RF). When the tuner is in use, SI5351 oscillates 21.4 MHz above the tuner's IF spectrum (using IF from 37- 38MHz). 
+The SI5351 oscillates 21.4MHz above the desired frequency (LO above RF). When the tuner is in use, SI5351 oscillates 21.4 MHz above the tuner's IF spectrum (using IF from 36- 37MHz). 
 The tuner PLL gets programmed in 1MHz steps and the SI5351 covers the range inbetween.
 Tuners UR/UV1316 require a 5V -> 33V boost converter. A boost converter with NE555 produced audible interference, I therefore use a transistorized converter.
 Tuners UR/UV1316 cover from 50 - 860 MHz. Sensistivity of the receiver is about 0.2-0.3 uV for 10dB SNR and mostly determined by the 1st gain block. 
@@ -1039,8 +1039,8 @@ void calculateAndDisplaySignalStrength() {  // gets called from main loop, or op
   //Serial_printf("SignalStrength:%d SNR:%d\n", signalStrength, SNR);
 
   if ( (!syncEnabled) || (!TSAdBm) || (FREQ >= 350000000l) ) {  // calculate dBm from RSSI when no data from tinySA or FREQ above 350 MHz
-    // Convert dBµV to dBm      substract gain from LNA
-    dBm = signalStrength - 107 - RFGainCorrection;
+    // Convert dBµV to dBm  and substract gain from LNA
+    dBm = signalStrength - 107 - RFGainCorrection; 
   }
 
 
@@ -1259,9 +1259,10 @@ void DrawSmeterScale() {
 }
 //##########################################################################################################################//
 
-void slowTaskHandler() {
+void slowTaskHandler() { // handles tasks with a long period. not precise.
 
-  static unsigned int ctr = 0;
+  static unsigned int aTmr = 0; // animation timer
+  static unsigned int gpio36_OffsetTmr = 0; // recalibrate analogRead(AUDIO_INPUT_PIN);
   static unsigned long tmr = 0;
   const unsigned int tInt = 1000;  // 1000 ms
   static bool done = false;
@@ -1271,12 +1272,24 @@ void slowTaskHandler() {
 
   if (millis() - tmr >= tInt) {
     tmr = millis();
-    ctr++;
+    gpio36_OffsetTmr ++;
+    aTmr++;
   }
   //Serial.printf("RSSI:%ddBuV Frequency:%ld\n", signalStrength, FREQ);
 
+ if (gpio36_OffsetTmr >= 600) {  // try roughly every 10 minutes
+    
+     
+     if (audioMuted){
+       gpio36_Offset = analogRead(AUDIO_INPUT_PIN); // recalibrate analogRead(AUDIO_INPUT_PIN) since it slowly drifts with temperature
+       gpio36_OffsetTmr = 0; 
+       Serial_print("gpio36 recalibrated ");
+     } 
+  }
+
+ 
   if (!enableAnimations && done) {  // enableAnimations was set to false by encoder or keypress
-    ctr = 0;
+    aTmr = 0;
     done = false;
     if (funEnabled)
       redrawMainScreen = true;
@@ -1284,7 +1297,7 @@ void slowTaskHandler() {
     tx = ty = pressed = 0;
   }
 
-  if (ctr > TIME_UNTIL_ANIMATIONS) {  // logic to start  pacm after TIME_UNTIL_ANIMATIONS
+  if (aTmr > TIME_UNTIL_ANIMATIONS) {  // logic to start  pacm after TIME_UNTIL_ANIMATIONS
     enableAnimations = true;
     done = true;
     if (showAudioWaterfall)  // logic to start audio eaterfall after TIME_UNTIL_ANIMATIONS
@@ -1349,7 +1362,7 @@ void readSquelchPot(bool draw) {  // reads value of squelch potentiometer and if
 
 
 
-    disableFFT = true;  //temporarily disable spectrum analyzer to keep loop fast, so that circle does not jump
+    disableFFT = true;  //temporarily disable spectrum analyzer to keep loop fast, so that squelch indicator circle does not jump
 
 
     if (!draw)  // do not draw squelch position circle (when squelch used in memo functions)
@@ -1394,7 +1407,6 @@ void setSquelch() {
     } else if ((signalStrength < currentSquelch) && !audioMuted) {
       audioMuted = true;
       si4735.setAudioMute(true);  // set both software and hardware mute for better noise supression
-      dcOffset = analogRead(AUDIO_INPUT_PIN);
       si4735.setHardwareAudioMute(true);
     }
   }
@@ -1428,7 +1440,6 @@ void setSquelch() {
     else if ((!SNR && (signalStrength < currentSquelch)) && !audioMuted) {
       si4735.setAudioMute(true);
       si4735.setHardwareAudioMute(true);
-      dcOffset = analogRead(AUDIO_INPUT_PIN);
       audioMuted = true;
     }
   }

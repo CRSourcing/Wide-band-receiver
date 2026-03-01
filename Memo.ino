@@ -616,7 +616,7 @@ void picoMenu() {
   etft.setCursor(102, 244);
   etft.print("Show");
   etft.setCursor(102, 264);
-  etft.print("Entry");
+  etft.print("Single");
 
   etft.setCursor(185, 244);
   etft.print("Show");
@@ -632,17 +632,17 @@ void picoMenu() {
   etft.setCursor(10, 185);
   etft.print("consistently either Shortwave or");
   etft.setCursor(10, 205);
-  etft.print("VHF/UHF entries to avoid relay wear.");
+  etft.print("VHF/UHF entries.");
 
   tRel();
   tPress();
-  readPicoButtons();
+  readPicoStationList();
 }
 
 
 //##########################################################################################################################//
 
-void readPicoButtons() { // use PicoRX format station list
+void readPicoStationList() { // use PicoRX format station list
 
 
   int buttonID = getButtonID();
@@ -661,7 +661,6 @@ void readPicoButtons() { // use PicoRX format station list
     case 43:
       showChannelList();
       si4735.setHardwareAudioMute(false);
-      cRow = 0;  // reset channel row
       return;
     case 44:
       return;
@@ -688,18 +687,27 @@ void tuneSingleChannel() {
     start = -2
   };
 
-  bool loaded = false;
+ 
   const uint8_t button1X = 15;
   const uint8_t button2X = 95;
   const uint8_t button3X = 175;
   const uint8_t button4X = 250;
   const uint8_t buttonY = 233;
-
-
   drawSingleChannelButtons();
 
+  
+  static bool firstTime = true; 
+  if (firstTime) {
+    load_channel(last, true, 1, false, true);  
+    firstTime = false;
+  }
 
-  load_channel(current, loaded, 1, false, true);  // reload last channel
+ else
+   load_channel(current, true, 0, false, true);
+
+// void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromStart, bool showEntryNumber) 
+
+
 
   while (true) {
 
@@ -707,7 +715,6 @@ void tuneSingleChannel() {
       while (digitalRead(ENCODER_BUTTON) == LOW)
         ;
       redrawMainScreen = true;
-      loaded = true;
       return;
     }
 
@@ -720,7 +727,6 @@ void tuneSingleChannel() {
     if (pressed && (tx >= button2X && tx <= (button2X + TILE_WIDTH) && ty >= buttonY && ty <= (buttonY + TILE_WIDTH))) {  // exit
       tRel();
       redrawMainScreen = true;
-      loaded = true;
       return;
     }
 
@@ -786,6 +792,8 @@ void playCurrentChannel() {
 
   audioSpectrum();
   getRSSIAndSNR();
+
+
   TSAdBm = 0;  // force to use RSSI for s meter
   calculateAndDisplaySignalStrength();
   readSquelchPot(true);  // true = read and draw position circle
@@ -816,17 +824,17 @@ void playCurrentChannel() {
 //##########################################################################################################################//
 #define MAX_LINE_LENGTH 80
 
-void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromStart, bool showEntryNumber) {
-  uint8_t bufI[100];
+void load_channel(int action, bool reloadModType, int16_t addRows, bool fromStart, bool showEntryNumber) {
+  static uint8_t bufI[100]; // static, keep values when reusing func. 
   uint8_t bufO[80];
   static uint16_t offs = 0x5D;  // row zero does not contain valid data, so start with row 1
-  uint16_t ep = 0;
+  static uint16_t ep = 0;
   int16_t i = 0;
+
 
 
   File f = LittleFS.open("/memory.csv", "r");
   if (!f) {
-    Serial_println("Could not load memory.csv");
     tft.setCursor(10, 200);
     tft.println("Could not load memory.csv");
     delay(1000);
@@ -837,7 +845,7 @@ void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromS
 
 
 
-  if (direction == -2) {  // return to start
+  if (action == -2) {  // return to start
     offs = 0;
     cRow = 0;
     addRows = 1;
@@ -849,7 +857,7 @@ void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromS
   }
 
 
-  if (direction == -1) {  // cclw, go back 2 rows
+  if (action == -1) {  // cclw, go back 2 rows
 
     offs -= 2 * MAX_LINE_LENGTH;
     while (bufI[0] != 0x0A) {  // forward to next seperator
@@ -862,9 +870,10 @@ void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromS
   }
 
 
+
   for (int16_t s = 0; s < addRows; s++) {
 
-    if (direction == 1)
+    if (action == 1)
       cRow++;
 
     if (cRow < 1) {
@@ -894,6 +903,8 @@ void load_channel(int direction, bool reloadModType, int16_t addRows, bool fromS
     offs += ep;
     i = 0;
   }
+
+
 
   for (i = 0; i < ep; i++)  // load row into buffer
     bufO[i] = bufI[i];
@@ -933,10 +944,10 @@ void setChannel(const char *buffer, int cRow, bool reloadModType, bool showEntry
 
 
   tft.setTextColor(TFT_CYAN);
-  tft.fillRect(x + 80, y, 50, 15, TFT_BLACK);
+  tft.fillRect(x + 128, y, 66, 15, TFT_BLACK);
   tft.setCursor(x, y);
   if (showEntryNumber)
-    tft.printf("Entry: %d ", cRow);
+    tft.printf(" <- Entry: %d ->", cRow);
 
 
   y += 40;
@@ -1025,9 +1036,8 @@ const char LABEL_PLUS20[] = "+20";
 void drawSingleChannelButtons() {
   // overwrite the step indicator
   tft.fillRect(340, 26, 135, 18, TFT_BLACK);
-
-  // clear main area
-  tft.fillRect(MAIN_X, MAIN_Y, MAIN_W, 231, TFT_BLACK);
+  // clear lower bar
+  tft.fillRect(0,295, 480, 25, TFT_BLACK);
 
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
 
@@ -1168,6 +1178,7 @@ void showChannelList() {
 
 //##########################################################################################################################//
 bool extractAndShowRows(uint16_t startEntry, uint16_t entries) {
+
   tft.fillRect(0, 0, 480, 264, ROW_BGC);
   memset(frequencies, 0, sizeof(frequencies));
 

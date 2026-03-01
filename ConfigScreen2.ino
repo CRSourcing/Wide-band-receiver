@@ -349,27 +349,36 @@ void correctTunerOffset() {  //corrects tuner frequency error.
 #endif
 //##########################################################################################################################//
 
-void setRFGainCorrection() {  // fine tune RF gain so that S meter reads correctly
+void setRFGainCorrection() {  // fine tune shortwave gain so that S meter reads correctly
 
   RFGainCorrection = preferences.getInt("rfgc", 6);  // load last calibration factor
 
   encLockedtoSynth = false;
   clearStatusBar();
+  clearNotification();
+  tft.setCursor(10, 100);
+  tft.printf("Shortwave gain corr.:%d dB", RFGainCorrection);
+  
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
-    clearNotification();
-
+  
     if (clw)
       RFGainCorrection++;
     if (cclw)
       RFGainCorrection--;
+  
+
+  
+    if (clw || cclw) {
+      tft.fillRect(10, 100, 325, 16, TFT_BLACK);
+      tft.setCursor(10, 100);
+      tft.printf("Shortwave gain corr.:%d dB", RFGainCorrection);
+    }
+    delay(5);
+    
     clw = 0;
     cclw = 0;
-
-    calculateAndDisplaySignalStrength();
-    tft.fillRect(5, 100, 333, 16, TFT_BLACK);
-    tft.setCursor(5, 100);
-    tft.printf("RFGainCorrection:%d dB", RFGainCorrection);
-    delay(50);
+   calculateAndDisplaySignalStrength();
+  
   }
   preferences.putInt("rfgc", RFGainCorrection);
   encLockedtoSynth = true;
@@ -417,11 +426,11 @@ void zeroDiscriminator(void) {
   encLockedtoSynth = false;
   tft.setTextSize(1);
   displayText(10, 64, 0, 0, "Tune to strong signal w. precise frequency.");
-  displayText(10, 76, 0, 0, "Adjust encoder for lowest reading.");
+  displayText(10, 76, 0, 0, "Adjust encoder for offset zero.");
   displayText(10, 90, 0, 0, "Press encoder to leave.");
   tft.setTextSize(2);
   tft.setCursor(10, 105);
-  tft.printf("Voltage: %d", afcVoltage * 5);
+  tft.printf("Offs: %d,  GPIO27 %4.0fmV", afcVoltage * 5, (float) analogRead(TUNING_VOLTAGE_READ_PIN) * 0.8056f); 
 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
@@ -442,7 +451,8 @@ void zeroDiscriminator(void) {
 
       tft.fillRect(10, 105, 325, 20, TFT_BLACK);
       tft.setCursor(10, 105);
-      tft.printf("Voltage: %d", afcVoltage * 5);  // discriminator voltage gets divided by 5 to feed the meter, so this should match
+      tft.printf("Offs: %d,  GPIO27 %4.0fmV", afcVoltage * 5, (float) analogRead(TUNING_VOLTAGE_READ_PIN) * 0.8056f);  
+      // discriminator voltage gets divided by 5 to feed the tuning meter, so this should match
     }
 
 

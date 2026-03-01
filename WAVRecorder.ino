@@ -111,7 +111,7 @@ void wavRecord() {
   uint32_t samplesToRecord = RECORD_TIME * SAMPLE_RATE;
   uint8_t buffer[BUFFER_SIZE];
   uint32_t samplesRecorded = 0;
-  int16_t offsetComp = 2048 - dcOffset;
+  int16_t offsetComp = 2048 - gpio36_Offset;
   uint16_t ctr = 0;
 
 
