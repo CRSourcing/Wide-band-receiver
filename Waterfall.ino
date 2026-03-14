@@ -20,6 +20,10 @@ void waterFall(bool useKeypad) {
   float span = (float)(endPoint - startPoint);
 
 
+ spr2.deleteSprite(); // free mem from rolling RSSI trace
+ sprite2Init = false;
+
+
   // allocate 2 framebuffers, 120 * 300, can't allocate 1 framebuffer big enough
   framebuffer1 = (uint16_t*)malloc(FRAMEBUFFER_HALF_WIDTH * FRAMEBUFFER_HEIGHT * sizeof(uint16_t));
   framebuffer2 = (uint16_t*)malloc(FRAMEBUFFER_HALF_WIDTH * FRAMEBUFFER_HEIGHT * sizeof(uint16_t));
@@ -53,9 +57,11 @@ void waterFall(bool useKeypad) {
   long offset = 0;
   long total = 0;
   long strength = 0;
+  long lowest = 99999999;
   uint32_t startTime;
   uint16_t resolution = 2000;  // 2KHz
   bool drawingTrace = true;
+  bool firstrun = true;
   long cellSize = (endPoint - startPoint) / FRAMEBUFFER_FULL_WIDTH;  // cellSize is the frequency range that gets scanned for 1 pixel
   uint16_t stp = cellSize / 25;                                      // can't change filter bandwith, need to scan each cell. 25 steps in every cellSize sufficient up to 30 MHz range
 
@@ -99,23 +105,26 @@ void waterFall(bool useKeypad) {
     }
 
 
-    int mult = (analogRead(FINETUNE_PIN) / wfSensitivity) - 1;
+    int mult = 10 + (analogRead(FINETUNE_PIN) / 200) ; // mult range from 10 to 30
+    
+    
     long corrFactor = (cellSize / 2000);     // ajust accum to cellsize
-    corrFactor = min(corrFactor, (long)50);  // Limit corrFactor to 50
-
-
+    corrFactor = min(corrFactor,50l);       // Limit corrFactor to 50
     si4735.getCurrentReceivedSignalQuality(0);
+   
     while (offset < cellSize) {
       FREQ = startPoint + total + offset;
       setLO();
       // si4735.getCurrentReceivedSignalQuality(0);
       strength = si4735.getCurrentRSSI();  // Read RSSI
 
-      accum += abs((strength * mult) / (corrFactor + 1));
+      accum += (strength * mult) / (corrFactor + 1); // avoid div by 0
+
       offset += stp;
     }
 
-    uint16_t clr = valueToWaterfallColor((accum - 600) * 3);  // Convert to RGB565
+
+    uint16_t clr = valueToWaterfallColor((accum - lowest) * 3);  // substract noise, multiply to extend range  and convert to RGB565
     //tft.fillCircle(470, 312, 4, clr);                              // Lower right corner indicator
     tft.fillRect(2 * xPos, 265, 2, 6, clr);  // indicator bar
     //tft.drawPixel(2 * xPos, 0, TFT_BLUE);                          //  upper bar current position
@@ -124,13 +133,20 @@ void waterFall(bool useKeypad) {
     newLine[xPos] = clr;  // Fill framebuffer line
     xPos++;
 
-    if (xPos <= 239)
 
-      accum = 0;
+    if (firstrun && (accum < lowest) ) { //  calculate background noise
+      // Serial.printf("lowest %ld\n", lowest);
+       lowest = accum;
+    }
+
+    
+    accum = 0;
     offset = 0;
     total += cellSize;
 
     if (xPos >= 239) {
+      if (firstrun) 
+         firstrun = false;
       tft.setTextColor(TFT_BLUE);
       tft.fillRect(330, 300, 150, 19, TFT_BLACK);
       tft.setCursor(330, 303);
@@ -175,7 +191,6 @@ void rebuildMainScreen(bool freebuf) {
   tRel();
   drawFrame();
   drawBigBtns();  // redraw buttons
-  clockDisplay();
   displaySTEP(true);  // have step display update since step may have changed
   showFREQ = true;
   displayFREQ(FREQ);
@@ -1171,7 +1186,7 @@ void panoramaScan(bool show1MhzSegment) {  // shows panorama and waterfall while
             free(framebuffer1);
             tft.setSwapBytes(false);
             FREQ = savFreq;
-            FREQ_OLD -= 1;  // force display update
+            FREQ_OLD = -1;  // force display update
             bandWidth = lastAMBandwidth;
             si4735.setBandwidth(bandWidth, 1); // reload bandwidth
             return;
@@ -1294,7 +1309,7 @@ void pushPanoramaBuf(int wHeight, int wWidth, int startX, int startWfY) {
 
 void initPanoramaScan(int wWidth, int wHeight, int startX, int startY, int endX, int endY) {
 
-  tft.fillRect(0, 294, 227, 26, TFT_BLACK);  // overwrite clock and  mute indicator
+  tft.fillRect(0, 294, 480, 26, TFT_BLACK);  // overwrite lower area
 
   if (!useNixieDial)
     tft.fillRect(330, 4, 145, 22, TFT_BLACK);  // overwrite microvolts

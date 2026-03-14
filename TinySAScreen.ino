@@ -30,9 +30,9 @@ void drawTSAButtons() {
   };
 
   Button buttons[] = {
-    { 17, 132, "TinySA" }, { 20, 153, "Mode" }, { 102, 132, "TinySA" }, { 100, 153, "Config" }, { 185, 132, "TinySA" }, { 185, 153, "Sync" }, 
-    { 265, 132, " " }, { 265, 151, " " }, { 20, 188, "Sweep" }, { 20, 210, "0-30" }, { 100, 188, "Sweep" }, { 100, 210, "0-200" }, 
-    { 185, 188, "Sweep" }, { 178, 210, "118-128" }, { 265, 190, "Swp" }, { 270, 210, "FM" }, 
+    { 17, 132, "TinySA" }, { 20, 153, "Mode" }, { 102, 132, "Temp." }, { 100, 153, "Param." }, { 185, 132, "Full" }, { 185, 153, "Sync" }, 
+    { 265, 132, "Freq" }, { 265, 151, "Sync" }, { 20, 188, "Swp" }, { 20, 210, "0-30" }, { 100, 188, "Swp" }, { 100, 210, "0-200" }, 
+    { 185, 188, "Swp" }, { 178, 210, "118-128" }, { 265, 190, "Swp" }, { 270, 210, "FM" }, 
     { 265, 245, "  " }, { 263, 268, "  " }, { 183, 245, "  " }, { 183, 268, "  " }, { 100, 255, "Listen" }, { 100, 268, "  " }
   };
 
@@ -98,22 +98,37 @@ void readTSAButtons() {
 
      if (! useNixieDial)
       tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // overwrite last microvolt indication
-      tft.fillRect(232, 294, 247, 25, TFT_BLACK);
-      tft.fillCircle(470, 20, 2, TFT_BLACK); // overwrite communication indicator
+      tft.fillRect(230,294,250, 26, TFT_BLACK);  // overwrite area for sync buttons
       syncEnabled = !syncEnabled;
       tft.setCursor(10, 70);
-      tft.print("TSA sync will read markers.");
+      tft.print("Sync TSA (include markers)");
       tft.setCursor(10, 90);
       tft.printf("Sync: %s\n", syncEnabled ? "Enabled" : "Disabled");
-      delay(500);
+      delay(1000);
       preferences.putBool("useTSADBm", syncEnabled);
-      if (syncEnabled)
+      if (syncEnabled) {
          resetTSA();
+        sprite2Init = false; // no room for rolling RSSI history 
+        spr2.deleteSprite(); //free ram
+      }
+      
       tRel(); 
     break;
     
     case 24: 
-  
+     centerTSA = ! preferences.getBool("cTSA", 0);  // sync frequency, but do not use markers
+     preferences.putBool("cTSA", centerTSA);
+      tft.setCursor(10, 67);
+      tft.print("Sync Frequency only");
+      tft.setCursor(10, 87);
+      tft.print("(Markers not synced)");
+      tft.setCursor(10, 107);
+      tft.printf("Sync: %s\n", centerTSA ? "Enabled" : "Disabled");
+      if (centerTSA) {
+        syncEnabled = false;
+        preferences.putBool("useTSADBm", syncEnabled);
+      }
+      delay(1000);
     break;
     case 31:
       Serial.println("rbw 100");

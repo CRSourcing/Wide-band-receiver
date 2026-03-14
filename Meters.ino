@@ -27,8 +27,6 @@ void analogMeter(int ySh) {
   tft.fillCircle(379, 187, 1, TFT_LIGHTGREY);
 
 
-
-
   // Draw ticks every 5 degrees from -50 to +50 degrees (100 deg. FSD swing)
   for (int i = -50; i < 51; i += 5) {
     // Long scale tick length
@@ -143,21 +141,25 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
   if (!showMeters || scanMode)
     return;
 
-  tft.setTextColor(TFT_LIGHTBULB, TFT_DARKVIOLET);
-
-  if (value < 0) value = 0;  // Limit value to emulate needle end stops
-  if (value > 100) value = 100;
-
 
   if (value != old_analog) {
 
-    if (old_analog < value) old_analog += updateRate;
-    else old_analog -= updateRate;
+    tft.setTextColor(TFT_LIGHTBULB, TFT_DARKVIOLET);
+    value = constrain(value, 0, 100);  // Limit value to emulate needle end stops
 
 
-    if (!updateRate) {
+    if (value > old_analog + updateRate)
+      old_analog += updateRate;
+    else if (value < old_analog - updateRate)
+      old_analog -= updateRate;
+    else
+      old_analog = value; // eventually snap to target
+
+
+
+    if (!updateRate)  // reset
       old_analog = value = 0;
-    }
+
 
     float sdeg = map(old_analog, -10, 110, -150, -30);  // Map value to angle
     // Calculate tip of needle coords
@@ -184,10 +186,10 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     // Draw the needle in the new postion, magenta makes needle a bit bolder
     // draws 3 lines to thicken needle
 
-   tft.setTextColor(TFT_WHITE); 
+    tft.setTextColor(TFT_WHITE);
 
 #ifndef NBFM_DEMODULATOR_PRESENT
-    tft.drawCentreString("RSSI", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
+    tft.drawCentreString("dBuV", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
 #else
     if (modType != WBFM) {
 
@@ -195,7 +197,7 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     }
 
     else
-      tft.drawCentreString("RSSI", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
+      tft.drawCentreString("dBuV", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
 #endif
 
     tft.drawLine(M_SIZE * (120 + 24 * ltx) - 1 + xSh, M_SIZE * (150 - 24) + ySh - 8, osx - 1 + xSh, osy + ySh, TFT_RED);
@@ -204,31 +206,36 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
   }
 
   tft.setTextColor(textColor, TFT_BLACK);
+
+
 }
 
 // #########################################################################
 
 
 
-void plotNeedle2(int value2, int updateRate)  // lower needle
+void plotNeedle2(int value2, int updateRate)  // lower needle, non blocking
 {
 
 
   if (!showMeters || scanMode)
     return;
 
-  tft.setTextColor(TFT_LIGHTBULB, TFT_DARKVIOLET);
 
-  if (value2 < 0) value2 = 0;  // Limit value to emulate needle end stops
-  if (value2 > 100) value2 = 100;
 
-  // Move the needle until new value reached
   if (value2 != old_analog2) {
 
-    if (old_analog2 < value2)
+    tft.setTextColor(TFT_LIGHTBULB, TFT_DARKVIOLET);
+    value2 = constrain(value2, 0, 100);  // Limit value to emulate needle end stops
+
+
+    if (value2 > old_analog2 + updateRate)
       old_analog2 += updateRate;
-    else
+    else if (value2 < old_analog2 - updateRate)
       old_analog2 -= updateRate;
+    else
+      old_analog2 = value2; // eventually snap to target
+
 
 
     if (!updateRate) {  // reset needles to zero

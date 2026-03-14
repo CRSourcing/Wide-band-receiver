@@ -1,7 +1,7 @@
 /* Contains tuning logic for the TV tuner frontend. This logic is written for a group of Philips PAL I2C tuners build from 1995-2005 (Gen 3 and 4 MOPLL tuners).
 Other Philips PAL tuners will probably work. 
-Tuners from other manufacturers will probaly need another data format, but it may be possible to adapt accordingly. NTSC tuners will need to change 
-const long segmentStartFreq = 36000000 to const long segmentStartFreq = 45000000 and adapt the LC circuit on the IF output of the tuner accordingly.
+Tuners from other manufacturers will probaly need another data format, but it may be possible to adapt accordingly. Philips NTSC tuners will need to change 
+const long tunerIFLowEnd = 38000000l to const long tunerIFLowEnd = 45000000l and adapt the LC circuit on the IF output of the tuner accordingly.
 
 It contains both the logic for the tuner PLL and the SI5351 which is used as local oscillator to mix down to 21.4MHz.
 
@@ -10,12 +10,11 @@ Below SHORTWAVE_MODE_UPPER_LIMIT the AD831 gets connected to the antenna input v
 The SI4732 is always used as a demodulator at 21.4MHz. The SI5351 is set to RF+IF (highside injection).
 
 If FREQ exceeds SHORTWAVE_MODE_UPPER_LIMIT, the AD831 gets connected to the tuner output. 
-The TV tuner gets activated and converts RF to an IF spectrum roughly 7MHz wide, centering at 36MHz.
-The AD831 will then use a 1MHz slot between 36 and 37MHz and mit ix down to 21.4MHz.
-Since the LO is using highside injection, the spectum gets mirrored and 37MHz corresponds to the low end of the RF spectrum and 36MHz to the high end.
+The TV tuner gets activated and converts RF to an IF spectrum roughly 8MHz wide, centering at 36MHz.
+The AD831 will then get fed with a 1MHz slot in the IF range and mit ix down to 21.4MHz.
+Since the tuner's LO is using highside injection, the spectum gets mirrored and 39MHz corresponds to the low end of the RF spectrum and 38MHz to the high end.
+Once the SI5351 frequency reaches either end, the tuner will get reprogrammed. 
 
-Once the LO frequency reaches either end, the tuner will get reprogrammed. 
-SI5351 gets programmed to oscillate betwee 57.4 and 58.4MHz when the tuner is used. 
 
 */
 #ifdef TV_TUNER_PRESENT
@@ -36,9 +35,8 @@ Samsung tuners use inverse 3 bits for band selection, Alps and Sony use 2 bits
 */
 
 uint8_t I2CDataPacket[4] = { dividerByte1, dividerByte2, controlDataByte, bandSwitchByte };
-const long tunerStepSize = 50000;        // Tuner step size (Hz), either 50000, 62500, or 31250
-const long segmentStartFreq = 36000000;  // tunes from segmentStartFreq + segmentSize down to segmentStartFreq
-const long segmentSize = 1000000;        // segment that will be covered before the tuner PLL gets reprogrammed, must be a multiple of tunerStepSize
+const long tunerStepSize = 50000l;        // Tuner step size (Hz), either 50000, 62500, or 31250
+const long segmentSize = 1000000l;        // segment that will be covered before the tuner PLL gets reprogrammed, must be a multiple of tunerStepSize
 
 #endif
 
@@ -89,7 +87,7 @@ void tune() {  // selects tuning method depending on frequency and programs si53
 
 
       OLDPLLFREQ = -1;
-      digitalWrite(IF_INPUT_RELAY, HIGH);  // connect bandpass with AD831
+      digitalWrite(RELAY_SWITCH_OUTPUT, HIGH);  // connect bandpass with AD831
       
       
       if(! lowSideInjection)
@@ -125,14 +123,15 @@ void tune() {  // selects tuning method depending on frequency and programs si53
   void programTVTuner() {
 
     static long errorComp = 0;
-    digitalWrite(IF_INPUT_RELAY, LOW);                                              // switch input to TV tuner
-    PLLFREQ = (FREQ + segmentStartFreq + segmentSize) / segmentSize * segmentSize;  // round down and add 1 segment to get the PLL freq
+    digitalWrite(RELAY_SWITCH_OUTPUT, LOW);                                              // switch input to TV tuner
+    PLLFREQ = (FREQ + tunerIFLowEnd + segmentSize) / segmentSize * segmentSize;  // round down and add 1 segment to get the PLL freq
 
 
 
     if (PLLFREQ != OLDPLLFREQ) {  // reprogram PLL only if the segment changes
       setDividerBytes(PLLFREQ);   // update the divider
       setBandSwitchByte();        // set band byte
+            // update frequency display
       dac1.outputVoltage((uint8_t) initialGain); // relevant if we come from shortwave and dac1 is set to a low voltage    
 
 /*
@@ -178,9 +177,9 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
 
 
     if (!lowSideInjection) 
-       LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
+       LO_RX = tunerIFLowEnd + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
     else 
-       LO_RX = segmentStartFreq + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // for debugging expression for LO below RF
+       LO_RX = tunerIFLowEnd + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // for debugging expression for LO below RF
 
     si5351.set_freq((LO_RX + errorComp) * 100ULL, SI5351_CLK2);  // add the tuner  offset correction
 
@@ -221,7 +220,7 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
 
   //##########################################################################################################################//
 
-  void setTunerAGC() {  // use TV tuner AGC for strong signals.
+  void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
 
 
     if (!TVTunerActive)
@@ -247,7 +246,7 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
     //tft.setCursor (250, 300);
     //tft.printf("DAC:%d newRSSI%d",agcVal, newRSSI);
 
-
+   if (showValues) {
     tft.setTextColor(TFT_SKYBLUE);
     tft.setTextSize(1);
     tft.fillRect(143, 140, 16, 24, TFT_BLACK);
@@ -258,6 +257,8 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
     tft.printf("%d",oldRSSI);
     tft.setTextSize(2);
      tft.setTextColor(textColor);
+   }
+
 
     if (newRSSI > oldRSSI) {
     dac1.outputVoltage((uint8_t)oldRSSI);  // stronger signal, gradual increase during each call

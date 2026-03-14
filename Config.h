@@ -110,7 +110,7 @@
 #define IF_FILTER_BANDWIDTH_PIN 0  // switches filter bandwidth, GPIO 0 okay for this
 #define RESET_PIN 12               // SI4735 reset
 #define NBFM_MUTE_PIN 13           // Hardware NBFM demodulator mute pin, muted when another modType is in use
-#define IF_INPUT_RELAY 14          // activates IF relay
+#define RELAY_SWITCH_OUTPUT 14          // activates IF  and LNA relays. Low = tvTuner connected to LNA and AD831
 #define ENCODER_PIN_B 16           // Encoder left and right pins
 #define ENCODER_PIN_A 17           // Encoder left and right pins
 #define ESP32_I2C_SDA 21           // I2C bus
@@ -199,10 +199,19 @@
 
 */
 //##########################################################################################################################//
-//Classes
+//Classes, objects
+
+
 Rotary encoder = Rotary(ENCODER_PIN_A, ENCODER_PIN_B);
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSPI_ext etft = TFT_eSPI_ext(&tft); // Install from https://github.com/FrankBoesing/TFT_eSPI_ext
+
+// These 3 sprites can hold data simultaneously, so 3 objects needed
+TFT_eSprite spr1 = TFT_eSprite(&tft); // miniwindow, bottom center of screen
+TFT_eSprite spr2 = TFT_eSprite(&tft);  // rolling RSSI indicator
+TFT_eSprite spr3 = TFT_eSprite(&tft);  // audio waterfall after user inactivity
+
+
 Si5351 si5351(0x60);  //Si5351 I2C Address 0x60
 SI4735 si4735;
 Preferences preferences;  // EEPROM save data
@@ -233,7 +242,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.572";         // version
+const char ver[] = "V.573";         // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -243,7 +252,8 @@ long SI5351calib = 0;    //  si5351.set_correction
 
 
 long FREQ = 100000;            // receiver tuned frequency
-long FREQ_OLD = FREQ - 1;      // start with != FREQ value
+long FREQ_OLD = -1;            // start with != FREQ value
+long F_OLD = -1;               // value holder for displayLOFreq() 
 long LO_RX;                    // SI5351 frequency in Hz
 int SI4735TUNED_FREQ = 21400;  // 1st IF in KHz Also mid frequency of crystal filter, SI4732 needs to be tuned to it. 
 
@@ -284,9 +294,9 @@ long MAX_FREQ = 50000000;
 
 bool tinySACenterMode = false;  // tinySA in RF mode synchronizes with receiver frequency
 bool tinySAfound = false;
-bool syncEnabled = true;     // uses tinySA markers for Smeter and dBm and uV indicators
+bool syncEnabled = false;     // syncs tinySA frequency with receiver and uses tinySA markers for Smeter and dBm and uV indicators
+bool centerTSA = true;        // track and sync TSA with current frequency. Do not use markers;
 bool serialDebugTSA = false;  // used to debug incoming TSA messages
-bool showAGCGraph = false;
 bool scanMode = false;
 bool pressed = false;
 bool pressSound = true;
@@ -295,7 +305,7 @@ bool encLockedtoSynth = true;  // locks encoder to SI5351
 bool ssbLoaded = false;
 bool SI4735WBFMTune = false;  // for WBFM, will set SI4732 Frequency
 bool SI4732found = false;
-bool altStyle = false;         // false = use sprites, true = use tiles
+bool altStyle = false;         // false = use bitmaps, true = use tiles
 bool displayDebugInfo = true;  // display clock info and looptimer
 bool showScanRange = true;     // show scan range after entered
 bool singleConversionMode  = true; // true = single conversion (shortwave)
@@ -333,7 +343,7 @@ uint8_t SNR = 0;
 int8_t signalStrength = 0;  // RSSI
 float microVolts;
 uint8_t modType = 1;                        //modulation type, 
-uint16_t tx = 0, ty = 0, ttx = 0, tty = 0;  // touchscreen coordinates and temporary value holders
+uint16_t tx = 0, ty = 0, ttx = 0, tty = 0;  // touchscreen coordinates and temporary copies
 uint16_t row = 0, column = 0;               // buttons are grouped in rows and columns
 
 // Bodmer analog meters
@@ -353,7 +363,8 @@ const uint16_t textColor = TFT_ORANGE;
 bool audioMuted = false;            // mute state
 char miniWindowMode = 3;            // mini window mode: 1 = 16 channel, 2 = 85 channel, 3= minioscilloscope, 4 = waterfall, 5 = envelope
 int amplitude = 150;                // amplitute divider for spectrum analyzer
-int fTrigger = 0;                   // triggers functions in main loop
+uint8_t showRSSITrace =1;           // trace in lower right corner initially enabled      
+uint8_t fTrigger = 0;                   // triggers functions in main loop
 int currentSquelch = 0;             // squelch trigger level
 uint8_t vol = 50;                   // global volume, should be around 50
 bool disableFFT = false;            // stops the spectrum analyzer during time critical operations
@@ -361,13 +372,13 @@ bool SNRSquelch = true;             // use either RSSI or SNR to trigger squelch
 bool noMixer = false;               // run with antenna directly connected to SI4732 for testing
 bool vfo1Active = true;
 bool showTouchCoordinates = false;  // debug
+bool sprite2Init = false;            // sprite for rolling RSSI graph needs 15K ram   
 int loopDelay = 0;                  // stabilize loop at not less than 10ms
 int16_t cRow = 1;                   // channel row when displaying memory.csv file
 
 
 
 // Waterfall
-const int wfSensitivity = 50;                 // is a divider, more means less sensitivity
 uint16_t* framebuffer1;                       // First framebuffer for waterfall, also used in panoramascan
 uint16_t* framebuffer2;                       // Second framebuffer for waterfall
 uint16_t stretchedX[FRAMEBUFFER_FULL_WIDTH] = { 0 };  // array audio waterfall to strech 240 to 331 pixels
@@ -375,7 +386,6 @@ int currentLine = 0;                          // Current line being written to
 uint16_t newLine[DISP_WIDTH] = { 0 };             // line transfer buffer
 bool smoothColorGradient = false;             // smooth = blue to white, otherwise blue to red
 bool showAudioWaterfall = false;
-uint8_t wabuf[26][90] = { 0 };  // audio waterfall miniwindow buffer
 bool audiowf = false;
 bool showPanorama = false;  //Panorama screen while squelch is closed
 bool show1MhzSegment = 0; // 0 shows +-500KHz around FREQ, 1 starts with full MHz 
@@ -397,8 +407,8 @@ int audioTreshold = 45;
 //FFT
 int Rpeak[256] = { 0 };
 float pk;  // peak frequency
-long peakVol = 0; // volume meter
-int FFTGain = 100;  //  adjustable through config menue
+long FFTAccum = 0; // volume meter
+int FFTGain = 80;  //  adjustable through config menue
 int gpio36_Offset;       // dc offset of pin 36, should be around 1.65V
 
 // touch tune
@@ -415,7 +425,7 @@ volatile bool newPulse = false;
 #endif
 
 // Buttons
-extern const uint16_t But1[], But2[], But3[], But4[], But5[], But6[], But7[], But8[];  // sprite buttons in sprite.h
+extern const uint16_t But1[], But2[], But3[], But4[], But5[], But6[], But7[], But8[];  // bitmap buttons in sprite.h
 const uint16_t* buttonImages[] = { But1, But2, But3, But4, But5, But6, But7, But8 };
 uint16_t buttonSelected = 4;  // 4-11
 
@@ -623,7 +633,7 @@ std::vector<SlowScanFrequencies> slowScanList;
 // Original values to load when CSV files missing
 
 
-std::vector<BandInfo> originalBandList = {  // Any entry here will be carried over to LittleFS and possibly SDCard
+std::vector<BandInfo> originalBandList = {  // Any entry here will be carried over to LittleFS
   { "LW", 150, 280, false, 1 },
   { "MW", 520, 1710, false, 2 },
   { "160M", 1800, 2000, true, 3 },       // Amateur radio band,

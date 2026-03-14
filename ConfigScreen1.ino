@@ -73,37 +73,25 @@ void readCf1Btns() {
 
   int buttonID = getButtonID();
 
-   if (! buttonID)
+  if (!buttonID)
     return;  // outside of key area
   tft.setTextColor(TFT_GREEN);
   switch (buttonID) {
     case 21:
-      showPanorama = !showPanorama;
-      preferences.putBool("showPan", showPanorama);
-      if (showPanorama)
-        showAudioWaterfall = false;  // panoramascan has priority
-
-      tft.setCursor(10, 65);
-      tft.print("Shows waterfall when");
-      tft.setCursor(10, 85);
-      tft.print("squelch is closed (AM/FM).");
-      tft.setCursor(10, 110);
-      tft.printf("Panorama: %s\n", showPanorama ? "ON" : "OFF");
-      delay(2000);
-
+      panoramaScreen();
       break;
     case 22:
       useNixieDial = !useNixieDial;
-      tft.fillRect(3, 3, 335, 42, TFT_BLACK);// overwrite freq digits
-      tft.fillRect(330, 4, 145, 22, TFT_BLACK);// overwrite microvolts
+      tft.fillRect(3, 3, 335, 42, TFT_BLACK);                    // overwrite freq digits
+      tft.fillRect(330, 4, 145, 22, TFT_BLACK);                  // overwrite microvolts
       tft.fillRoundRect(5, 3, 235, 42, 3, TFT_DIAL_BACKGROUND);  // overwrite space for dial or FREQ digits
       if (useNixieDial)
         tft.fillRect(335, 26, 140, 20, TFT_BLACK);  // overwrite step display
       else
         displaySTEP(true);  // restore
       preferences.putBool("dial", useNixieDial);
-     FREQ_OLD -= 1; // force freq display
-     break;
+      FREQ_OLD -= 1;  // force freq display
+      break;
     case 23:
       showMeters = !showMeters;
       if (showMeters) {
@@ -114,7 +102,7 @@ void readCf1Btns() {
         delay(1000);
       }
       preferences.putBool("sM", showMeters);
-      preferences.putBool("fB", true);
+      preferences.putBool("fB", true); // activate fastboot
       ESP.restart();
       break;
 
@@ -132,34 +120,23 @@ void readCf1Btns() {
       setIF();
       break;
     case 32:
-      loopBands = preferences.getBool("uBL", 0);  // activate or deactivate band limits
-      if (loopBands) {
-        loopBands = false;
-        preferences.putBool("uBL", loopBands);
-        tft.setCursor(10, 75);
-        tft.print("Band looping disabled!");
-        delay(1000);
-        return;
-      }
-      if (!loopBands) {
-        loopBands = true;
-        preferences.putBool("uBL", loopBands);
-        tft.setCursor(10, 75);
-        tft.print("Band looping enabled!");
-        delay(1000);
-        return;
-      }
-      break;
+      loopBands = !preferences.getBool("uBL", false);
+      preferences.putBool("uBL", loopBands);
+      tft.setCursor(10, 75);
+      tft.print(loopBands ? "Band looping enabled!" : "Band looping disabled!");
+      delay(1000);
+      return;
+    
     case 33:
       setAvcAmMaxGain();
       break;
-   case 34:
-      funEnabled =!funEnabled;
+    case 34:
+      funEnabled = !funEnabled;
       tft.setCursor(10, 75);
-      if(funEnabled)
+      if (funEnabled)
         tft.print("Have fun!");
       else
-       tft.print("Fun disabled");
+        tft.print("Fun disabled");
       preferences.putBool("fun", funEnabled);
       delay(500);
       break;
@@ -214,7 +191,7 @@ void calibSI5351() {  // calibrates the SI5351.
 
 //##########################################################################################################################//
 
-void setVol() {  //sets SI4732 volume. For FFT to work the volume should be around 50
+void setVol() {  //sets SI4732 master volume
 
   vol = preferences.getChar("Vol", 50);
   encLockedtoSynth = false;
@@ -339,10 +316,10 @@ void printAvcAmMaxGain(uint8_t AvcAmMaxGain) {
   if (altStyle)
     tft.fillRoundRect(225, 95, 100, 22, 10, TFT_BLUE);
 
-  else 
+  else
 
     tft.pushImage(225, 92, 102, 26, (uint16_t *)Oval102);
- 
+
   tft.setCursor(235, 98);
   tft.printf("AVC:%d", AvcAmMaxGain);
   tft.setTextColor(textColor);
@@ -398,9 +375,9 @@ void printSmute(uint8_t AMSoftMuteSnrThreshold) {
   if (altStyle)
     tft.fillRoundRect(225, 95, 100, 22, 10, TFT_BLUE);
 
-  else 
+  else
     tft.pushImage(225, 92, 102, 26, (uint16_t *)Oval102);
-  
+
   tft.setCursor(232, 98);
   tft.printf("SMut:%d ", AMSoftMuteSnrThreshold / 4);
   tft.setTextColor(textColor);
@@ -408,3 +385,20 @@ void printSmute(uint8_t AMSoftMuteSnrThreshold) {
 
 
 //##########################################################################################################################//
+
+
+void panoramaScreen() {
+
+  showPanorama = !showPanorama;
+  preferences.putBool("showPan", showPanorama);
+  if (showPanorama)
+    showAudioWaterfall = false;  // panoramascan has priority
+
+  tft.setCursor(10, 65);
+  tft.print("Shows waterfall when");
+  tft.setCursor(10, 85);
+  tft.print("squelch is closed (AM/FM).");
+  tft.setCursor(10, 110);
+  tft.printf("Panorama: %s\n", showPanorama ? "ON" : "OFF");
+  delay(2000);
+}

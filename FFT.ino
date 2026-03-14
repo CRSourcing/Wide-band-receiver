@@ -14,19 +14,26 @@ static bool mStat = false;
 int ampl;
 const int width = 84;
 const int height = 24;
-
+static bool sprite1Init = false; // used for miniwindow and CW decoder tuner
 
 void audioSpectrum() {
+
+
+
 
   if (oldminiWindowMode != miniWindowMode) {  //  miniWindowMode selects btw off, low resolution, high resolution, mini osci. audio waterfall. Spectrums display , waterfall
     oldminiWindowMode = miniWindowMode;
     if (miniWindowMode >= 6)
-      miniWindowMode = 1;
+      miniWindowMode = 0;
+
+    if (miniWindowMode < 4) {  // no waterfall or envelope used, free memory
+      spr1.deleteSprite();
+      sprite1Init = false;
+    }
 
     preferences.putChar("spectr", miniWindowMode);        // save mode
     tft.fillRect(startX - 5, startY, 98, 26, TFT_BLACK);  // overwrite last window
   }
-
 
   if (audioMuted && !pressed) {
 
@@ -42,18 +49,14 @@ void audioSpectrum() {
   }
 
 
-  if (mStat) {
+  if (!audioMuted && mStat) {
     tft.fillRect(startX, startY, 92, 25, TFT_BLACK);
     mStat = false;
   }
 
 
-
-  if (miniWindowMode == 3) {                         // mini oscilloscope
-    tft.fillRect(startX, startY, 86, 27, TFT_NAVY);  //background
-    FFTSample(256, 0, true);                         //256 samples, 0 uS delaytime,  draw miniosci
-  } else
-    FFTSample(256, 0, false);  //256 samples, 300 uS delaytime for the other miniwindows
+  if (miniWindowMode == 0)  // no miniwindow
+    return;
 
 
 
@@ -90,7 +93,7 @@ void audioSpectrum() {
       }
       offset = (offset + 5) % 23;
 
-      int ampl = DISP_HEIGHT - (int)(RvReal[i] / amplitude);
+      int ampl = DISP_HEIGHT - (int)(RvReal[i] / (255 - FFTGain));
       ampl = (ampl < startY) ? startY : ampl;
 
       tft.drawFastVLine(startX + i, ampl, DISP_HEIGHT - ampl, TFT_SKYBLUE);
@@ -98,82 +101,77 @@ void audioSpectrum() {
   }
 
 
+  if (miniWindowMode == 3) {                         // mini oscilloscope, gets drawn from within FFTSample()
+    tft.fillRect(startX, startY, 86, 27, TFT_NAVY);  //background
+    FFTSample(256, 0, true);                         //256 samples, 0 uS delaytime, draw the mini osc. 
+  }
+
+  else
+    FFTSample(256, 0, false);  //256 samples, 300 uS delaytime for the other miniwindows
+
+
+
+
   if (miniWindowMode == 4) {  // audio waterfall
     const int gradient = 100;
 
-    // shift
-    for (int i = height - 1; i >= 0; i--) {
-      for (int j = 0; j < width; j++) {
-        wabuf[i + 1][j] = wabuf[i][j];
-      }
+    if (!sprite1Init) { // sprite1 used for waterfall and envelope
+      spr1.createSprite(width, height);
+      sprite1Init = true;
     }
 
-    // fill first row again
+    // Shift one row  down
+    spr1.scroll(0, 1);
+
+    // Draw new top row
     for (int j = 0; j < width; j++) {
-      wabuf[0][j] = (int)(RvReal[j + 2] / amplitude);  // eliminate zero and reduce bandwidth to 1.5 KHz
+      int value = (int)(RvReal[j + 2] / (255 - FFTGain));  // eliminate zero, reduce bandwidth
+      spr1.drawPixel(j, 0, valueToWaterfallColor(gradient * value));
     }
 
-    // draw pixels
-    for (int i = 0; i < height; i++) {
-      for (int j = 0; j < width; j++) {
-        tft.drawPixel(startX + j, startY + i, valueToWaterfallColor(gradient * wabuf[i][j]));
-      }
-    }
+    spr1.pushSprite(startX, startY);
   }
-  if (miniWindowMode == 5) {  //envelope
 
-    const int width = 84;
-    const int height = 24;
 
-    for (int j = 0; j < width - 1; j++) {  // shift data one column left
-      for (int i = 0; i < height; i++) {
-        wabuf[i][j] = wabuf[i][j + 1];
-      }
-    }
-    // fill the right
-    for (int i = 0; i < height; i++) {
-      wabuf[i][width - 1] = (int)(RvReal[i + 2] / amplitude);  // reduce bandwidth to 2 KHz
-    }
+
+  if (miniWindowMode == 5) {  // envelope
 
     const int halfH = height / 2;
-    int prev = halfH;
-    float smoothFact = 0.25;  // Smoothen
 
-    for (int j = 0; j < width; j++) {
-      int env = halfH;
-      bool valid = false;
 
-      // calculate env
-      for (int i = 0; i < height; i++) {
-        int value = wabuf[i][j];
-        if (value > 0) {
-          valid = true;
-          if (i < halfH && value > wabuf[env][j]) {  // For upper and lower parts
-            env = i;
-          }
-          if (i > halfH && value > wabuf[env][j]) {
-            env = i;
-          }
-        }
-      }
+    if (!sprite1Init) {
+      spr1.createSprite(width, height);
+      sprite1Init = true;
+    }
 
-      // smoothen
-      env = (int)(smoothFact * prev + (1.0 - smoothFact) * env);
-      prev = env;
+    // Shift left  1 pix
+    spr1.scroll(-1, 0);
 
-      // draw
-      if (valid) {
-        // Draw NAVY
-        tft.drawFastVLine(startX + j, startY, height, TFT_NAVY);
-        // draw boundaries
-        for (int i = 0; i <= env; i++) {
-          int yUpper = startY + halfH - i / 2;
-          int yLower = startY + halfH + i / 2;
-          tft.drawPixel(startX + j, yUpper, TFT_WHITE);
-          tft.drawPixel(startX + j, yLower, TFT_WHITE);
-        }
+    int env = halfH;
+    int maxVal = 0;
+    for (int i = 0; i < height; i++) {
+      int value = (int)(RvReal[i + 2] / (255 - FFTGain));
+      if (value > maxVal) {
+        maxVal = value;
+        env = i;
       }
     }
+
+    // Draw new column
+    int x = width - 1;
+    spr1.drawFastVLine(x, 0, height, TFT_NAVY);
+
+    if (maxVal > 0) {
+      for (int i = 0; i <= env; i++) {
+        int yUpper = halfH - i;
+        int yLower = halfH + i;
+        spr1.drawPixel(x, yUpper, TFT_WHITE);
+        spr1.drawPixel(x, yLower, TFT_WHITE);
+      }
+    }
+
+    // Pusha push
+    spr1.pushSprite(startX, startY);
   }
 
   if (pressed)
@@ -209,7 +207,7 @@ byte getBandVal(int i) {  // values for 16 channel spectrum analyzer
 void displayBand(int band, int dsize) {
 
   int dmax = 23;
-  dsize /= amplitude;
+  dsize /= (255 - FFTGain);
   if (dsize > dmax) dsize = dmax;
   for (int s = 0; s <= dsize; s++) {
     tft.drawPixel(startX + 5 * band, DISP_HEIGHT - s, TFT_YELLOW);
@@ -239,7 +237,11 @@ void tuneCWDecoder() {  // shows a small waterfall that helps tune to 558 Hz aud
   const int height = 24;
   const int gradient = 100;
 
+
+
   tft.fillRect(startX + width, startY - 10, 3, 44, TFT_GREEN);  // center bar
+  spr1.deleteSprite();                                          // use miniwindow sprite
+  spr1.createSprite(2 * width, height);
 
   while (true) {
 
@@ -254,31 +256,30 @@ void tuneCWDecoder() {  // shows a small waterfall that helps tune to 558 Hz aud
 
     FFTSample(256, 300, false);  //256 samples, 300 uS delaytime, do not draw miniosci
 
-    // Waterfall  shift rows
-    for (int i = height; i >= 0; i--) {
-      for (int j = 0; j < width; j++) {
-        wabuf[i + 1][j] = wabuf[i][j];
-      }
-    }
+    spr1.scroll(0, 1);
 
-    // fill first row again
+    // Draw new top row
     for (int j = 0; j < width; j++) {
-      wabuf[0][j] = (int)(RvReal[j + 2] / amplitude);
+      int value = (int)(RvReal[j + 2] / (255 - FFTGain));
+
+      // each column drawn twice horizontally
+      spr1.drawPixel(2 * j, 0, valueToWaterfallColor(gradient * value));
+      spr1.drawPixel(2 * j + 1, 0, valueToWaterfallColor(gradient * value));
     }
 
-    // draw pixels
-    for (int i = 0; i < height; i++) {
-      for (int j = 0; j < 2 * width; j += 2) {
-        tft.drawPixel(startX + j, startY + i, valueToWaterfallColor(gradient * wabuf[i][j / 2]));
-        tft.drawPixel(startX + j, startY + i + 1, valueToWaterfallColor(gradient * wabuf[i][j / 2]));
-      }
-    }
+    // Push updated sprite to screen
+    spr1.pushSprite(startX, startY);
+
+
 
     if (digitalRead(ENCODER_BUTTON) == LOW)
       break;
   }
   while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
+
+  spr1.deleteSprite();
+  sprite1Init = false;
 }
 
 //##########################################################################################################################//
@@ -454,7 +455,7 @@ void CWDecoder() {
         if (lowduration >= hightimesavg * (5 * lacktime)) {  // word space
           CodeToChar();
           CodeBuffer[0] = '\0';
-          DisplayCharacter(' ');
+          displayMorseCharacter(' ');
           Serial_print(" ");
           showCodeBuffer = true;
         }
@@ -493,7 +494,7 @@ void CWDecoder() {
 
 //##########################################################################################################################//
 
-void DisplayCharacter(char newchar) {
+void displayMorseCharacter(char newchar) {
   for (int i = 0; i < num_chars; i++) {
     displayBuffer[i] = displayBuffer[i + 1];
   }
@@ -563,7 +564,7 @@ void CodeToChar() {
   auto it = morseToCharMap.find(codeStr);  // lookup
   if (it != morseToCharMap.end()) {
     char decode_char = it->second;  // Get the corresponding character
-    DisplayCharacter(decode_char);
+    displayMorseCharacter(decode_char);
     // Serial_print(decode_char);
   }
 }
@@ -573,10 +574,8 @@ void CodeToChar() {
 const float stretch = 1.39;  // stretch width to 333 pixels
 #define FRAMEBUFFER_STRETCHED_WIDTH (int)(FRAMEBUFFER_FULL_WIDTH * stretch)
 
-
-void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels after user inactivity
-
-  if (audioMuted || showPanorama)  // showPanorama and audioSpectrum256() are mutually exclusive
+void audioSpectrum256() {  // spectrum display and waterfall instead of s meter after inactivity
+  if (showPanorama)        // panorama scanner has priority
     return;
 
   const int startX = 3;
@@ -585,67 +584,76 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
   int oldX = startX;
   int dmax = 30;
   int ctr = 0;
+  static bool sprite3Init = false;
 
 
-  tft.fillRect(2, 52, 338, 30, TFT_BLACK);   // overwrite area for spectrum
-  tft.fillRect(2, 82, 338, 40, TFT_BLACK);   // overwrite area for waterfall
-  tft.fillRect(0, 294, 230, 25, TFT_BLACK);  // Overwrite infobar
+  if (!sprite3Init) {
+    // Clear areas
+    tft.fillRect(2, 48, 338, 74, TFT_BLACK);    // main area 
+    tft.fillRect(0, 294, 480, 26, TFT_BLACK); // info bar
 
-  if (!useNixieDial)
-    tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // Overwrite microvolts
-  tft.fillCircle(470, 20, 2, TFT_BLACK);       // overwrite serial communication indicator
+    if (!useNixieDial)
+      tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // microvolts indicator
 
-  tft.drawFastHLine(2, 81, 338, TFT_SKYBLUE);  // draw separator bar
+    tft.drawFastHLine(2, 81, 338, TFT_SKYBLUE);
 
-  tft.setSwapBytes(true);
+    // Calculate stretched X
+    for (int strX = 0; strX < FRAMEBUFFER_FULL_WIDTH; strX++)
+      stretchedX[strX] = round(strX * stretch);
 
-  framebuffer1 = (uint16_t*)heap_caps_malloc(FRAMEBUFFER_STRETCHED_WIDTH * AUDIO_FRAMEBUFFER_HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA);
-  if (framebuffer1 == NULL)
-    buffErr();
 
-  memset(framebuffer1, 0, FRAMEBUFFER_STRETCHED_WIDTH * AUDIO_FRAMEBUFFER_HEIGHT * sizeof(uint16_t));  //black background
-
-  for (int strX = 0; strX < FRAMEBUFFER_FULL_WIDTH; strX++) {
-    stretchedX[strX] = round(strX * stretch);  // Precompute stretchedX;
+    spr3.createSprite(FRAMEBUFFER_STRETCHED_WIDTH, AUDIO_FRAMEBUFFER_HEIGHT);
+    spr3.fillSprite(TFT_BLACK);
+    sprite3Init = true;
   }
 
+  while (digitalRead(ENCODER_BUTTON) == HIGH && !(clw + cclw) && !get_Touch()) {
+    tft.fillRect(135, startY, 86, 27, TFT_NAVY);  // background mini osci
 
-  while (digitalRead(ENCODER_BUTTON) == HIGH && !clw && !cclw && !get_Touch()) {
-
-    tft.fillRect(135, startY, 86, 27, TFT_NAVY);  //background mini osci
-    ctr++;
-
-    if (ctr == 4) {  // 1 out of 4 loops
+    if (ctr++ == 4) { // sequence takes long, do not run it every time
       ctr = 0;
       printMajorPeak();
       si4735.getCurrentReceivedSignalQuality(0);
       signalStrength = si4735.getCurrentRSSI();
-      dBm = signalStrength - 107 + RFGainCorrection;
 
+#ifdef NBFM_DEMODULATOR_PRESENT
+      getDiscriminatorVoltage();  // display Tuning meter
 
-      if (TVTunerActive)  // at 1mV start tuner AGC
-        dBm -= tunerGain;
-
-      if (dBm < 0 && (!scanMode) && showMeters)
-        plotNeedle(signalStrength, 3);  // update the SMeter needle
+#else
+      if ((!scanMode) && showMeters)
+        plotNeedle(signalStrength - RFGainCorrection, 2);  // update the SMeter needle
+#endif
     }
-
 
     FFTSample(512, 0, true);
 
-    for (int i = 0; i < FRAMEBUFFER_FULL_WIDTH; i++) {  //  process 0 - 2.75 KHz in 240 bins
+    int vol = FFTAccum / 1000;  // plot current volume, needs fresh FFTAccum
+    plotNeedle2(vol, 3);
+
+    readSquelchPot(false);
+    setSquelch();
+
+
+    // Scroll sprite down one row
+    spr3.scroll(0, 1);
+
+    // process FFT results
+    for (int i = 0; i < FRAMEBUFFER_FULL_WIDTH; i++) {
+
 
       int yP = DISP_HEIGHT - 1 - Rpeak[i];
       int strX = stretchedX[i] + startX;
 
       if (Rpeak[i]) {
         int yPos = yP - yOffset;
-        tft.fillRect(strX, yPos, 1, 2, TFT_BLACK);  // decay, draw 2-pixel-high black line
+        tft.fillRect(strX, yPos, 1, 2, TFT_BLACK);  // spectrum display, decay peaks, draw 2-pixel-high black line
 
         if (strX > oldX + 1)
           tft.fillRect(oldX + 1, yPos, 1, 2, TFT_BLACK);  // gap decay
         Rpeak[i] -= 2;
       }
+
+
 
       int dsize = RvReal[i] / ampl;
       if (dsize > dmax) dsize = dmax;
@@ -653,47 +661,48 @@ void audioSpectrum256() {  // 512 bin audio watefrall, displays 240 channels aft
       uint16_t clr = valueToWaterfallColor(RvReal[i]);
 
 
-      if (i > 1 && clr > 25)  // discard first 2 bins and set background noise treshold
-        newLine[strX] = clr;
-      else
-        newLine[strX] = 0;
-
-      if (dsize > Rpeak[i])
-        Rpeak[i] = dsize;
-
-
       if (i > 1 && dsize > 1) {
         tft.fillRectVGradient(strX, DISP_HEIGHT - dsize - yOffset, 1, dsize, TFT_SILVERBLUE, TFT_BLUE);
-        //tft.drawFastVLine(strX, DISP_HEIGHT - 1 - dsize - yOffset, dsize, clr); // spectrum
+        //tft.drawFastVLine(strX, DISP_HEIGHT - 1 - dsize - yOffset, dsize, clr); // spectrum display
 
         if (strX > oldX + 1)
           tft.fillRectVGradient(oldX + 1, DISP_HEIGHT - dsize - yOffset, 1, dsize, TFT_SILVERBLUE, clr);  // stretch gap fill
                                                                                                           //tft.drawFastVLine(oldX  + 1, DISP_HEIGHT - 1 - dsize - yOffset, dsize, clr);
       }
 
+      if (i > 1 && clr > 25)
+        spr3.drawPixel(strX, 0, clr);
+
+
+      if (dsize > Rpeak[i]) Rpeak[i] = dsize;
       oldX = strX;
     }
 
-    addLineToFramebuffer1(newLine);
+    // Push a sprite
+    spr3.pushSprite(2, 82);
   }
-  free(framebuffer1);
-  tft.fillRect(135, startY, 86, 27, TFT_BLACK);  // overwrite last miniwindow
-  tft.fillRect(260, 50, 70, 10, TFT_BLACK);      // overwrite last frequency peak
-  for (int i = 0; i < 255; i++)                  // reset to 0 to avoid artefacts when starting mini spectrum 16
-    Rpeak[i] = 0;
 
-  tft.setSwapBytes(false);  // needed to swap when pushing
+  // Cleanup
+  spr3.deleteSprite();
+  sprite3Init = false;
+  tft.fillRect(2, 48, 338, 74, TFT_BLACK);    // main area 
+  for (int i = 0; i < 255; i++) Rpeak[i] = 0;
+  resetSmeter = true; 
   redrawIndicators();
   readMainBtns();
 }
 
 
+
+
 //##########################################################################################################################//
+
+
 void FFTSample(int sampleCount, int dly, bool drawOsci) {
 
-  peakVol = 0;
+  FFTAccum = 0;
   const int centerLineH = 308;  // centerline position
-  const int amplPreset = 2;     // amplification preset. This depends on the amplification of the FFT amplifier trannsistor and may need to get adjusted 
+
   int32_t sum = 0;
 
   for (int i = 0; i < sampleCount; i++) {  // sampling loop
@@ -712,8 +721,8 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
 
     if (drawOsci) {
 
-      int am = (amplPreset * sum) / (255 - FFTGain ) ;  // calculate and limit amplitude
-      
+      int am = sum / (255 - FFTGain);  // calculate and limit amplitude
+
       am = constrain(am, -12, 12);
       if (i < 86)
         tft.drawPixel(135 + i, centerLineH + am, TFT_WHITE);  // draw trace
@@ -721,8 +730,8 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
     // Adjust and store the averaged value
 
     sum /= sampleCount / FFTGain;
-    
-    RvReal[i] = (float) sum;
+
+    RvReal[i] = (float)sum;
     RvImag[i] = 0;
   }
   FFT.windowing(RvReal, sampleCount, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
@@ -730,43 +739,13 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {
   FFT.complexToMagnitude(RvReal, RvImag, sampleCount);
 
   for (int i = 2; i < SAMPLES / 2; i++) {
-    peakVol += (int)RvReal[i];
+    FFTAccum += (int)RvReal[i];
   }
-  peakVol = constrain (peakVol, 0, 100000);
-
-
+  FFTAccum = constrain(FFTAccum, 0, 100000);
 }
 //##########################################################################################################################//
 
-void addLineToFramebuffer1(uint16_t* newLine) {
-  // Shift all existing lines down by one
-  for (int y = AUDIO_FRAMEBUFFER_HEIGHT - 1; y > 0; y--) {
-    memcpy(&framebuffer1[y * FRAMEBUFFER_STRETCHED_WIDTH],
-           &framebuffer1[(y - 1) * FRAMEBUFFER_STRETCHED_WIDTH],
-           FRAMEBUFFER_STRETCHED_WIDTH * sizeof(uint16_t));
-  }
 
-  // Copy the new line into the top row
-  memcpy(&framebuffer1[0], newLine, FRAMEBUFFER_STRETCHED_WIDTH * sizeof(uint16_t));
-
-  // Push the entire framebuffer to the screen
-  updateDisp();
-}
-
-//##########################################################################################################################//
-void updateDisp() {
-  const int upper = 84;
-  const int lower = 124;
-  const int startX = 3;
-  const int width = FRAMEBUFFER_STRETCHED_WIDTH;
-  const int height = lower - upper;
-
-  // Push  entire framebuffer
-  tft.pushImage(startX, upper, width, height, framebuffer1);
-}
-
-
-//##########################################################################################################################//
 void audioFreqAnalyzer() {
   int y = 15;
   const float stretchFactor = 1.92;

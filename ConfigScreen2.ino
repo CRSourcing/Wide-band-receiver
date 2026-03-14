@@ -403,7 +403,7 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
     clw = 0;
     cclw = 0;
 
-    FFTGain = constrain(FFTGain, 1, 1024);
+    FFTGain = constrain(FFTGain, 1, 255);
 
     tft.fillRect(5, 100, 333, 16, TFT_BLACK);
     tft.setCursor(5, 100);
@@ -412,6 +412,8 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
     FFTSample(256, 0, true);
     delay(15);
   }
+
+
 
   preferences.putInt("FFTGain", FFTGain);
   encLockedtoSynth = true;

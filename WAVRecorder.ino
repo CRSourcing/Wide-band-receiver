@@ -272,7 +272,7 @@ void playWavFile() {
     // pingpong fill the buffers wh
     while (micros() < nextSampleTime) {
       if (useA && bytesB < B_SIZE) {
-        int n = f.read(bufferB + bytesB, 64);
+        int n = f.read(bufferB + bytesB, 64); //64 bytes works best, still there is a knocking sound when buffer changes
         if (n > 0) bytesB += n;
       } else if (!useA && bytesA < B_SIZE) {
         int n = f.read(bufferA + bytesA, 64);
@@ -299,7 +299,8 @@ void playWavFile() {
   }
 
   f.close();
-  Serial.println("Playback finished");
+  clw = false;
+  cclw = false; 
   si4735.setAudioMute(false);
   rebuildMainScreen(false);
 }
@@ -308,18 +309,10 @@ void playWavFile() {
 //##########################################################################################################################//
 
 
-void wavPlayer() {
-
-  mountSDCard();
-  playWavFile();
-}
-
-//##########################################################################################################################//
-
-String selectFileWithExtension(const char* extension) {
+String selectFileWithExtension(const char* extension)
+{
   mountSDCard();
 
-  // List all files having const char* extension
   FsFile dir = sd.open("/");
   if (!dir) {
     Serial.println("Failed to open root directory!");
@@ -327,15 +320,29 @@ String selectFileWithExtension(const char* extension) {
     return "";
   }
 
-  std::vector<String> files;
+  const int MAX_FILES = 24;  // more corrupts the stack
+  const int NAME_LEN  = 64;
+
+  char files[MAX_FILES][NAME_LEN];
+  int fileCount = 0;
+
   FsFile file;
+
   while (file.openNext(&dir, O_RDONLY)) {
-    if (!file.isDir()) {
-      char name[64];
+    if (!file.isDir() && fileCount < MAX_FILES) {
+
+      char name[NAME_LEN];
       file.getName(name, sizeof(name));
-      String fname = String(name);
-      if (fname.endsWith(extension)) {
-        files.push_back(fname);
+
+      String fname = name;
+      String ext   = extension;
+      fname.toLowerCase();
+      ext.toLowerCase();
+
+      if (fname.endsWith(ext)) {
+        strncpy(files[fileCount], name, NAME_LEN);
+        files[fileCount][NAME_LEN-1] = 0;
+        fileCount++;
       }
     }
     file.close();
@@ -343,62 +350,80 @@ String selectFileWithExtension(const char* extension) {
 
   dir.close();
 
-  if (files.empty()) {
+  if (fileCount == 0) {
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_RED);
-    tft.setCursor(10, 150);
-    tft.printf("No %s files found!\n", extension);
+    tft.setCursor(10,150);
+    tft.printf("No %s files found!", extension);
     return "";
   }
 
   int selected = 0;
   int indx = 0;
-  const int maxRows = 12;
-  bool once = true;
+
+  const int maxRows = 12; // 12 rows per screen
+  bool redraw = true;
 
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
-  tft.setCursor(10, 0);
+  tft.setCursor(10,0);
   tft.printf("Select %s file and press encoder.", extension);
+  tft.setCursor(25,300);
+  tft.print("Move encoder to stop playing.");
+
 
   while (true) {
-    if (once || clw || cclw) {
-      for (int i = 0; i < maxRows && (indx + i) < (int)files.size(); i++) {
+
+    if (redraw || clw || cclw) {
+
+      for (int i=0;i<maxRows;i++) {
+
         int y = 30 + i * 22;
-        if ((indx + i) == selected) {
-          tft.setTextColor(TFT_YELLOW);
-        } else {
-          tft.setTextColor(TFT_GREY);
+
+        tft.fillRect(0,y,480,22,TFT_BLACK);
+
+        if ((indx+i) < fileCount) {
+
+          if ((indx+i) == selected)
+            tft.setTextColor(TFT_YELLOW);
+          else
+            tft.setTextColor(TFT_GREY);
+
+          tft.setCursor(10,y);
+          tft.print(files[indx+i]);
         }
-        tft.setCursor(10, y);
-        tft.print(files[indx + i]);
       }
-      once = false;
+
+      redraw = false;
     }
 
-    // up / down
     if (cclw) {
       if (selected > 0) {
         selected--;
         if (selected < indx) indx--;
       }
       cclw = 0;
+      redraw = true;
     }
+
     if (clw) {
-      if (selected < (int)files.size() - 1) {
+      if (selected < fileCount-1) {
         selected++;
         if (selected >= indx + maxRows) indx++;
       }
       clw = 0;
+      redraw = true;
     }
 
     if (digitalRead(ENCODER_BUTTON) == LOW) {
-      return files[selected];
+
+      delay(30);
+      while (digitalRead(ENCODER_BUTTON) == LOW);
+
+      return String(files[selected]);
     }
 
-    delay(10);
+    delay(5);
   }
 }
-
-
 //##########################################################################################################################//

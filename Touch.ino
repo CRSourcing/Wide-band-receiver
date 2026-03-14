@@ -174,7 +174,7 @@ bool readKeypadButtons() {
       displayFREQ(0);
       tft.fillRect(10, 3, 325, 40, TFT_BLACK);  // overwrite frequency window
       FREQ = freqSave;
-      FREQ_OLD = FREQ - 1;
+      FREQ_OLD = -1;
       displayFREQ(FREQ);
       tRel();
       return false;
@@ -210,7 +210,7 @@ bool readKeypadButtons() {
 void keyPadErr() {
 
   tx = ty = pressed = 0;
-  FREQ_OLD -= 1;  // no valid result
+  FREQ_OLD = -1;  // no valid result
   tft.fillRect(10, 5, 325, 40, TFT_BLACK);
   etft.setCursor(10, 3);
   etft.print("Invalid entry");
@@ -395,7 +395,7 @@ bool get_Touch() {  // implements a short beep when pressed, calls getTouch, or 
 
 //##########################################################################################################################//
 
-void checkTouchCoordinates() {  // touch coordinates for loop and mainscrees
+void checkTouchCoordinates() {  // touch coordinates for loop and mainscreen
 
 
   pressed = get_Touch();  // get_Touch replaces tft.getTouch() with a faster handler
@@ -408,7 +408,6 @@ void checkTouchCoordinates() {  // touch coordinates for loop and mainscrees
     ttx = 0;
     tty = 0;
   }
-
 
   if (showTouchCoordinates) {  // for debug
     tft.fillRect(320, 5, 159, 20, TFT_BLACK);

@@ -228,6 +228,11 @@ int tuneMemo() {  //tunes through memory bank with encoder.
     clw = false;
     cclw = false;
 
+   #ifdef TV_TUNER_PRESENT  
+    if (FREQ > SHORTWAVE_MODE_UPPER_LIMIT)
+      setTunerAGC(false); // run tuner agc calculator
+  #endif  
+    
     if (!audioMuted)
       drawMarker(dex % 16, TFT_GREEN);  // draw green after loading (tinySA and SSB patch)
     else
@@ -302,7 +307,13 @@ void memoAction(bool isWrite) {  // reads button pressed and sets FREQ, bandwidt
       modType = memoList[buttonID - 1].memoModType;
       bandWidth = memoList[buttonID - 1].memoBandwidth;
 
-
+#ifdef TINYSA_PRESENT
+      char buffer[50];
+      if (FREQ <= 350000000l) {
+       sprintf(buffer, "sweep center %ld", FREQ);
+       Serial_println(buffer);
+      } 
+#endif
 
 
       displayFREQ(FREQ);
@@ -783,6 +794,9 @@ void playCurrentChannel() {
     char buffer[50];
     sprintf(buffer, "sweep center %ld", (FREQ / 1000000 * 1000000) + tSpan / 2);  // sync TSA center frequency
     Serial.println(buffer);
+    delay(100);
+    sprintf(buffer, "marker 1 %ld", FREQ);  // set marker 1 on current freq
+   Serial.println(buffer);
 #endif
   }
 
@@ -792,7 +806,14 @@ void playCurrentChannel() {
 
   audioSpectrum();
   getRSSIAndSNR();
+  
+# ifdef TV_TUNER_PRESENT 
+  setTunerAGC(false); // use tuner AGC without printng values
+#endif 
 
+    if (showRSSITrace == 1) {
+        drawRollingGraph(signalStrength);  
+    } 
 
   TSAdBm = 0;  // force to use RSSI for s meter
   calculateAndDisplaySignalStrength();
@@ -810,13 +831,14 @@ void playCurrentChannel() {
 
   displaySmeterBar(2);  // // update the SMeter bar,
   if (showMeters) {
-    int vol = peakVol / 1000;
+    int vol = FFTAccum / 1000;
     if (!audioMuted)
       plotNeedle2(vol, 3);
     else
       plotNeedle2(1, 0);
   }
   delay(10);
+
 }
 
 
@@ -1129,8 +1151,6 @@ void showChannelList() {
       rebuildMainScreen(false);
       load_channel(0, true, pressedEntry, true, false);
 
-
-
       tft.setTextColor(TFT_CYAN);
       tft.setCursor(10, 270);
       tft.print("Press encoder to return.");
@@ -1253,33 +1273,36 @@ uint32_t showRow(const char *buffer, uint16_t screenRow, uint16_t csvRowNumber) 
 //##########################################################################################################################//
 void displaySignalBar() {
 
-  uint16_t dly = 30;
+  uint16_t dly = 100;
 
   clw = false;
   cclw = false;
+  tx = 0;
+  ty = 0; 
+  pressed = false;
 
   for (int s = 0; s < ENTRIES; s++) {
 
 
-    FREQ = frequencies[s];
-    if (FREQ > SHORTWAVE_MODE_UPPER_LIMIT)
-      dly = 60;  // additional time needed for tuner pll and relay to settle
 
+    FREQ = frequencies[s];
     setLO();
+
 
     uint32_t st = millis();
     while (millis() < st + dly) {  // delay needed so that the SI5351 can settle if delta is big
-      tx = 0;
-      ty = 0;
+   
       pressed = get_Touch();
 
       if (pressed || (digitalRead(ENCODER_BUTTON) == LOW) || clw || cclw) {
         return;
       }
     }
+
+
     si4735.getCurrentReceivedSignalQuality(0);
     SNR = si4735.getCurrentSNR();
-    delay(5);
+    delay(10);
     si4735.getCurrentReceivedSignalQuality(0);
     signalStrength = si4735.getCurrentRSSI();
 

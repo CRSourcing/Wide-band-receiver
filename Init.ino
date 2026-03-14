@@ -46,7 +46,6 @@ void bootScreen() {
     LittleFS.begin(true);  // bool formatOnFail = true
     if (LittleFS.exists("/splash.jpg")) {
       swappedJPEG = true;  // depends on file format
-      Serial.print("Loading splash\n");
       drawJpeg("/splash.jpg", 0, 0);
     } else
       Serial.print("splash not found\n");
@@ -305,9 +304,9 @@ void drawBigBtns() {
   else {
 
     tft.pushImage(345, 213, 130, 76, (uint16_t *)meterFrame);
-
     analogMeter(ySh);   // Draw upper analogue meter
     analogMeter(ySh2);  // Draw lower analogue meter
+    plotNeedle(1, 0);
     plotNeedle2(1, 0);
   }
 
@@ -324,7 +323,7 @@ void drawBigBtns() {
     }
 
     else
-      tft.setTextColor(textColor);
+    tft.setTextColor(textColor);
     tft.setCursor(375, 240);
     tft.print("MODE");
 
@@ -376,7 +375,7 @@ void loadLastSettings() {
   pressSound = preferences.getBool("pressSound", 1);  // short beep when pressed
   miniWindowMode = preferences.getChar("spectr", 3);  // audio spectrum analyzer mode
 #ifdef TINYSA_PRESENT
-  syncEnabled = preferences.getBool("useTSADBm", 1);  // use tinySA for DBm
+  syncEnabled = preferences.getBool("useTSADBm", 0);  // use tinySA for DBm
 #endif
   SNRSquelch = preferences.getBool("SNRSquelch", 0);         // SNR OR RSSI can open squelch
   buttonSelected = preferences.getInt("sprite", 1);          // load sprite for buttons
@@ -389,11 +388,14 @@ void loadLastSettings() {
   showMeters = preferences.getBool("sM", 0);                 // meters cause a lot of traffic on SPI(and noise)
   tunerOffsetPPM = preferences.getInt("tunerOffsetPPM", 0);  // tuner crystal frequency correction
   RFGainCorrection = preferences.getInt("rfgc", 6);          // adjust gain for preamp/filter
-  FFTGain = preferences.getInt("FFTGain", 100);              // initial gain for FFT analysis
+  FFTGain = preferences.getInt("FFTGain", 80);              // initial gain for FFT analysis
   discriminatorZero = preferences.getInt("dZero", 2048);
   initialGain = preferences.getUChar("agcS", 200);  // tuner agc start value.
   funEnabled = preferences.getBool("fun", 0);
+  centerTSA = preferences.getBool("cTSA", 0);               // still center current window even if sync is off
   useNixieDial = preferences.getBool("dial", 0);
+  
+  showRSSITrace = preferences.getChar("showT", 1);
 
   Serial_printf("\n%-35s %s\n", "Settings loaded:", "");
   Serial_printf("%-35s %ld Khz\n", "FREQ:", FREQ / 1000);

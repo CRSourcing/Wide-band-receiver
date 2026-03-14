@@ -34,25 +34,23 @@ void setLO() {
 
 //##########################################################################################################################//
 
-void clockDisplay() {  // diplays the clock frequency in the lower left corner
+void displayLOFreq() {  // diplays the clock frequency in the lower left corner
 
-  static long OLD_LO_RX = -1;
-
-  if (displayDebugInfo == false)
+   if (displayDebugInfo == false)
     return;
 
+  if ((FREQ >> 10 == F_OLD) && (PLLFREQ == OLDPLLFREQ)) // roughly 1 KHz
+     return; 
+   
+  else
+    F_OLD = FREQ >> 10; 
 
-  if (OLD_LO_RX != LO_RX) {  // overwrite only when changed. This avoids flicker
-    tft.fillRect(0, 296, 134, 12, TFT_BLACK);
-    OLD_LO_RX = LO_RX;
-  }
-
+  tft.fillRect(0, 296, 134, 12, TFT_BLACK);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(0, 296);
   etft.setTTFFont(Arial_9);
 
   if (SI4735WBFMTune) {
-    OLD_LO_RX = -1;
     etft.printf("F: %ld", FREQ / 1000);
     return;
   }

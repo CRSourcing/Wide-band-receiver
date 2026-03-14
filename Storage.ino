@@ -473,7 +473,7 @@ std::vector<String> splitCSVLine(const String& line) {
     lastIndex = nextIndex + 1;
   }
 
-  // Ensure we don’t add an empty token at the end
+  // Check no empty token at the end
   String lastToken = line.substring(lastIndex);
   lastToken.trim();
   if (!lastToken.isEmpty()) {

@@ -44,8 +44,8 @@ void drawDbgBtns() {
     { 270, 210, "IF" },
     { 20, 188, "No" },
     { 20, 210, "Mixer" },
-    { 100, 188, "AGC" },
-    { 100, 210, "Graph" },
+    { 100, 188, "Sine" },
+    { 100, 210, "Tone" },
     { 183, 132, "TSA" },
     { 183, 152, "Serial" },
     { 100, 132, "LO" },
@@ -117,12 +117,7 @@ void readDbgBtns() {
       delay(1000);
       break;
     case 32:
-      showAGCGraph = !showAGCGraph;
-      if (showAGCGraph) {
-        tft.setCursor(10, 105);
-        tft.print("AGC trace enabled");
-        delay(500);
-      }
+      setDac2();
       break;
     case 33:
       setI2CBusSpeed();
@@ -330,118 +325,129 @@ void setAGCReleaseRate() {
 
 
 //##########################################################################################################################//
+void initRollingGraphSprite() {
 
-void drawByteTrace(char bVal, char maxBVal) {
-  // displays bVal as trace. slowly auto adjusts to max bVal
-  if (!showAGCGraph)
-    return;
-
-
-
-  const int startX = 230;
-  const int endX = 440;
-  const int minY = 294;
-  const int maxY = 319;
-  const int maxPixelHeight = 25;
-  const int bufferSize = endX - startX + 1;  // Number of pixels in graph width
-
-  // Circular buffer for prev values
-  static uint8_t valueBuffer[215] = { 0 };  // 450-240+1 = 211 elements
-  static int pixBuffer[480] = { 0 };
-  static int bufferIndex = 0;
-  static bool bufferFull = false;
-
-  static char maxByteValue = maxBVal;
-  static unsigned long lastDecayTime = 0;
-  const unsigned long decayInterval = 1000;
-  const int decayRate = 1;
-
-  // Update peak if current value is >
-  if (bVal > maxByteValue) {
-    maxByteValue = bVal;
-  }
-
-  // Slow decay
-  unsigned long currentTime = millis();
-  if (currentTime - lastDecayTime > decayInterval) {
-    lastDecayTime = currentTime;
-    if (maxByteValue > bVal) {
-      maxByteValue -= decayRate;
-      if (maxByteValue < bVal) {
-        maxByteValue = bVal;
-      }
-    }
-  }
-
-  // Store value in circular buffer
-  valueBuffer[bufferIndex] = bVal;
-  bufferIndex++;
-
-  // Wrap when buffer full
-  if (bufferIndex >= bufferSize) {
-    bufferIndex = 0;
-    bufferFull = true;
-  }
+ spr2.setColorDepth(16);
+ spr2.createSprite(251, 26);
+ spr2.fillSprite(TFT_BLACK);
+ tft.setTextSize(1);
+ spr2.print("Signal Strength history. Tap to disable.");
+ tft.setTextSize(2);
+ sprite2Init = true; 
+}
 
 
-  // Clear the graph area
-  tft.fillRect(startX, minY, endX - startX + 1, maxY - minY + 1, TFT_BLACK);
-
-  // Draw rolling graph
-  int x = startX;
-  int valuesToDraw = bufferFull ? bufferSize : bufferIndex;
-  int startDrawIndex = bufferFull ? bufferIndex : 0;
-
-  for (int i = 0; i < valuesToDraw; i++) {
-    // Calculate circular buffer index
-    int valueIndex = (startDrawIndex + i) % bufferSize;
-    char currentValue = valueBuffer[valueIndex];
-
-    // Calculate height for recent value
-    int differenceFromMax = maxByteValue - currentValue;
-    int compressedHeight = 0;
-
-    if (differenceFromMax > 0) {
-      // lin scaling for small difference
-      if (differenceFromMax <= 5) {
-        compressedHeight = differenceFromMax * 2;  // 0->0, 1->2, 2->4, 3->6, 4->8, 5->10 pixels
-      }
-      // log scaling for bigger difference
-      else {
-        static const uint8_t logScale[] = { 10, 12, 14, 16, 18, 20, 21, 22, 23, 24, 25 };
-        int logIndex = differenceFromMax - 6;  // Map 6->0, 7->1,..
-        if (logIndex < 0) logIndex = 0;
-        if (logIndex <= 10) {
-          compressedHeight = logScale[logIndex];
-        } else {
-          compressedHeight = maxPixelHeight;
-        }
-      }
+//##########################################################################################################################//
+void RSSITrace()
+{
+  
+  static uint8_t interval = 0;
+    if (tx > 240 && ty > 293 && !syncEnabled) {
+        showRSSITrace++;
+        if (showRSSITrace >= 2) 
+           showRSSITrace = 0;
+        sprite2Init = false;
+        spr2.deleteSprite();
+        preferences.putChar("showT", showRSSITrace);
+        tft.fillRect(230, 294, 250, 26, TFT_BLACK);
+        tRel(); 
+        tx = ty = 0;
+        pressed = false;
     }
 
-    // Draw pix
+    if (syncEnabled) 
+        return;
 
-    pixBuffer[x] = maxY - compressedHeight;
 
-    if (pixBuffer[x - 1] > minY)
-      tft.drawLine(x - 1, pixBuffer[x - 1], x, pixBuffer[x], TFT_GREEN);
-    x++;
-  }
-
-  // Update numeric display every 5x
-  static char dCounter = 0;
-  dCounter++;
-  if (dCounter >= 5) {
-    tft.fillRect(450, 300, 29, 19, TFT_BLACK);
-    tft.setCursor(450, 310);
-    tft.setTextSize(1);
-    tft.printf("%d", bVal);
-    tft.setTextSize(2);
-    dCounter = 0;
-  }
+     if(showRSSITrace && ++interval == 3){
+          interval = 0;
+          drawRollingGraph(signalStrength);
+     }
 }
 
 //##########################################################################################################################//
+
+
+void drawRollingGraph (char bVal) // draw a rolling RSSI graph in lower right corner. Uses baseline at the botton of the screen. Slowly autoadjusts to range 
+{
+ 
+
+ if (!showRSSITrace)
+    return;
+
+if (!sprite2Init)
+   initRollingGraphSprite();
+
+  const int startX = 230;
+  const int endX   = 480;
+  const int minY   = 294;
+  const int maxY   = 319;
+
+static int minTracked = 50;
+static int maxTracked = 100;
+
+
+  const int width  = endX - startX + 1;
+  const int height = maxY - minY + 1;
+ 
+
+  static bool init = false;
+  static int lastY = height - 1;
+
+
+  if (!init) {
+    minTracked = bVal;
+    maxTracked = bVal;
+    init = true;
+  }
+
+
+// fast adjust to new hi/low 
+if (bVal < minTracked) minTracked--;
+if (bVal > maxTracked) maxTracked ++;
+
+// slow adaption for current signal
+
+if (minTracked < bVal)
+  minTracked += (bVal - minTracked) >> 5;   // slow upward drift
+
+if (maxTracked > bVal)
+  maxTracked -= (maxTracked - bVal) >> 5;   // slow downward drift
+
+int displayBottomMargin = 2;
+
+int usableHeight = height - displayBottomMargin;
+
+int range = maxTracked - minTracked;
+if (range < 1) 
+   range = 1; // avoid later divide-by-zero
+
+// scale current value into range (0..usableHeight)
+int scaled = (bVal - minTracked) * usableHeight / range;
+
+// invert
+int newY = (height - displayBottomMargin) - scaled;
+
+  //scroll sprite lef
+  spr2.scroll(-1, 0);
+
+  // clear right column
+  spr2.drawLine(width - 1, 0, width - 1, height - 1, TFT_BLACK);
+
+  // connect 
+  spr2.drawLine(width - 2, lastY, width - 1, newY, TFT_GREEN);
+  spr2.drawLine(width - 2, lastY + 1, width - 1, maxY, TFT_BLUE);
+
+  lastY = newY;
+
+  // push it
+  spr2.pushSprite(startX, minY);
+
+}
+
+//##########################################################################################################################//
+
+
 // shows GPIO 36 + 39 in an oscilloscope style
 void showADCs() {
   const int width = 400;
@@ -558,29 +564,28 @@ void showADCs() {
     tft.pushImage(20, yPos2 - trH, width, trH, screenBuf2);
   }
 
-  // needs reboot since buffers use memory already allocated for sprites!?
+  // needs reboot since buffers use memory already allocated
   preferences.putBool("fB", true);
   ESP.restart();
 }
 
 //##########################################################################################################################//
 
+
+
 void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner AGC pin
-  int oldDAC = 0;
-  static int DAC = 200;
+  uint8_t oldDAC = 0;
+  uint8_t DAC = 200;
   encLockedtoSynth = false;
 
-  tft.fillCircle(155, 162, 3, TFT_BLACK);  // overwrite strength indicator
   tft.setTextColor(textColor);
-  tft.fillRect(10, 62, 325, 55, TFT_BLACK);
+  tft.fillRect(3, 62, 330, 230, TFT_BLACK);
   tft.setCursor(10, 65);
   tft.print("Set DAC1");
 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
     if (DAC != oldDAC) {
-      tft.fillCircle(155, 162, 3, TFT_BLACK);
-
       tft.fillRect(10, 107, 323, 20, TFT_BLACK);
       tft.setCursor(10, 107);
       tft.printf("DAC1: %d", DAC);
@@ -594,11 +599,46 @@ void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner
     if (cclw)
       DAC -= 5;
 
-    if (DAC >= 255)
-      DAC = 255;
-    if (DAC < 0)
-      DAC = 0;
+    clw = false;
+    cclw = false;
+  }
 
+  while (digitalRead(ENCODER_BUTTON) == LOW)
+    ;
+  encLockedtoSynth = true;
+  clearStatusBar();
+}
+
+//##########################################################################################################################//
+
+
+void setDac2() {  //generate sine tone for audio testing
+  uint16_t oldF = 0;
+  uint16_t F = 800;
+  encLockedtoSynth = false;
+  dac2.enable();
+
+  tft.setTextColor(textColor);
+  tft.fillRect(3, 62, 330, 230, TFT_BLACK);
+  tft.setCursor(10, 65);
+  tft.print("Sine tone for audio test");
+  while (digitalRead(ENCODER_BUTTON) == HIGH) {
+
+    if (F != oldF) {
+      tft.fillRect(10, 130, 323, 16, TFT_BLACK);
+      tft.setCursor(10, 130);
+      tft.printf("FREQ: %d", F);
+       
+  dac2.outputCW(F);
+
+      oldF = F;
+    }
+
+    delay(50);
+    if (clw)
+      F += 100;
+    if (cclw)
+      F -= 100;
 
     clw = false;
     cclw = false;
@@ -607,6 +647,7 @@ void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner
   while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
   encLockedtoSynth = true;
+   dac2.disable(); 
   clearStatusBar();
 }
 

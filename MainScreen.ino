@@ -2,6 +2,7 @@ void mainScreen() {  // main screen does not block loop(), all other screens do
 
   if (redrawMainScreen) {  // redraw main screen when coming from a function that overwrites it
     resetSmeter = true;
+    F_OLD = -1; // re trigger LO display
     drawBigBtns();
     drawMainButtons();
     DrawSmeterScale();
@@ -21,6 +22,7 @@ void redrawIndicators() {
 
   tft.fillRect(3, 52, 336, 30, TFT_BLACK);  // overwrite area for spectrum
   tft.fillRect(3, 82, 336, 41, TFT_BLACK);  // overwrite area for waterfall
+  F_OLD = -1; // re trigger LO display
   DrawSmeterScale();
   printModulation();
   printBandWidth();
@@ -66,8 +68,6 @@ void drawMainButtons() {
       etft.setTextColor(TFT_SKYBLUE);
     etft.print(buttons[i].label);
   }
-
-
 
   // "More" button
   drawButton(8, 234, TILE_WIDTH, TILE_HEIGHT, TFT_MIDGREEN, TFT_DARKGREEN);
@@ -154,7 +154,7 @@ void readMainBtns() {
     case 24:
      picoMenu();
      rebuildMainScreen(false);
-     FREQ_OLD = FREQ - 1;    // trigger update
+     FREQ_OLD = - 1;    // trigger update
       return;
     case 31:
       hideBigBtns();
@@ -180,6 +180,7 @@ void readMainBtns() {
       tRel();
       break;
     case 41:
+      FREQ_OLD = -1; // re trigger LO display
       hideBigBtns();
       SecScreen();
       tRel();

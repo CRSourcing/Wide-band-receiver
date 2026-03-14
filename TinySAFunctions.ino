@@ -160,7 +160,10 @@ void readTSABtns() {
 void synctinySA() {  // sync with tuned FREQ and extract signal strength of marker 1
 
 
-  if (syncEnabled == false || showAGCGraph) {  
+  if (syncEnabled == false) {
+    
+    if(centerTSA == true)
+      centerTinySA(); // still center when freq runs out of window 
     return;
   }
 
@@ -339,8 +342,12 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
   long DELTA = FREQ - OLDFREQ;
   if (DELTA > 4000 || DELTA < -4000) {  // update when change of FREQ more than 4KHz, this is roughly 1 pixel of the tinySA using 1 MHz span
     if (tinySACenterMode == true) {
+      sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
+      Serial.println(buffer);
+      delay(5);
       sprintf(buffer, "sweep center %ld", FREQ);  // sync TSA center frequency with receiver frequency. This is slow!
       Serial.println(buffer);
+
     } else {
       sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
       Serial.println(buffer);
@@ -372,7 +379,7 @@ void centerTinySA() {  // centers TSA when FREQ moves outside window
       CENTER_FREQ += span / 2;
       sprintf(buffer, "sweep center %ld", CENTER_FREQ);
       Serial.println(buffer);  // shift center frequency
-      delay(20);
+      delay(50);
       sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
       Serial.println(buffer);
       return;
@@ -388,7 +395,7 @@ void centerTinySA() {  // centers TSA when FREQ moves outside window
       CENTER_FREQ += span / 2;
       sprintf(buffer, "sweep center %ld", CENTER_FREQ);
       Serial.println(buffer);  // shift center frequency
-      delay(100);
+      delay(50);
       sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
       Serial.println(buffer);
       return;
@@ -476,7 +483,7 @@ void convertTodBm(char* extractedSS) {
 
     if (syncEnabled && !TSAdBm) { 
       tinySAfound = false;
-      tft.fillRect(230, 296, 244, 24, TFT_BLACK);
+      tft.fillRect(230, 296, 250, 24, TFT_BLACK);
       tft.setCursor(235, 302);
       tft.setTextColor(TFT_RED);
       tft.print("No sync with tinySA!");
@@ -537,7 +544,7 @@ void cfgTSA() {  // Touch "Cfg" in lower right corner to open Config Menu
   Serial.println(buffer);
   delay(100);
 
-  tft.fillRect(0, 296, 479, 23, TFT_BLACK);  // clear infobar
+  tft.fillRect(0, 296, 480, 24, TFT_BLACK);  // clear infobar
   
   if(! useNixieDial)
     tft.fillRect(330, 3, 135, 20, TFT_BLACK);  // clear microvolt indicator area
