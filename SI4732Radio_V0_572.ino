@@ -31,7 +31,7 @@
 const char* ssid = "YourSSID";          // WIFI credentials needed for web tools and LittleFS uploader
 const char* password = YourPw";  // WIFI credentials needed for web tools and LittleFS uploader
 
-const long tunerIFLowEnd = 37000000l;  // Defines the 1 MHz segment of the tuner IF spectrum (36 +-4 MHz) which will be used. This constant determines the low end of the segment.
+const long tunerIFLowEnd = 37000000l;  // Defines the 1 MHz segment of the tuner IF spectrum which will be used. This constant determines the low end of the segment, usually 37MHz.
                                        // No need to change, except for NTSC tuners. Philips NTSC tuners use: const long tunerIFLowEnd = 45000000l;
 
 //##########################################################################################################################//
