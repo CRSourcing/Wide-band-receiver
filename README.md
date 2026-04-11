@@ -22,7 +22,7 @@ Different options like a TCXO version or a hardware narrow band FM demodulator a
 It does include some nice features, such as morse decoder, slow scan waterfall, memory bank scanning, station lists, .wav recorder, WIFI file transfer, etc.
 To build the hardware you should have experience with RF circuits and the appropiate toolset. At least a tinySA and NanoVNA are strongly recommended. 
 
-See the main file SI4732Radio_V0_572.ino for more details.
+See the main file SI4732Radio_V0_603.ino for more details.
 ![Alt text](pics/1.jpg)
 
 
