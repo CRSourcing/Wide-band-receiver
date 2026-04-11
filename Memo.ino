@@ -104,6 +104,7 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
 
   if (tx > 345 && ty >= 80) {  // touch was in history area
     loadFreqFromHistory();
+
     return;
   }
 
@@ -614,9 +615,13 @@ void loadFreqFromHistory() {
       uint8_t entry = (startPos + i) % 8;
       FREQ = buffer[entry].frequency;
       setFreq();
+      displayFREQ(FREQ);
       modType = buffer[entry].mode;
       loadSi4735parameters();
-
+      tx = 0;
+      ty = 0;
+      pressed = false;
+      tRel();
       return;
     }
   }
