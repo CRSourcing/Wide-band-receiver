@@ -102,6 +102,13 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
     if (isRead)
       result = tuneMemo();
 
+  if (tx > 345 && ty >= 80) {  // touch was in history area
+    loadFreqFromHistory();
+    return;
+  }
+
+
+
     if (isRead && result == 1) {  // tuneMemo returns 1 for encoder pressed
       tx = ty = 999;              // readMemo() will interpret this as outside of touch area and return
       selected_band = -1;         // remove selected band
@@ -257,17 +264,6 @@ void memoAction(bool isWrite) {  // reads button pressed and sets FREQ, bandwidt
 
   int row, column;
   static int oldModType = 1;
-
-
-
-  if (tx > 345 && loadFromHistory && ty >= 80) {  // touch was in big button area, load history
-    loadFreqFromHistory();
-    tRel();
-    tx = 0;
-    ty = 0;
-    pressed = false;
-    return;
-  }
 
   column = 1 + (tx / HorSpacing);  // get row and column
   row = 1 + ((ty - 40) / VerSpacing);
@@ -600,6 +596,7 @@ void showFreqHistory() {
 
 //##########################################################################################################################//
 void loadFreqFromHistory() {
+
   loadFromHistory = false;
 
   const int baseY = 80;
