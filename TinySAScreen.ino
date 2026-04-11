@@ -1,6 +1,6 @@
 #ifdef TINYSA_PRESENT
 
-void tinySAScreen() { 
+void tinySAScreen() {
 
   if (!altStyle)  // clear  background
     tft.fillRect(2, 61, 337, 228, TFT_BLACK);
@@ -8,6 +8,10 @@ void tinySAScreen() {
     drawButton(2, 61, 337, 228, TFT_NAVY, TFT_DARKGREY);  //Background
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
 
+  if (timeSet) {
+    timeOld = 0;
+    tft.fillRect(340, 6, 116, 16, TFT_BLACK);  // overwrite last time
+  }
 
   redrawMainScreen = true;
   drawTSAButtons();
@@ -29,11 +33,8 @@ void drawTSAButtons() {
     const char* label;
   };
 
-  Button buttons[] = {
-    { 17, 132, "TinySA" }, { 20, 153, "Mode" }, { 102, 132, "Temp." }, { 100, 153, "Param." }, { 185, 132, "Full" }, { 185, 153, "Sync" }, 
-    { 265, 132, "Freq" }, { 265, 151, "Sync" }, { 20, 188, "Swp" }, { 20, 210, "0-30" }, { 100, 188, "Swp" }, { 100, 210, "0-200" }, 
-    { 185, 188, "Swp" }, { 178, 210, "118-128" }, { 265, 190, "Swp" }, { 270, 210, "FM" }, 
-    { 265, 245, "  " }, { 263, 268, "  " }, { 183, 245, "  " }, { 183, 268, "  " }, { 100, 255, "Listen" }, { 100, 268, "  " }
+  const Button buttons[] PROGMEM = {
+    { 17, 132, "TinySA" }, { 20, 153, "Mode" }, { 102, 132, "Set" }, { 100, 153, "Param." }, { 185, 132, "Sync" }, { 182, 153, "Markers" }, { 275, 132, "Un" }, { 268, 151, "Sync" }, { 20, 188, "Swp" }, { 20, 210, "0-30" }, { 100, 188, "Swp" }, { 100, 210, "0-200" }, { 185, 188, "Swp" }, { 178, 210, "118-128" }, { 265, 190, "Swp" }, { 270, 210, "FM" }, { 265, 245, "  " }, { 263, 268, "  " }, { 183, 255, " Reset " }, { 183, 268, "  " }, { 100, 255, "Listen" }, { 100, 268, "  " }
   };
 
 
@@ -57,7 +58,7 @@ void drawTSAButtons() {
   drawButton(8, 236, 75, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 255);
-  etft.print("BACK");
+  etft.print(F("BACK"));
   etft.setTextColor(textColor);
   tDoublePress();
 }
@@ -65,7 +66,7 @@ void drawTSAButtons() {
 
 void readTSAButtons() {
 
-  
+
   tRel();
 
   int buttonID = getButtonID();
@@ -76,60 +77,58 @@ void readTSAButtons() {
   switch (buttonID) {
 
     case 21:
-  
-        tinySACenterMode = !tinySACenterMode;
-      tft.setCursor(10, 85);
+
+      tinySACenterMode = !tinySACenterMode;
+      tft.setCursor(10, 75);
       if (tinySACenterMode) {
-        tft.print("Center Mode");
-        Serial.println("color 6 0x000000");
+        tft.print(F("Center Mode"));
+        tft.setCursor(10, 95);
+        tft.print(F("Freq stays in center"));
+        Serial.println("color 7 0x00ffff");  // white
         delay(50);
-        Serial.println("color 7 0x0009ff");
       } else {
         tft.printf("Window mode");
-        Serial.println("color 7 0x00ff04");
-        delay(500);
+        tft.setCursor(10, 95);
+        tft.print(F("Freq moves through window"));
+        Serial.println("color 7 0x00ff04");  // yellow
+        delay(50);
       }
-      break; 
+      delay(1000);
+      break;
     case 22:
-     tinySAConfigScreen();
-      tRel(); 
-    break;
+      tinySAConfigScreen();
+      tRel();
+      break;
     case 23:
-
-     if (! useNixieDial)
-      tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // overwrite last microvolt indication
-      tft.fillRect(230,294,250, 26, TFT_BLACK);  // overwrite area for sync buttons
+      if (!useNixieDial)
+        tft.fillRect(330, 6, 135, 17, TFT_BLACK);  // overwrite last microvolt indication
+      tft.fillRect(230, 294, 250, 26, TFT_BLACK);  // overwrite area for sync buttons
       syncEnabled = !syncEnabled;
-      tft.setCursor(10, 70);
-      tft.print("Sync TSA (include markers)");
-      tft.setCursor(10, 90);
-      tft.printf("Sync: %s\n", syncEnabled ? "Enabled" : "Disabled");
+      if (!syncEnabled)
+        TSAdBmValue = 0;
+      tft.setCursor(10, 75);
+      tft.printf("Sync Markers: %s\n", syncEnabled ? "ON" : "OFF");
       delay(1000);
-      preferences.putBool("useTSADBm", syncEnabled);
+      preferences.putBool("tsasync", syncEnabled);
       if (syncEnabled) {
-         resetTSA();
-        sprite2Init = false; // no room for rolling RSSI history 
-        spr2.deleteSprite(); //free ram
+        resetTSA();
+        sprite2Init = false;  // no room for rolling RSSI history
+        spr2.deleteSprite();  //free ram
       }
-      
-      tRel(); 
-    break;
-    
-    case 24: 
-     centerTSA = ! preferences.getBool("cTSA", 0);  // sync frequency, but do not use markers
-     preferences.putBool("cTSA", centerTSA);
+
+      tRel();
+      break;
+
+    case 24:
+      centerTSA = false;
+      syncEnabled = false;
       tft.setCursor(10, 67);
-      tft.print("Sync Frequency only");
+      tft.print(F("TSA unsynced"));
       tft.setCursor(10, 87);
-      tft.print("(Markers not synced)");
+      tft.print(F("for this session"));
       tft.setCursor(10, 107);
-      tft.printf("Sync: %s\n", centerTSA ? "Enabled" : "Disabled");
-      if (centerTSA) {
-        syncEnabled = false;
-        preferences.putBool("useTSADBm", syncEnabled);
-      }
       delay(1000);
-    break;
+      break;
     case 31:
       Serial.println("rbw 100");
       delay(100);
@@ -150,7 +149,7 @@ void readTSAButtons() {
       Serial.println("sweep start 118M");
       delay(100);
       Serial.println("sweep stop 128M");
-    break; 
+      break;
     case 34:
       Serial.println("rbw 100");
       delay(100);
@@ -164,6 +163,7 @@ void readTSAButtons() {
       listenToTinySA();
       break;
     case 43:
+      resetTSA();
       break;
     case 44:
       break;
@@ -180,5 +180,3 @@ void readTSAButtons() {
 #endif
 
 //##########################################################################################################################//
-
-

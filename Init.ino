@@ -9,13 +9,11 @@ void bootScreen() {
 #else
   tft.setRotation(1);
 #endif
-
-
   tft.setTextColor(TFT_FOREGROUND);
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(2);
   tft.setCursor(0, 30);
-  tft.print("Getting SI4732 address...\n");
+  tft.print(F("Getting SI4732 address...\n"));
 
   do {
     si4735Addr = si4735.getDeviceI2CAddress(RESET_PIN);
@@ -23,7 +21,7 @@ void bootScreen() {
       I2C_BUSSPEED -= 100000;
     else {
       tft.setCursor(0, 100);
-      tft.print("SI4732 NOT FOUND!");
+      tft.print(F("SI4732 NOT FOUND!"));
       delay(2000);
       break;
     }
@@ -48,7 +46,7 @@ void bootScreen() {
       swappedJPEG = true;  // depends on file format
       drawJpeg("/splash.jpg", 0, 0);
     } else
-      Serial.print("splash not found\n");
+      Serial.print(F("splash not found\n"));
     LittleFS.end();
 #endif
     tft.setTextSize(3);
@@ -66,17 +64,17 @@ void bootScreen() {
     tft.setCursor(0, 180);
     if (si4735Addr == 0) {
       tft.setTextColor(TFT_RED);
-      tft.print("Si4732 not found!!");
+      tft.print(F("Si4732 not found!!"));
     } else {
       tft.setTextColor(TFT_GREEN);
       Serial_println("Si4732 found");
-      tft.print("Si4732 found, Addr: ");
+      tft.print(F("Si4732 found, Addr: "));
       tft.println(si4735Addr, HEX);
     }
 
     tft.setTextColor(TFT_YELLOW);
     tft.setCursor(0, 260);
-    tft.print("Touch screen to see settings,\nor to calibrate touchscreen");
+    tft.print(F("Touch screen to see settings,\nor to calibrate touchscreen"));
     tft.setTextColor(textColor);
     tft.setCursor(0, 200);
     tft.print(ver);
@@ -112,8 +110,7 @@ void spriteBorder() {
 void drawFrame() {
 
   tft.fillScreen(TFT_BLACK);
-  spriteBorder();  // loade border lines
-  //tft.fillRect(0, 0, DISP_WIDTH, DISP_HEIGHT, TFT_BLACK);
+  spriteBorder();  // load border lines
   tft.drawFastHLine(0, 46, DISP_WIDTH, TFT_GRID);
   tft.drawFastVLine(340, 46, 246, TFT_GRID);
   tft.fillCircle(162 + 13, 47, 3, TFT_GREEN);  //draw a circle to display finetune pot center
@@ -126,19 +123,15 @@ void drawFrame() {
 void SI5351_Init() {
 
   tft.setTextSize(2);
-  bool i2c_found;
-  for (int i = 0; i < 10; i++) {
-    i2c_found = si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
-    if (!i2c_found) {
-      tft.setCursor(10 + 10 * i, 60);
-      tft.print(".");
-      delay(100);
-    }
-  }
+  bool i2c_found = si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
 
   if (!i2c_found) {
-    tft.print(" SI5351 not found!\n");
+    tft.setCursor(10, 180);
+    tft.setTextColor(TFT_RED);
+    tft.print(F(" SI5351 not found!\n"));
     Serial_print(" SI5351 not found!\n");
+    tft.setTextColor(textColor);
+    delay(2000);
     return;
   }
 
@@ -164,6 +157,11 @@ void SI5351_Init() {
   si5351.set_freq(32768L * 100ULL, SI5351_CLK0);
   Serial_println("CLK0 enabled at 32768Hz");
 #endif
+
+
+  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_2MA);
+  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_2MA);  // tuner at lowest possible level
+  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);  // should still provide 1V pp, more than enough for the AD831
 }
 //##########################################################################################################################//
 
@@ -237,8 +235,6 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
 void tinySAInit() {
 
 
-  //Serial_println("color 8 0x0009ff"); // trace 3 blue
-  //delay(50);
 
 #ifdef TINYSA_PRESENT
   initTSA();
@@ -317,15 +313,15 @@ void drawBigBtns() {
     if (!showMeters) {
       tft.setTextColor(TFT_GREEN);
       tft.setCursor(375, 158);
-      tft.print("DOWN");
+      tft.print(F("DOWN"));
       tft.setCursor(390, 80);
-      tft.print("UP");
+      tft.print(F("UP"));
     }
 
     else
-    tft.setTextColor(textColor);
+      tft.setTextColor(textColor);
     tft.setCursor(375, 240);
-    tft.print("MODE");
+    tft.print(F("MODE"));
 
 
   }
@@ -338,17 +334,17 @@ void drawBigBtns() {
     drawButton(345, 209, 130, 78, TFT_BLUE, TFT_NAVY);
     tft.setTextColor(TFT_SKYBLUE);
     tft.setCursor(370, 145);
-    tft.print("SET");
+    tft.print(F("SET"));
     tft.setCursor(370, 175);
-    tft.print("RANGE");
+    tft.print(F("RANGE"));
     tft.setCursor(375, 63);
-    tft.print("SEEK");
+    tft.print(F("SEEK"));
     tft.setCursor(375, 93);
-    tft.print("UP");
+    tft.print(F("UP"));
     tft.setCursor(375, 222);
-    tft.print("SEEK");
+    tft.print(F("SEEK"));
     tft.setCursor(375, 252);
-    tft.print("DOWN");
+    tft.print(F("DOWN"));
     tft.setTextSize(2);
     tft.setTextColor(textColor);
   }
@@ -365,9 +361,6 @@ void loadLastSettings() {
 
   pinMode(ENCODER_BUTTON, INPUT_PULLUP);  // needed during while (true)
 
-
-
-
   FREQ = preferences.getLong("lastFreq", 0);          // load last Freq
   bandWidth = preferences.getInt("lastBw", 0);        // last bandwidth
   modType = preferences.getChar("lastMod", 1);        //last modulation type
@@ -375,7 +368,7 @@ void loadLastSettings() {
   pressSound = preferences.getBool("pressSound", 1);  // short beep when pressed
   miniWindowMode = preferences.getChar("spectr", 3);  // audio spectrum analyzer mode
 #ifdef TINYSA_PRESENT
-  syncEnabled = preferences.getBool("useTSADBm", 0);  // use tinySA for DBm
+  syncEnabled = preferences.getBool("tsasync", 0);  // use tinySA for DBm
 #endif
   SNRSquelch = preferences.getBool("SNRSquelch", 0);         // SNR OR RSSI can open squelch
   buttonSelected = preferences.getInt("sprite", 1);          // load sprite for buttons
@@ -387,36 +380,43 @@ void loadLastSettings() {
   NBFMOffset = preferences.getInt("NBFMOffset", 0);          // Offset to demodulate NBFM on flank
   showMeters = preferences.getBool("sM", 0);                 // meters cause a lot of traffic on SPI(and noise)
   tunerOffsetPPM = preferences.getInt("tunerOffsetPPM", 0);  // tuner crystal frequency correction
-  RFGainCorrection = preferences.getInt("rfgc", 6);          // adjust gain for preamp/filter
-  FFTGain = preferences.getInt("FFTGain", 80);              // initial gain for FFT analysis
-  discriminatorZero = preferences.getInt("dZero", 2048);
-  initialGain = preferences.getUChar("agcS", 200);  // tuner agc start value.
+  SWGainCorrection = preferences.getChar("swgc", 10);        // adjust s Meter
+  FFTGain = preferences.getInt("FFTGain", 80);               // initial gain for FFT analysis
+  discriminatorZero = preferences.getInt("dZero", 410);      // 2048 (mid ADC) / 5
+  gainLimit = preferences.getUChar("agcS", 200);             // tuner agc start value.
   funEnabled = preferences.getBool("fun", 0);
-  centerTSA = preferences.getBool("cTSA", 0);               // still center current window even if sync is off
+  displayFineTuneOffset = preferences.getBool("dft", 1);
   useNixieDial = preferences.getBool("dial", 0);
-  
+  displayDebugInfo = preferences.getBool("dbgI", 1);
+  tunerGainCorrection = preferences.getChar("tgc", 10);  // load last calibration factor
   showRSSITrace = preferences.getChar("showT", 1);
+  ssid = preferences.getString("ssid", "");
+  password = preferences.getString("password", "");
+  tuningMeterDivider = preferences.getUChar("tmd", 5);
 
-  Serial_printf("\n%-35s %s\n", "Settings loaded:", "");
-  Serial_printf("%-35s %ld Khz\n", "FREQ:", FREQ / 1000);
-  Serial_printf("%-35s %d Khz\n", "IF:", SI4735TUNED_FREQ);
-  Serial_printf("%-35s %d\n", "Mod Type:", modType);
-  Serial_printf("%-35s %s\n", "Alt Style:", altStyle ? "Enabled" : "Disabled");
-  Serial_printf("%-35s %d\n", "Mini Window Mode:", miniWindowMode);
-  Serial_printf("%-35s %s\n", "SNR Squelch:", SNRSquelch ? "Enabled" : "Disabled");
-  Serial_printf("%-35s %d\n", "Sprite Style:", buttonSelected);
-  Serial_printf("%-35s %s\n", "Loop bands when tuning:", loopBands ? "Yes" : "No");
-  Serial_printf("%-35s %s\n", "Show analog meters:", showMeters ? "Yes" : "No");
-  Serial_printf("%-35s %s\n", "Smooth Waterfall Colors:", smoothColorGradient ? "Yes" : "No");
-  Serial_printf("%-35s %s\n", "Audio Waterfall after inactivity:", showAudioWaterfall ? "Yes" : "No");
-  Serial_printf("%-35s %d\n", "Touch tune mode:", preferences.getChar("tGr", 0));
-  Serial_printf("%-35s %d\n", "Master Volume:", preferences.getChar("Vol", 50));
-  Serial_printf("%-35s %d\n", "NBFM Offset:", NBFMOffset);
-  Serial_printf("%-35s %d\n", "RF Gain Correction:", RFGainCorrection);
-  Serial_printf("%-35s %d ppm\n", "TV Tuner Offset:", tunerOffsetPPM);
-  Serial_printf("%-35s %s\n", "Show panorama when squelch closed:", showPanorama ? "Yes" : "No");
-  Serial_printf("%-35s %d\n", "Tuner AGC start value", initialGain);
-  Serial_printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
+  Serial_printf("\%s\n", "Settings loaded:", "");
+  Serial_printf("%ld Khz\n", "FREQ:", FREQ_TO_KHZ);
+  Serial_printf("%d Khz\n", "IF:", SI4735TUNED_FREQ);
+  Serial_printf("%d\n", "Mod Type:", modType);
+  Serial_printf("%s\n", "Alt Style:", altStyle ? "Enabled" : "Disabled");
+  Serial_printf("%d\n", "Mini Window Mode:", miniWindowMode);
+  Serial_printf("%s\n", "SNR Squelch:", SNRSquelch ? "Enabled" : "Disabled");
+  Serial_printf("%d\n", "Sprite Style:", buttonSelected);
+  Serial_printf("%s\n", "Loop bands when tuning:", loopBands ? "Yes" : "No");
+  Serial_printf("%s\n", "Show analog meters:", showMeters ? "Yes" : "No");
+  Serial_printf("%s\n", "Smooth Waterfall Colors:", smoothColorGradient ? "Yes" : "No");
+  Serial_printf("%s\n", "Audio Waterfall after inactivity:", showAudioWaterfall ? "Yes" : "No");
+  Serial_printf("%d\n", "Touch tune mode:", preferences.getChar("tGr", 0));
+  Serial_printf("%d\n", "Master Volume:", preferences.getChar("Vol", 50));
+  Serial_printf("%d\n", "NBFM Offset:", NBFMOffset);
+  Serial_printf("%d\n", "RF Gain Correction:", SWGainCorrection);
+  Serial_printf("%d ppm\n", "TV Tuner Offset:", tunerOffsetPPM);
+  Serial_printf("%s\n", "Show panorama when squelch closed:", showPanorama ? "Yes" : "No");
+  Serial_printf("%d\n", "Tuner AGC start value", gainLimit);
+  Serial_printf("%s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
+  Serial.println("SSID: " + ssid);
+  Serial.println("Password: " + password);
+  Serial.println();
   tRel();
 
   if (!fastBoot) {  // provide option to calibrate touchscreen
@@ -430,7 +430,7 @@ void loadLastSettings() {
         tft.fillScreen(TFT_BLACK);
         tft.setCursor(0, 0);
         tft.println("Settings loaded:\n");
-        tft.printf("FREQ: %ld Khz\n", FREQ / 1000);
+        tft.printf("FREQ: %ld Khz\n", FREQ_TO_KHZ);
         tft.printf("IF: %d Khz\n", SI4735TUNED_FREQ);
         tft.printf("Mod Type: %d\n", modType);
         tft.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
@@ -444,14 +444,14 @@ void loadLastSettings() {
         tft.printf("Touch tune mode: %d\n", preferences.getChar("tGr", 0));
         tft.printf("Master Volume: %d\n", preferences.getChar("Vol", 50));
         tft.printf("NBFM Offset: %d\n", NBFMOffset);
-        tft.printf("RF Gain Correction: %d\n", RFGainCorrection);
+        tft.printf("RF Gain Correction: %d\n", SWGainCorrection);
         tft.printf("TV Tuner Offset: %dppm\n", tunerOffsetPPM);
         tft.printf("Show panorama when squelch closed %s\n", showPanorama ? "Yes" : "No");
         tft.printf("%-35s %s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
-        tft.printf("%-35s %d\n", "Tuner AGC start value", initialGain);
+        tft.printf("%-35s %d\n", "Tuner AGC start value", gainLimit);
         tft.setTextSize(2);
         tft.setTextColor(TFT_RED);
-        tft.print("\nPress encoder for touch calibration,\nor touch the screen to continue.");
+        tft.print(F("\nPress encoder for touch calibration,\nor touch the screen to continue."));
         tft.setTextColor(textColor);
 
         tRel();
@@ -461,7 +461,7 @@ void loadLastSettings() {
             touchCal();
             return;
           }
-          
+
           else if (get_Touch()) {
             pressed = false;
             return;

@@ -2,7 +2,7 @@ void mainScreen() {  // main screen does not block loop(), all other screens do
 
   if (redrawMainScreen) {  // redraw main screen when coming from a function that overwrites it
     resetSmeter = true;
-    F_OLD = -1; // re trigger LO display
+    F_OLD = -1;  // re trigger LO display
     drawBigBtns();
     drawMainButtons();
     DrawSmeterScale();
@@ -22,7 +22,7 @@ void redrawIndicators() {
 
   tft.fillRect(3, 52, 336, 30, TFT_BLACK);  // overwrite area for spectrum
   tft.fillRect(3, 82, 336, 41, TFT_BLACK);  // overwrite area for waterfall
-  F_OLD = -1; // re trigger LO display
+  F_OLD = -1;                               // re trigger LO display
   DrawSmeterScale();
   printModulation();
   printBandWidth();
@@ -42,9 +42,9 @@ void drawMainButtons() {
   if (!altStyle)
     tft.fillRect(2, 56, 337, 233, TFT_BLACK);
   else
-     drawButton(2, 56, 337, 233, TFT_NAVY, TFT_DARKGREY);
+    drawButton(2, 56, 337, 233, TFT_NAVY, TFT_DARKGREY);
 
-    draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
+  draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
 
   struct Button {
     const int x;
@@ -52,12 +52,8 @@ void drawMainButtons() {
     const char *label;
   };
 
-  Button buttons[] = {
-    { 275, 245, "Set" }, { 185, 245, "Select" }, { 110, 255, "Scan" },
-    { 100, 198, "Bandw" }, { 25, 198, "Step" }, { 185, 188, "Save" },
-    { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "Load" },
-    { 185, 265, "Band" }, { 275, 265, "Freq" }, { 185, 208, "Memo" },
-    { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "List" }
+  const Button buttons[] PROGMEM = {
+    { 275, 245, "Set" }, { 185, 245, "Select" }, { 110, 255, "Scan" }, { 100, 198, "Bandw" }, { 25, 198, "Step" }, { 185, 188, "Save" }, { 270, 188, "Load" }, { 188, 132, "Slow" }, { 270, 132, "Load" }, { 185, 265, "Band" }, { 275, 265, "Freq" }, { 185, 208, "Memo" }, { 267, 208, "Memo" }, { 185, 152, "Waterf." }, { 270, 152, "List" }
   };
 
   etft.setTTFFont(Arial_14);
@@ -73,40 +69,41 @@ void drawMainButtons() {
   drawButton(8, 234, TILE_WIDTH, TILE_HEIGHT, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 254);
-  etft.print("More");
+  etft.print(F("More"));
   etft.setTextColor(textColor);
 
 #ifdef TINYSA_PRESENT
-  etft.setCursor(15, 132); etft.print("TinySA");
-  etft.setCursor(14, 152); etft.print("Options");
+  etft.setCursor(15, 132);
+  etft.print(F("TinySA"));
+  etft.setCursor(14, 152);
+  etft.print(F("Config"));
 
-#else  
-  etft.setCursor(40, 132); etft.print("IF");
-  etft.setCursor(18, 152); etft.print("Bandw");
+#else
+  etft.setCursor(40, 132);
+  etft.print(F("IF"));
+  etft.setCursor(18, 152);
+  etft.print(F("Bandw"));
 #endif
 
 #ifdef TV_TUNER_PRESENT
   etft.setCursor(100, 132);
   if (TVTunerActive) {
     etft.setTextColor(TFT_SKYBLUE);
-    etft.print("Tun.");
+    etft.print(F("Tun."));
     etft.setCursor(100, 152);
-    etft.print("Attn.");
-  } 
- #endif 
-  
- if (! TVTunerActive){
- #ifdef SW_ATTENUATOR_PRESENT
-    etft.setTextColor(TFT_GREEN);
-    etft.print("SW");
-    etft.setCursor(100, 152);
-    etft.print("Attn.");
-    etft.setTextColor(textColor);
-  #endif
+    etft.print(F("Attn."));
   }
+#endif
 
-
-
+  if (!TVTunerActive) {
+#ifdef SW_ATTENUATOR_PRESENT
+    etft.setTextColor(TFT_GREEN);
+    etft.print(F("SW"));
+    etft.setCursor(100, 152);
+    etft.print(F("Attn."));
+    etft.setTextColor(textColor);
+#endif
+  }
 }
 
 
@@ -120,15 +117,15 @@ void readMainBtns() {
   int buttonID = getButtonID();
 
   if (!buttonID)
-    return;  // outside of area                 
-  redrawMainScreen = true; 
+    return;  // outside of area
+  redrawMainScreen = true;
   tft.fillRect(135, 295, 92, 25, TFT_BLACK);  // overwrite frozen spectrum window
   switch (buttonID) {
     case 21:
 #ifdef TINYSA_PRESENT
-  tinySAScreen();
+      tinySAScreen();
 #else
-  setIFBandwidth();
+      setIFBandwidth();
 #endif
 
       tRel();
@@ -152,9 +149,9 @@ void readMainBtns() {
       tRel();
       break;
     case 24:
-     picoMenu();
-     rebuildMainScreen(false);
-     FREQ_OLD = - 1;    // trigger update
+      picoMenu();
+      rebuildMainScreen(false);
+      FREQ_OLD = -1;  // trigger update
       return;
     case 31:
       hideBigBtns();
@@ -180,7 +177,7 @@ void readMainBtns() {
       tRel();
       break;
     case 41:
-      FREQ_OLD = -1; // re trigger LO display
+      FREQ_OLD = -1;  // re trigger LO display
       hideBigBtns();
       SecScreen();
       tRel();
@@ -226,6 +223,7 @@ void setBandwidth(int mode) {  // mode 0 = bandwidth selected from menu. mode -1
   if (modType == WBFM)
     return;
 
+
   if (mode == 0) {
     for (int j = 0; j < 4; j++) {
       drawButton(8 + j * 83, 235, TILE_WIDTH, TILE_HEIGHT, TFT_BTNCTR, TFT_BTNBDR);
@@ -261,7 +259,7 @@ void setBandwidth(int mode) {  // mode 0 = bandwidth selected from menu. mode -1
 
     tDoublePress();
 
-    delay(10); 
+    delay(10);
     getButtonID();
 
     if (row == 3) {
@@ -346,16 +344,16 @@ void printBandWidth() {
 
   switch (modType) {
     case WBFM:
-      tft.print(" 300KHz");
+      tft.print(F(" 300KHz"));
       break;
     case NBFM:
-      tft.print(" 10KHz");
+      tft.print(F(" 10KHz"));
       break;
     case CW:
       if (bandWidth == 4)
-        tft.print(" 0.5KHz");
+        tft.print(F(" 0.5KHz"));
       if (bandWidth == 5)
-        tft.print(" 1.0KHz");
+        tft.print(F(" 1.0KHz"));
       break;
     case USB:
     case LSB:
@@ -389,10 +387,10 @@ void showIFBandwidth() {
 
   if (wideIFFilter) {
     tft.setTextColor(TFT_YELLOW);
-    tft.print("IFW");
+    tft.print(F("IFW"));
   } else {
     tft.setTextColor(TFT_GREEN);
-    tft.print("IFN");
+    tft.print(F("IFN"));
   }
 
   tft.setTextColor(textColor);
@@ -411,20 +409,26 @@ void ScanMode() {
 int getButtonID(void) {
 
 
-// y 1st row buttons : 121 - 171
-// y 2nd row buttons : 178 - 228
-// y 3rd row buttons : 235 - 285
-// vTouchSpacing = 68
-// buttonHeight = 50;
+  // y 1st row buttons : 121 - 171
+  // y 2nd row buttons : 178 - 228
+  // y 3rd row buttons : 235 - 285
+  // vTouchSpacing = 68
+  // buttonHeight = 50;
 
 
-    
-  column = 1 + (tx / HorSpacing);  // get row and column     
+
+  column = 1 + (tx / HorSpacing);  // get row and column
   row = 1 + ((ty - 35) / vTouchSpacing);
-  
-  
-  if (row > 4 || column > 4 || ty > 293 || ty < 121) // outside area
-    return 0;  
+
+
+  if (row > 4 || column > 4 || ty > 293 || ty < 121 || tx > 340) {  // outside area
+    tRel();
+    pressed = false;  // avoid jumping into mode
+    tx = 0;
+    ty = 0;
+    return 0;
+  }
+
   else
     return row * 10 + column;
 }
@@ -547,7 +551,5 @@ void resetMainScreen(void) {
 
   redrawMainScreen = true;
   tx = ty = pressed = 0;
-
 }
 //###############################################################################################//
-

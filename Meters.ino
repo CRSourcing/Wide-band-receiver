@@ -153,7 +153,7 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     else if (value < old_analog - updateRate)
       old_analog -= updateRate;
     else
-      old_analog = value; // eventually snap to target
+      old_analog = value;  // eventually snap to target
 
 
 
@@ -189,7 +189,7 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     tft.setTextColor(TFT_WHITE);
 
 #ifndef NBFM_DEMODULATOR_PRESENT
-    tft.drawCentreString("dBuV", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
+    tft.drawCentreString("RSSI", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
 #else
     if (modType != WBFM) {
 
@@ -197,7 +197,7 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
     }
 
     else
-      tft.drawCentreString("dBuV", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
+      tft.drawCentreString("RSSI", M_SIZE * 120 + xSh, M_SIZE * 75 + ySh, 1);
 #endif
 
     tft.drawLine(M_SIZE * (120 + 24 * ltx) - 1 + xSh, M_SIZE * (150 - 24) + ySh - 8, osx - 1 + xSh, osy + ySh, TFT_RED);
@@ -206,8 +206,6 @@ void plotNeedle(int value, int updateRate)  // upper needle, non blocking versio
   }
 
   tft.setTextColor(textColor, TFT_BLACK);
-
-
 }
 
 // #########################################################################
@@ -234,7 +232,7 @@ void plotNeedle2(int value2, int updateRate)  // lower needle, non blocking
     else if (value2 < old_analog2 - updateRate)
       old_analog2 -= updateRate;
     else
-      old_analog2 = value2; // eventually snap to target
+      old_analog2 = value2;  // eventually snap to target
 
 
 

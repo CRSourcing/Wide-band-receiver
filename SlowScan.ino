@@ -6,10 +6,10 @@ void SlowStationScan() {
     return;
 
   audioMuted = false;
-  
-  if (! useNixieDial)
-  tft.fillRect(330, 4, 145, 20, TFT_BLACK); // overwrite TSA signal strength
-  si4735.setAudioMute(false);  // function needs audio signal
+
+  if (!useNixieDial)
+    tft.fillRect(330, 4, 145, 20, TFT_BLACK);  // overwrite TSA signal strength
+  si4735.setAudioMute(false);                  // function needs audio signal
   si4735.setHardwareAudioMute(false);
   audioMuted = false;
   modType = AM;
@@ -24,7 +24,7 @@ void SlowStationScan() {
   while (true) {
 
     // Show selected stations
-    setStation(slowScanList[currentStationIndex].freq);  
+    setStation(slowScanList[currentStationIndex].freq);
 
     if (!slowScan)  // in case "Leave" was pressed
       break;
@@ -60,7 +60,7 @@ void SlowStationScan() {
       currentStationIndex = 0;  // Loop back to the first station
     }
 
-    if (stopState && SNR)  {
+    if (stopState && SNR) {
       stopScan = true;
     }
 
@@ -74,7 +74,7 @@ void SlowStationScan() {
 
 // Function to set radio to a station
 void setStation(long freq) {
-  
+
   static int ctr = 0;
   static char oldModType = -1;
   ctr++;
@@ -89,31 +89,31 @@ void setStation(long freq) {
   FREQ = freq;
   FREQCheck();        //check whether within FREQ range
   displayFREQ(FREQ);  // display new FREQ
-  modType = slowScanList[currentStationIndex].modT; 
+  modType = slowScanList[currentStationIndex].modT;
 
-  etft.fillRect(5, 100, 330, 20, TFT_BLACK);   // overwrite last station name
+  etft.fillRect(5, 100, 330, 20, TFT_BLACK);  // overwrite last station name
   etft.setTextColor(TFT_SKYBLUE);
   etft.setTTFFont(Arial_14);
 
 
-    if (modType == 2 || modType == 3 || modType == 6 || modType == 7) 
-         etft.setTextColor(TFT_RED); // SSB mode
-          
+  if (modType == 2 || modType == 3 || modType == 6 || modType == 7)
+    etft.setTextColor(TFT_RED);  // SSB mode
+
   etft.setCursor(10, 100);
   etft.printf("%d: ", currentStationIndex + 1);
   etft.print(slowScanList[currentStationIndex].desc);
-       
-   if (oldModType != modType) 
-     loadSi4735parameters(); 
 
-if ((modType == 2 || modType == 3 || modType == 6 || modType == 7) && (oldModType != modType))
-  delay(1000); // Additional delay after loading SSB patch
+  if (oldModType != modType)
+    loadSi4735parameters();
+
+  if ((modType == 2 || modType == 3 || modType == 6 || modType == 7) && (oldModType != modType))
+    delay(1000);  // Additional delay after loading SSB patch
   oldModType = modType;
-  setLO();       // and tune it in
+  setFreq();  // and tune it in
   getRSSIAndSNR();
 
- calculateAndDisplaySignalStrength(); // display RSSI/SNR
- displaySmeterBar(10); // fast smeter. no delay
+  calculateAndDisplaySignalStrength();  // display RSSI/SNR
+  displaySmeterBar(5);                  // fast smeter. no delay
 
   FREQ_OLD = FREQ;
   SNR = 0;
@@ -134,22 +134,22 @@ void drawSlowScanButtons() {
   etft.setTTFFont(Arial_14);
 
   etft.setCursor(21, 140);
-  etft.print("Pause");
+  etft.print(F("Pause"));
 
   etft.setCursor(110, 140);
-  etft.print("Last");
+  etft.print(F("Last"));
 
   etft.setCursor(195, 140);
-  etft.print("Next");
+  etft.print(F("Next"));
 
   etft.setCursor(275, 140);
-  etft.print("Exit");
+  etft.print(F("Exit"));
 
   etft.setCursor(20, 190);
-  etft.print("Signal");
+  etft.print(F("Signal"));
 
   etft.setCursor(20, 208);
-  etft.print("Stop");
+  etft.print(F("Stop"));
 }
 
 //##########################################################################################################################//
@@ -163,17 +163,17 @@ bool readSlowScanButtons() {
 
   if (pressed || clw || cclw) {
     int buttonID = getButtonID();
-   
 
-  if (cclw){
-     buttonID = 22;
-     cclw = false;
-  }      
 
-  if (clw){
-     buttonID = 23;
-     clw = false;
-  }      
+    if (cclw) {
+      buttonID = 22;
+      cclw = false;
+    }
+
+    if (clw) {
+      buttonID = 23;
+      clw = false;
+    }
 
 
 
@@ -225,8 +225,8 @@ bool readSlowScanButtons() {
         etft.setTTFFont(Arial_14);
         etft.fillRect(20, 208, 58, 18, TFT_BLACK);
         etft.setCursor(20, 208);
-        if (stopState) etft.print("Contin.");
-        else etft.print("Stop");
+        if (stopState) etft.print(F("Contin."));
+        else etft.print(F("Stop"));
         tRel();
         return true;
 
@@ -257,13 +257,13 @@ void displayHoldStatus() {
 
   if (stopScan == false) {
     etft.setCursor(21, 140);
-    etft.print("Pause");
+    etft.print(F("Pause"));
   }
 
   else {
     etft.setTextColor(TFT_RED);
     etft.setCursor(18, 140);
-    etft.print("Restart");
+    etft.print(F("Restart"));
     etft.setTextColor(TFT_GREEN);
   }
 
@@ -275,13 +275,13 @@ void displayHoldStatus() {
 
 void statusIndicator() {
 
-getRSSIAndSNR();
+  getRSSIAndSNR();
 
 
   if (SNR) {
     tft.setTextColor(TFT_ORANGE);
     tft.setCursor(130, 185);
-    tft.print("Signal found");
+    tft.print(F("Signal found"));
     tft.setTextColor(TFT_GREEN);
   }
 
@@ -289,7 +289,7 @@ getRSSIAndSNR();
   if (audioPeakVal > audioTreshold) {
     tft.setTextColor(TFT_YELLOW);
     tft.setCursor(130, 210);
-    tft.print("Audio found");
+    tft.print(F("Audio found"));
     tft.setTextColor(TFT_GREEN);
     audioPeakDetected = true;
   }

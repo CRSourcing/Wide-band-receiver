@@ -23,36 +23,36 @@ void drawCf2Btns() {
     const char* label;
   };
 
-  Button buttons[] = {
+  const Button buttons[] PROGMEM = {
     { 20, 132, "Touch" },
     { 20, 153, "Calibr." },
     { 100, 130, "Touch" },
     { 100, 151, "Sound" },
     { 185, 132, "Audio" },
-    { 180, 151, "Waterf." },
-    { 265, 132, "Plain/" },
-    { 265, 151, "Sprite" },
-    { 20, 188, "Button" },
-    { 20, 210, "Style" },
+    { 183, 151, "Waterf." },
+    { 265, 132, "SetIF" },
+    { 265, 151, "4732" },
+    { 20, 188, "Calib" },
+    { 20, 210, "SI5351" },
     { 100, 188, "Snap" },
     { 100, 210, "Freq" },
 #ifndef NBFM_DEMODULATOR_PRESENT
     { 185, 190, "NBFM" },
     { 188, 210, "Shift" },
 #else
-    { 185, 190, "Zero" },
-    { 188, 210, "Discr." },
+    { 185, 190, "Tuning" },
+    { 188, 210, "Meter" },
 #endif
-    { 262, 190, "Waterf" },
-    { 262, 210, "Colors" },
+    { 270, 190, "FFT" },
+    { 270, 210, "Gain" },
 #ifdef TV_TUNER_PRESENT
-    { 100, 245, "Tuner" },
-    { 100, 265, "+-ppm" },
+    { 100, 245, "SMeter" },
+    { 100, 265, "Adjust" },
 #endif
-    { 185, 245, "RFgain" },
-    { 185, 265, "Calibr." },
-    { 270, 245, "FFT" },
-    { 270, 268, "Gain" }
+    { 180, 245, "Tuner" },
+    { 180, 265, "+-ppm" },
+    { 267, 245, "Plain/" },
+    { 267, 268, "Bitmp" }
 
   };
 
@@ -65,8 +65,10 @@ void drawCf2Btns() {
 
   drawButton(8, 236, 75, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
-  etft.setCursor(20, 255);
-  etft.print("BACK");
+  etft.setCursor(20, 245);
+  etft.print(F("BACK/"));
+  etft.setCursor(20, 265);
+  etft.print(F("MORE"));
   etft.setTextColor(textColor);
   tDoublePress();
 }
@@ -77,7 +79,7 @@ void readCf2Btns() {
   if (!pressed) return;
   int buttonID = getButtonID();
 
- if (!buttonID)
+  if (!buttonID)
     return;  // outside of area
 
   switch (buttonID) {
@@ -101,12 +103,10 @@ void readCf2Btns() {
       delay(1000);
       break;
     case 24:
-      altStyle = !altStyle;  // change between plain and sprite style
-      preferences.putBool("lastStyle", altStyle);
-      drawBigBtns();  // redraw with new style
+      setIF();
       break;
     case 31:
-      selectButtonStyle();
+      calibSI5351();
       break;
     case 32:
       roundToStep = !roundToStep;
@@ -117,32 +117,43 @@ void readCf2Btns() {
       break;
     case 33:
 #ifdef NBFM_DEMODULATOR_PRESENT
-      zeroDiscriminator();
-#endif
-#ifndef NBFM_DEMODULATOR_PRESENT
+      AdjustTuningMeter();
+#else
       setNBFMOffset();
 #endif
-
       break;
     case 34:
-      smoothColorGradient = !smoothColorGradient;
-      preferences.putBool("smoothWF", smoothColorGradient);
-      tft.setCursor(10, 75);
-      tft.printf("Smooth waterf. colors: %s", smoothColorGradient ? "Yes" : "No");
-      delay(1000);
+      setFFTGain();
       break;
     case 41:
+      {
+        tft.setCursor(10, 80);
+        tft.print(F("Short touch to return."));
+        tft.setCursor(10, 100);
+        tft.print(F("Long touch for more."));
+        long startT = millis();
+        while (get_Touch()) {  // while pressed
+          if (millis() - startT > 1500) {
+            ConfigScreen3();
+          }
+        }
+      }
       break;
     case 42:
+      if (!TVTunerActive)
+        setSMeterCorrection(0);
+      else
+        setSMeterCorrection(1);
+      break;
+    case 43:
 #ifdef TV_TUNER_PRESENT
       correctTunerOffset();
 #endif
       break;
-    case 43:
-      setRFGainCorrection();
-      break;
     case 44:
-      setFFTGain();
+      altStyle = !altStyle;  // change between plain and sprite style
+      preferences.putBool("lastStyle", altStyle);
+      drawBigBtns();  // redraw with new style
       break;
     default:
       resetMainScreen();
@@ -171,7 +182,7 @@ void touchCal() {
   tft.setTextSize(1);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  tft.println("Touch corners as indicated");
+  tft.println(F("Touch corners as indicated"));
 
   tft.println();
 
@@ -179,7 +190,7 @@ void touchCal() {
 
   tft.setTextSize(2);
   tft.setCursor(0, 30);
-  tft.print("Calibration complete!\nTouch screen with stylus\nto test different areas.\nDot must appear close to stylus\nPRESS encoder to save\nOr MOVE encoder to recalibrate\n");
+  tft.print(F("Calibration complete!\nTouch screen with stylus\nto test different areas.\nDot must appear close to stylus\nPRESS encoder to save\nOr MOVE encoder to recalibrate\n"));
   tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
 
 
@@ -192,7 +203,7 @@ void touchCal() {
       cclw = false;
       tft.fillScreen(TFT_BLACK);
       tft.setCursor(0, 20);
-      tft.print("Recalibration\nTouch screen with stylus\nto test different areas\n\n");
+      tft.print(F("Recalibration\nTouch screen with stylus\nto test different areas\n\n"));
       tft.calibrateTouch(calData, TFT_WHITE, TFT_RED, 15);
       tft.printf("Cal Data: %d, %d, %d, %d, %d\n", calData[0], calData[1], calData[2], calData[3], calData[4]);
     }
@@ -215,7 +226,7 @@ void touchCal() {
   // Apply calibration data
   tft.setTouch(calData);
 
-  tft.print("Calibration data saved.");
+  tft.print(F("Calibration data saved."));
 
   delay(1000);
 }
@@ -230,17 +241,17 @@ void setNBFMOffset() {  // set best offset from crystal filter center frequency 
   tft.fillRect(5, 65, 333, 225, TFT_BLACK);
 
   tft.setCursor(5, 65);
-  tft.print("Use encoder to set NBFM");
+  tft.print(F("Use encoder to set NBFM"));
 
 
   tft.setCursor(5, 82);
-  tft.print("shift for flank demodulation");
+  tft.print(F("shift for flank demodulation"));
 
   tft.setCursor(5, 100);
-  tft.print("Set for least distortion");
+  tft.print(F("Set for least distortion"));
 
   tft.setCursor(5, 120);
-  tft.print("Press encoder to save");
+  tft.print(F("Press encoder to save"));
 
   offset = preferences.getInt("NBFMOffset", 0);
   tft.fillRect(5, 140, 320, 17, TFT_BLACK);
@@ -295,17 +306,16 @@ void correctTunerOffset() {  //corrects tuner frequency error.
   calculateAndDisplaySignalStrength();
 
   tft.setCursor(5, 90);
-  tft.print("Use encoder to compensate");
+  tft.print(F("Use encoder to compensate"));
 
   tft.setCursor(5, 107);
-  tft.print("for tuner freq error.");
+  tft.print(F("for tuner freq error."));
 
   tft.setCursor(5, 130);
-  tft.print("Press encoder to save.");
+  tft.print(F("Press encoder to save."));
   tft.fillRect(5, 170, 320, 17, TFT_BLACK);
   tft.setCursor(5, 170);
   tft.printf("Correction: %dppm", tunerOffsetPPM);
-
 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
@@ -347,41 +357,74 @@ void correctTunerOffset() {  //corrects tuner frequency error.
 
 
 #endif
+
 //##########################################################################################################################//
 
-void setRFGainCorrection() {  // fine tune shortwave gain so that S meter reads correctly
+void setSMeterCorrection(bool mode) {  // adjusts gain for : 0 = SW S Meter, 1 = VHF/UHF S Meter
 
-  RFGainCorrection = preferences.getInt("rfgc", 6);  // load last calibration factor
+  int8_t GainCorrection;
 
   encLockedtoSynth = false;
   clearStatusBar();
   clearNotification();
-  tft.setCursor(10, 100);
-  tft.printf("Shortwave gain corr.:%d dB", RFGainCorrection);
-  
-  while (digitalRead(ENCODER_BUTTON) == HIGH) {
-  
-    if (clw)
-      RFGainCorrection++;
-    if (cclw)
-      RFGainCorrection--;
-  
+  DrawSmeterScale();
 
-  
-    if (clw || cclw) {
-      tft.fillRect(10, 100, 325, 16, TFT_BLACK);
-      tft.setCursor(10, 100);
-      tft.printf("Shortwave gain corr.:%d dB", RFGainCorrection);
-    }
-    delay(5);
-    
-    clw = 0;
-    cclw = 0;
-   calculateAndDisplaySignalStrength();
-  
+  tft.setCursor(10, 90);
+  tft.setTextColor(TFT_WHITE);
+
+  if (!mode) {
+    GainCorrection = SWGainCorrection;  // load last calibration factor
+    tft.print(F("For shortwave only."));
   }
-  preferences.putInt("rfgc", RFGainCorrection);
+
+  else {
+    GainCorrection = tunerGainCorrection;  // load last calibration factor
+    tft.print(F("For VHF/UHF only."));
+  }
+
+
+  tft.setCursor(10, 105);
+  tft.printf("Gain corr.:%d dB", GainCorrection);
+
+  while (digitalRead(ENCODER_BUTTON) == HIGH) {
+
+    if (clw)
+      GainCorrection++;
+    if (cclw)
+      GainCorrection--;
+
+
+
+    if (clw || cclw) {
+
+      if (mode)
+        tunerGainCorrection = GainCorrection;
+      else
+        SWGainCorrection = GainCorrection;
+
+      tft.fillRect(10, 105, 325, 16, TFT_BLACK);
+      tft.setCursor(10, 105);
+      tft.printf("Gain corr.:%d dB", GainCorrection);
+
+      clw = 0;
+      cclw = 0;
+    }
+
+    getRSSIAndSNR();
+    delay(30);
+    calculateAndDisplaySignalStrength();
+    displaySmeterBar(4);
+  }
+
+  if (!mode)
+    preferences.putChar("swgc", SWGainCorrection);
+  else {
+    preferences.putChar("tgc", tunerGainCorrection);
+  }
   encLockedtoSynth = true;
+  tft.setTextColor(textColor);
+  while (digitalRead(ENCODER_BUTTON) == LOW)
+    ;
 }
 
 //##########################################################################################################################//
@@ -413,9 +456,9 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
     delay(15);
   }
 
-
-
   preferences.putInt("FFTGain", FFTGain);
+  while (digitalRead(ENCODER_BUTTON) == LOW)
+    ;
   encLockedtoSynth = true;
 }
 
@@ -423,50 +466,82 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
 //##########################################################################################################################//
 #ifdef NBFM_DEMODULATOR_PRESENT
 
-void zeroDiscriminator(void) {
+void AdjustTuningMeter() {
 
   encLockedtoSynth = false;
-  tft.setTextSize(1);
-  displayText(10, 64, 0, 0, "Tune to strong signal w. precise frequency.");
-  displayText(10, 76, 0, 0, "Adjust encoder for offset zero.");
-  displayText(10, 90, 0, 0, "Press encoder to leave.");
-  tft.setTextSize(2);
-  tft.setCursor(10, 105);
-  tft.printf("Offs: %d,  GPIO27 %4.0fmV", afcVoltage * 5, (float) analogRead(TUNING_VOLTAGE_READ_PIN) * 0.8056f); 
+
+  tft.setCursor(5, 64);
+  tft.print("Set tuning meter sensitivity");
+  tft.setCursor(5, 80);
+  tft.print("Press encoder when done");
+
+
+  tft.setCursor(5, 100);
+  tft.printf("Sensitivity: %d", 26 - tuningMeterDivider);  // 1 - 25
+
 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
+    if (clw)
+      tuningMeterDivider--;
+    if (cclw)
+      tuningMeterDivider++;
 
-    getDiscriminatorVoltage();
 
 
-    delay(50);
+    if (clw || cclw) {
 
-    if (clw) {
-      discriminatorZero++;
+      tuningMeterDivider = constrain(tuningMeterDivider, 1, 25);
+
+
+      tft.fillRect(5, 100, 330, 16, TFT_BLACK);
+      tft.setCursor(5, 100);
+      tft.printf("Sensitivity: %d", 26 - tuningMeterDivider);
+
+      clw = 0;
+      cclw = 0;
     }
-    if (cclw) {
-      discriminatorZero--;
-    }
-
-    if (clw + cclw) {
-
-      tft.fillRect(10, 105, 325, 20, TFT_BLACK);
-      tft.setCursor(10, 105);
-      tft.printf("Offs: %d,  GPIO27 %4.0fmV", afcVoltage * 5, (float) analogRead(TUNING_VOLTAGE_READ_PIN) * 0.8056f);  
-      // discriminator voltage gets divided by 5 to feed the tuning meter, so this should match
-    }
-
-
-    clw = false;
-    cclw = false;
   }
+  preferences.putUChar("tmd", tuningMeterDivider);
 
   while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
-  encLockedtoSynth = true;
+
+
+  getDiscriminatorVoltage();
+  delay(5);
+
+  tft.fillRect(5, 64, 333, 60, TFT_BLACK);
+  displayText(10, 64, 0, 0, "Auto adjusting ");
+  tft.setTextSize(2);
+  displayText(10, 84, 0, 0, "tuning meter...");
+
+  while (afcVoltage) {
+
+    getDiscriminatorVoltage();
+
+    delay(5);
+
+    if (afcVoltage > 0)
+      discriminatorZero++;
+    if (afcVoltage < 0)
+      discriminatorZero--;
+
+    tft.fillRect(50, 105, 80, 20, TFT_BLACK);
+    tft.setCursor(10, 105);
+    tft.printf("Offs: %d", afcVoltage);
+  }
+
+
+  tft.fillRect(10, 105, 125, 20, TFT_BLACK);
+  tft.setCursor(10, 105);
+  tft.printf("READY!");
 
   preferences.putInt("dZero", discriminatorZero);
+  encLockedtoSynth = true;
+
+  delay(1000);
 }
 
 #endif
+//##########################################################################################################################//

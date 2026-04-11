@@ -8,9 +8,8 @@ void DebugScreen() {  // Contains debug routines and unfinished ideas
   else
     drawButton(2, 61, 337, 228, TFT_NAVY, TFT_DARKGREY);  //Background
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
-
   etft.setCursor(10, 65);
-  etft.print("Debug area, for testing.");
+  etft.print(F("Debug area, for testing."));
 
   redrawMainScreen = true;
   drawDbgBtns();
@@ -31,7 +30,7 @@ void drawDbgBtns() {
     const char* label;
   };
 
-  Button buttons[] = {
+  const Button buttons[] PROGMEM = {
     { 183, 245, "SPI" },
     { 183, 268, "Noise" },
     { 100, 245, "AGC" },
@@ -73,7 +72,7 @@ void drawDbgBtns() {
   drawButton(8, 236, 75, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 255);
-  etft.print("BACK");
+  etft.print(F("BACK"));
   etft.setTextColor(textColor);
   tDoublePress();
 }
@@ -82,12 +81,12 @@ void drawDbgBtns() {
 void readDbgBtns() {
 
 
-  if (!pressed) 
-   return;
+  if (!pressed)
+    return;
   int buttonID = getButtonID();
 
- if (!buttonID)// outside of area
-   return;
+  if (!buttonID)  // outside of area
+    return;
 
   switch (buttonID) {
 
@@ -112,7 +111,7 @@ void readDbgBtns() {
       noMixer = !noMixer;
       if (noMixer) {
         tft.setCursor(10, 105);
-        tft.print("SI4732 direct tuning active");
+        tft.print(F("SI4732 direct tuning active"));
       }
       delay(1000);
       break;
@@ -123,13 +122,13 @@ void readDbgBtns() {
       setI2CBusSpeed();
       break;
     case 34:
-      lowSideInjection =!lowSideInjection; 
+      lowSideInjection = !lowSideInjection;
       if (lowSideInjection) {
         tft.setCursor(10, 105);
-        tft.print("LO frequency below RF");
+        tft.print(F("LO frequency below RF"));
         delay(1000);
-      }  
-      FREQ_OLD --; // trigger display update
+      }
+      FREQ_OLD--;  // trigger display update
       break;
     case 41:
       return;
@@ -172,7 +171,7 @@ void setLOLevel() {
     const char* label;
   };
 
-  Button buttons[] = {
+  const Button buttons[] PROGMEM = {
     { 203, 245, "6" },
     { 193, 265, "dBm" },
     { 120, 245, "3" },
@@ -199,8 +198,8 @@ void setLOLevel() {
   while (true) {
     tDoublePress();
     int buttonID = getButtonID();
- if (!buttonID)
-    return;  // outside of area
+    if (!buttonID)
+      return;  // outside of area
 
     switch (buttonID) {
       case 41:
@@ -327,69 +326,68 @@ void setAGCReleaseRate() {
 //##########################################################################################################################//
 void initRollingGraphSprite() {
 
- spr2.setColorDepth(16);
- spr2.createSprite(251, 26);
- spr2.fillSprite(TFT_BLACK);
- tft.setTextSize(1);
- spr2.print("Signal Strength history. Tap to disable.");
- tft.setTextSize(2);
- sprite2Init = true; 
+  spr2.setColorDepth(16);
+  spr2.createSprite(251, 26);
+  spr2.fillSprite(TFT_BLACK);
+  tft.setTextSize(1);
+  spr2.print(F("Signal Strength history. Tap to disable."));
+  tft.setTextSize(2);
+  sprite2Init = true;
 }
 
 
 //##########################################################################################################################//
-void RSSITrace()
-{
-  
+void RSSITrace() {
+
   static uint8_t interval = 0;
-    if (tx > 240 && ty > 293 && !syncEnabled) {
-        showRSSITrace++;
-        if (showRSSITrace >= 2) 
-           showRSSITrace = 0;
-        sprite2Init = false;
-        spr2.deleteSprite();
-        preferences.putChar("showT", showRSSITrace);
-        tft.fillRect(230, 294, 250, 26, TFT_BLACK);
-        tRel(); 
-        tx = ty = 0;
-        pressed = false;
-    }
+  if (tx > 240 && ty > 293 && !syncEnabled) {
+    showRSSITrace++;
+    if (showRSSITrace >= 2)
+      showRSSITrace = 0;
+    sprite2Init = false;
+    spr2.deleteSprite();
+    preferences.putChar("showT", showRSSITrace);
+    tft.fillRect(230, 294, 250, 26, TFT_BLACK);
+    tRel();
+    tx = ty = 0;
+    pressed = false;
+  }
 
-    if (syncEnabled) 
-        return;
-
-
-     if(showRSSITrace && ++interval == 3){
-          interval = 0;
-          drawRollingGraph(signalStrength);
-     }
-}
-
-//##########################################################################################################################//
-
-
-void drawRollingGraph (char bVal) // draw a rolling RSSI graph in lower right corner. Uses baseline at the botton of the screen. Slowly autoadjusts to range 
-{
- 
-
- if (!showRSSITrace)
+  if (syncEnabled)
     return;
 
-if (!sprite2Init)
-   initRollingGraphSprite();
+
+  if (showRSSITrace && ++interval == 3) {
+    interval = 0;
+    drawRollingGraph(signalStrength);
+  }
+}
+
+//##########################################################################################################################//
+
+
+void drawRollingGraph(char bVal)  // draw a rolling RSSI graph in lower right corner.  Slowly autoadjusts to range.
+{
+
+
+  if (!showRSSITrace)
+    return;
+
+  if (!sprite2Init)
+    initRollingGraphSprite();
 
   const int startX = 230;
-  const int endX   = 480;
-  const int minY   = 294;
-  const int maxY   = 319;
+  const int endX = 480;
+  const int minY = 294;
+  const int maxY = 319;
 
-static int minTracked = 50;
-static int maxTracked = 100;
+  static int minTracked = 50;
+  static int maxTracked = 100;
 
 
-  const int width  = endX - startX + 1;
+  const int width = endX - startX + 1;
   const int height = maxY - minY + 1;
- 
+
 
   static bool init = false;
   static int lastY = height - 1;
@@ -402,31 +400,31 @@ static int maxTracked = 100;
   }
 
 
-// fast adjust to new hi/low 
-if (bVal < minTracked) minTracked--;
-if (bVal > maxTracked) maxTracked ++;
+  // quick adjust to new hi/low
+  if (bVal < minTracked) minTracked--;
+  if (bVal > maxTracked) maxTracked++;
 
-// slow adaption for current signal
+  // slow update for current signal
 
-if (minTracked < bVal)
-  minTracked += (bVal - minTracked) >> 5;   // slow upward drift
+  if (minTracked < bVal)
+    minTracked += (bVal - minTracked) >> 5;  // slow upward drift
 
-if (maxTracked > bVal)
-  maxTracked -= (maxTracked - bVal) >> 5;   // slow downward drift
+  if (maxTracked > bVal)
+    maxTracked -= (maxTracked - bVal) >> 5;  // slow downward drift
 
-int displayBottomMargin = 2;
+  int displayBottomMargin = 2;
 
-int usableHeight = height - displayBottomMargin;
+  int usableHeight = height - displayBottomMargin;
 
-int range = maxTracked - minTracked;
-if (range < 1) 
-   range = 1; // avoid later divide-by-zero
+  int range = maxTracked - minTracked;
+  if (range < 1)
+    range = 1;  // avoid later divide by zero
 
-// scale current value into range (0..usableHeight)
-int scaled = (bVal - minTracked) * usableHeight / range;
+  // scale current value
+  int scaled = (bVal - minTracked) * usableHeight / range;
 
-// invert
-int newY = (height - displayBottomMargin) - scaled;
+  // invert
+  int newY = (height - displayBottomMargin) - scaled;
 
   //scroll sprite lef
   spr2.scroll(-1, 0);
@@ -434,23 +432,25 @@ int newY = (height - displayBottomMargin) - scaled;
   // clear right column
   spr2.drawLine(width - 1, 0, width - 1, height - 1, TFT_BLACK);
 
-  // connect 
-  spr2.drawLine(width - 2, lastY, width - 1, newY, TFT_GREEN);
+  // connect
+
+  spr2.drawPixel(width - 1, lastY - 1, TFT_GREEN);
   spr2.drawLine(width - 2, lastY + 1, width - 1, maxY, TFT_BLUE);
 
   lastY = newY;
 
   // push it
   spr2.pushSprite(startX, minY);
-
 }
 
 //##########################################################################################################################//
 
+//GPIO 36 + 39 in an oscilloscope configuration
+
 
 // shows GPIO 36 + 39 in an oscilloscope style
 void showADCs() {
-  const int width = 400;
+  const int width = 300;
   const int trH = 64;
   const int yPos1 = 100;
   const int yPos2 = 256;
@@ -472,34 +472,34 @@ void showADCs() {
   // labels
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setCursor(50 + width + 4, yPos1 - trH + 0);
-  tft.print("2.5V");
+  tft.print(F("3.3V"));
   tft.setCursor(50 + width + 4, yPos1 - trH + 16);
-  tft.print("2.1V");
+  tft.print(F("2.5V"));
   tft.setCursor(50 + width + 4, yPos1 - trH + 32);
-  tft.print("1.7V");
+  tft.print(F("1.7V"));
   tft.setCursor(50 + width + 4, yPos1 - trH + 48);
-  tft.print("1.2V");
+  tft.print(F("0.8V"));
   tft.setCursor(50 + width + 4, yPos1 - trH + 63);
-  tft.print("0.8V");
+  tft.print(F("0V"));
 
 
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
   tft.setCursor(50 + width + 4, yPos2 - trH + 0);
-  tft.print("3.3V");
+  tft.print(F("3.3V"));
   tft.setCursor(50 + width + 4, yPos2 - trH + 16);
-  tft.print("2.5V");
+  tft.print(F("2.5V"));
   tft.setCursor(50 + width + 4, yPos2 - trH + 32);
-  tft.print("1.7V");
+  tft.print(F("1.7V"));
   tft.setCursor(50 + width + 4, yPos2 - trH + 48);
-  tft.print("0.8V");
+  tft.print(F("0.8V"));
   tft.setCursor(50 + width + 4, yPos2 - trH + 63);
-  tft.print("0V");
+  tft.print(F("0V"));
 
   tft.setTextSize(2);
   tft.setTextColor(textColor);
   tft.setSwapBytes(true);
   tft.setCursor(0, 0);
-  tft.print("GPIO 36+39, ~5ms/div, move enc. to leave");
+  tft.print(F("GPIO 36+39, ~5ms/div, move enc. to leave"));
 
   while (!(clw + cclw)) {  // leave when encoder moved
     memset(screenBuf1, 0, width * trH * sizeof(uint16_t));
@@ -528,12 +528,12 @@ void showADCs() {
       screenBuf2[y * width + (width - 1)] = TFT_DARKGREY;
     }
 
-    // Write and use Besenham algorithm to connect
-    int prevY1 = trH - 1 - ((analogRead(36) - gpio36_Offset) >> 5) - 32;
+    // Write and use Besenham to connect
+    int prevY1 = trH - 1 - (analogRead(36) >> 6);
     int prevY2 = trH - 1 - (analogRead(39) >> 6);
 
     for (int x = 1; x < width; x++) {
-      int currY1 = trH - 1 - ((analogRead(36) - gpio36_Offset) >> 5) - 32;  // use double vertical resolution
+      int currY1 = trH - 1 - (analogRead(36) >> 6);
       int currY2 = trH - 1 - (analogRead(39) >> 6);
 
       int dy1 = abs(currY1 - prevY1);
@@ -564,12 +564,13 @@ void showADCs() {
     tft.pushImage(20, yPos2 - trH, width, trH, screenBuf2);
   }
 
-  // needs reboot since buffers use memory already allocated
+  // reboot, avoid memory fragmentation
   preferences.putBool("fB", true);
   ESP.restart();
 }
 
 //##########################################################################################################################//
+
 
 
 
@@ -581,7 +582,7 @@ void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner
   tft.setTextColor(textColor);
   tft.fillRect(3, 62, 330, 230, TFT_BLACK);
   tft.setCursor(10, 65);
-  tft.print("Set DAC1");
+  tft.print(F("Set DAC1"));
 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
@@ -610,8 +611,6 @@ void setDac1() {  // set tuner gain control manually, DAC1 is connected to tuner
 }
 
 //##########################################################################################################################//
-
-
 void setDac2() {  //generate sine tone for audio testing
   uint16_t oldF = 0;
   uint16_t F = 800;
@@ -621,15 +620,15 @@ void setDac2() {  //generate sine tone for audio testing
   tft.setTextColor(textColor);
   tft.fillRect(3, 62, 330, 230, TFT_BLACK);
   tft.setCursor(10, 65);
-  tft.print("Sine tone for audio test");
+  tft.print(F("Sine tone for audio test"));
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
     if (F != oldF) {
       tft.fillRect(10, 130, 323, 16, TFT_BLACK);
       tft.setCursor(10, 130);
       tft.printf("FREQ: %d", F);
-       
-  dac2.outputCW(F);
+
+      dac2.outputCW(F);
 
       oldF = F;
     }
@@ -647,8 +646,9 @@ void setDac2() {  //generate sine tone for audio testing
   while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
   encLockedtoSynth = true;
-   dac2.disable(); 
+  dac2.disable();
   clearStatusBar();
 }
+
 
 #endif

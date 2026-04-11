@@ -3,21 +3,24 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode, ac
 
   static uint16_t dly = 0;
   static bool stop = false;
-  const int btLeftBorder = 350;
+  const int btLeftBorder = 340;
 
 
 
-  if((tx > btLeftBorder && pressed && !scanMode) || (!scanMode && pressed && ty < 65)){
-    // UP or DOWN pressed or frequency display left or right pressed
+  if (tx > btLeftBorder && pressed && !scanMode) {
+    // UP or DOWN pressed
     disableFFT = true;
     freq_UP_DOWN();
   }
 
 
-#ifdef NBFM_DEMODULATOR_PRESENT 
+  if (!scanMode && pressed && ty <= 45 && tx < 335)
+    tapFreqDigit();
 
- if ( (tx > btLeftBorder) && (ty > 45) && (ty < 115) & pressed && !scanMode && showMeters) // set AFC on/off and display small green AFC indicator in upper meter
-     getAFCstatus();  
+#ifdef NBFM_DEMODULATOR_PRESENT
+
+  if ((tx > btLeftBorder) && (ty > 45) && (ty < 115) & pressed && !scanMode && showMeters)  // set AFC on/off and display small green AFC indicator in upper meter
+    getAFCstatus();
 
 #endif
 
@@ -32,9 +35,9 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode, ac
   if (scanMode) {
 
 
-    if (keyVal && showScanRange && lim1 && lim2) { // scan with frequency limits
-      tft.fillRect(3, 119, 334, 58, TFT_BLACK);  // overwrite row 3 to make room for scan parameters
-      printScanRange();                          // print scan parameters once (not in every cycle)
+    if (keyVal && showScanRange && lim1 && lim2) {  // scan with frequency limits
+      tft.fillRect(3, 119, 334, 58, TFT_BLACK);     // overwrite row 3 to make room for scan parameters
+      printScanRange();                             // print scan parameters once (not in every cycle)
       showScanRange = false;
     }
 
@@ -84,6 +87,7 @@ void selectModulation() {
 
 
 
+
   int lastmodType = modType;
   tft.fillRect(3, 119, 334, 58, TFT_BLACK);  // overwrite row 3 from mainscreen
   tft.fillRect(345, 48, 130, 242, TFT_BLACK);
@@ -94,36 +98,36 @@ void selectModulation() {
 
 #ifdef AUDIO_SQUAREWAVE_PRESENT
   tft.setCursor(21, 132);
-  tft.print("SSTV");
+  tft.print(F("SSTV"));
   tft.setCursor(21, 152);
-  tft.print("Sc/Ma");
+  tft.print(F("Sc/Ma"));
   tft.setCursor(105, 132);
-  tft.print("RTTY");
+  tft.print(F("RTTY"));
   tft.setCursor(105, 152);
-  tft.print("45.45");
+  tft.print(F("45.45"));
 #endif
 
 
   tft.setCursor(21, 198);
-  tft.print("AM");
+  tft.print(F("AM"));
   tft.setCursor(105, 198);
-  tft.print("LSB");
+  tft.print(F("LSB"));
   tft.setCursor(188, 198);
-  tft.print("USB");
+  tft.print(F("USB"));
   tft.setCursor(280, 198);
-  tft.print(" ");
+  tft.print(F(" "));
   tft.setCursor(20, 254);
-  tft.print("WBFM");
+  tft.print(F("WBFM"));
   tft.setCursor(275, 198);
-  tft.print("NBFM");
+  tft.print(F("NBFM"));
   tft.setCursor(188, 255);
-  tft.print("CW");
+  tft.print(F("CW"));
   tft.setCursor(280, 245);
-  tft.print("CW");
+  tft.print(F("CW"));
   tft.setCursor(275, 265);
-  tft.print("DECO");
+  tft.print(F("DECO"));
   tft.setCursor(105, 255);
-  tft.print("SYNC");
+  tft.print(F("SYNC"));
 
 
 
@@ -140,7 +144,7 @@ void selectModulation() {
     tPress();
 
   int buttonID = getButtonID();
-   if (!buttonID)
+  if (!buttonID)
     return;  // outside of area
 
   switch (buttonID) {
@@ -207,9 +211,9 @@ void selectModulation() {
 
 //##########################################################################################################################//
 
-void loadSi4735parameters() { //for SSB this needs to consider whether in single or double conversion mode
-                              //we are using high side injection (LO above RF) --> in single conversion mode the sidebands get inverted.
-                              // double conversion mode means that the sidebands get inverted twice which brings them back to normal     
+void loadSi4735parameters() {  //for SSB this needs to consider whether in single or double conversion mode
+                               //we are using high side injection (LO above RF) --> in single conversion mode the sidebands get inverted.
+                               // double conversion mode means that the sidebands get inverted twice which brings them back to normal
 
   si4735.setVolume(0);  // avoid volume peaks, especially when loading SSB patch
 
@@ -244,23 +248,23 @@ void loadSi4735parameters() { //for SSB this needs to consider whether in single
   }
 
 
-  int offset = 0; // load corresponding BFO offset
+  int offset = 0;  // load corresponding BFO offset
 
 
 
-  if (modType == USB && singleConversionMode )
+  if (modType == USB && singleConversionMode)
     offset = preferences.getInt("B1", 0);
-  if (modType == USB && !singleConversionMode )
+  if (modType == USB && !singleConversionMode)
     offset = preferences.getInt("B2", 0);
 
-  if (modType == LSB && singleConversionMode )
+  if (modType == LSB && singleConversionMode)
     offset = preferences.getInt("B3", 0);
-  if (modType == LSB && !singleConversionMode )
+  if (modType == LSB && !singleConversionMode)
     offset = preferences.getInt("B4", 0);
 
 
   if (modType == USB) {
-    if (singleConversionMode ) {  // sidebands get inverted when in singleConversionMode 
+    if (singleConversionMode) {                           // sidebands get inverted when in singleConversionMode
       si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 1);  // Set LSB mode
       si4735.setSSBBfo(offset);
     } else {
@@ -272,8 +276,8 @@ void loadSi4735parameters() { //for SSB this needs to consider whether in single
 
 
   if (modType == LSB) {
-    if (singleConversionMode ) { // sidebands get inverted when in singleConversionMode 
-      si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 2);  
+    if (singleConversionMode) {  // sidebands get inverted when in singleConversionMode
+      si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 2);
       si4735.setSSBBfo(offset);
     } else {
       si4735.setSSB(520, 29900, SI4735TUNED_FREQ, 1, 1);
@@ -305,9 +309,6 @@ void loadSi4735parameters() { //for SSB this needs to consider whether in single
     si4735.setSBBSidebandCutoffFilter(0);
     ssbLoaded = false;  // need to reload SSB bandwidth
   }
-
-
-
 
 
   if (modType == NBFM) {
@@ -343,13 +344,13 @@ void loadSi4735parameters() { //for SSB this needs to consider whether in single
 #ifdef NBFM_DEMODULATOR_PRESENT
     if (afcEnable) {
       afcEnable = false;
-     // diable AFC in WBFM
+      // diable AFC in WBFM
     }
 #endif
     displayFREQ(FREQ);
 
 #ifdef TINYSA_PRESENT
-    setLO();  // initialize VFO so that spectrum analyzer is tuned
+    setFreq();  // initialize VFO so that spectrum analyzer is tuned
 #endif
 
     return;
@@ -381,6 +382,54 @@ void loadSi4735parameters() { //for SSB this needs to consider whether in single
 #endif
 }
 
+
+//##########################################################################################################################//
+void loadSSB() {
+
+  if (!ssbLoaded) {
+
+    if (!slowScan) {  //  do not display message bar in slowScan
+      tft.fillRect(0, 294, 222, 25, TFT_BLACK);
+      tft.setTextColor(TFT_RED);
+      tft.setCursor(130, 300);
+      tft.print(F("loadSSB"));
+      tft.setTextColor(textColor);
+    }
+
+
+    Serial_println("Loading SSB patch");
+    delay(25);
+    si4735.reset();
+    si4735.queryLibraryId();
+    si4735.patchPowerUp();
+    delay(50);
+    si4735.downloadPatch(ssb_patch_content, size_content);
+    si4735.setSSBConfig(bandWidth, 0, 0, 1, 0, 1);
+    delay(25);
+    si4735.setSSBAudioBandwidth(bandWidth);
+    if (bandWidth <= 2) {
+      si4735.setSBBSidebandCutoffFilter(0);
+    } else {
+      si4735.setSBBSidebandCutoffFilter(1);
+    }
+    ssbLoaded = true;
+    if (!slowScan)
+      tft.fillRect(130, 294, 92, 25, TFT_BLACK);
+    /*
+setSSBConfig()
+AUDIOBW	SSB Audio bandwidth; 0 = 1.2kHz (default); 1=2.2kHz; 2=3kHz; 3=4kHz; 4=500Hz; 5=1kHz.
+SBCUTFLT	SSB side band cutoff filter for band passand low pass filter if 0, the band pass filter to cutoff both the unwanted side band and high frequency component > 2kHz of the wanted side band (default).
+AVC_DIVIDER	set 0 for SSB mode; set 3 for SYNC mode.
+AVCEN	SSB Automatic Volume Control (AVC) enable; 0=disable; 1=enable (default).
+SMUTESEL	SSB Soft-mute Based on RSSI or SNR.
+DSP_AFCDIS	DSP AFC Disable or enable; 0=SYNC MODE, AFC enable; 1=SSB MODE, AFC disable.
+
+*/
+  }
+}
+
+
+
 //##########################################################################################################################//
 
 void tuneWBFMSI4735() {  // WBFM tunes SI4735 directly
@@ -389,7 +438,7 @@ void tuneWBFMSI4735() {  // WBFM tunes SI4735 directly
   if (FREQ < FREQ_OLD)
     si4735.frequencyDown();
 
-  FREQ = 10000 * si4735.getCurrentFrequency(); // update FREQ
+  FREQ = 10000 * si4735.getCurrentFrequency();  // update FREQ
 }
 
 
@@ -400,7 +449,7 @@ void printModulation() {
   if (altStyle)
     tft.fillRoundRect(11, 95, 55, 22, 10, TFT_BLUE);
 
-  else 
+  else
     tft.pushImage(11, 92, 55, 26, (uint16_t *)Oval55);
 
   tft.setCursor(20, 98);
@@ -408,25 +457,25 @@ void printModulation() {
   switch (modType) {
 
     case WBFM:
-      tft.print("WFM");
+      tft.print(F("WFM"));
       break;
     case AM:
-      tft.print("AM");
+      tft.print(F("AM"));
       break;
     case NBFM:
-      tft.print("NFM");
+      tft.print(F("NFM"));
       break;
     case LSB:
-      tft.print("LSB");
+      tft.print(F("LSB"));
       break;
     case USB:
-      tft.print("USB");
+      tft.print(F("USB"));
       break;
     case SYNC:
-      tft.print("SYN");
+      tft.print(F("SYN"));
       break;
     case CW:
-      tft.print("CW");
+      tft.print(F("CW"));
       break;
   }
   tft.setTextColor(textColor);
@@ -437,7 +486,7 @@ void printModulation() {
 void use1MhzEncoderStep() {
   // Toggle encoder step size between 1 MHz and STEPSIZE
   if (digitalRead(ENCODER_BUTTON) == LOW) {
-    use1MHzSteps = !use1MHzSteps;   // flip the state
+    use1MHzSteps = !use1MHzSteps;  // flip the state
 
     if (use1MHzSteps) {
       OLDSTEP = STEP;
@@ -448,8 +497,7 @@ void use1MhzEncoderStep() {
 
     displaySTEP(false);
 
-    while (digitalRead(ENCODER_BUTTON) == LOW) { }
+    while (digitalRead(ENCODER_BUTTON) == LOW) {}
     delay(100);
   }
 }
-

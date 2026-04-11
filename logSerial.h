@@ -13,7 +13,7 @@ public:
   void write(char c) {
     buffer[head] = c;
     head = (head + 1) % RING_BUFFER_SIZE;
-    if (full) 
+    if (full)
       tail = (tail + 1) % RING_BUFFER_SIZE;  // Overwrite oldest data if full
     full = (head == tail);
   }
@@ -33,10 +33,12 @@ public:
     full = false;
   }
 
-  bool isEmpty() const { return (!full && (head == tail)); }
+  bool isEmpty() const {
+    return (!full && (head == tail));
+  }
 };
 
-extern RingBuffer logBuffer; 
+extern RingBuffer logBuffer;
 
 
 // Override Serial.print()
@@ -60,7 +62,7 @@ size_t Serial_println(const char* str) {
 
 // Override Serial.printf()
 int Serial_printf(const char* format, ...) {
-  char buf[256]; 
+  char buf[256];
   va_list args;
   va_start(args, format);
   int len = vsnprintf(buf, sizeof(buf), format, args);
@@ -74,9 +76,3 @@ int Serial_printf(const char* format, ...) {
   }
   return len;
 }
-
-
-
-
-
-

@@ -1,14 +1,19 @@
 // Select Band button, selects a predefined band.
 
-void setBand(bool isWaterfall) {  // Use Select Band button to set start freq to a specific band, also used for range view
+void setBand(bool isWaterfall) {  // Use Select Band button to set start freq to a specific band, also used for selecting a band in waterfall view
   uint16_t yb = 58;
   int h = 8, row, column;
   int page = 0;
 
- const int x_positions[] = { 15, 98, 181, 264 };
- const  int y_positions[] = { 70, 128, 186, 244 };
+
+  const int x_positions[] = { 15, 98, 181, 264 };
+  const int y_positions[] = { 70, 128, 186, 244 };
+
 
   tRel();
+
+
+
   while (true) {
 
     tft.fillRect(2, 53, 337, 238, TFT_BLACK);  // overwrite previous content
@@ -31,7 +36,7 @@ void setBand(bool isWaterfall) {  // Use Select Band button to set start freq to
           etft.setCursor(x_positions[j] + 5, y_positions[i]);
           etft.setTextColor(TFT_WHITE);  // color for Exit and Next
         } else if (band.isAmateurRadioBand) {
-          etft.setTextColor(TFT_GREEN);  // color for amateur radio
+          etft.setTextColor(TFT_GREEN);  // color for amateur radio;
         } else {
           etft.setTextColor(TFT_ORANGE);  // color for broadcast
         }
@@ -49,7 +54,7 @@ void setBand(bool isWaterfall) {  // Use Select Band button to set start freq to
     }
 
 
-    tft.fillRect(0, 294, 479, 25, TFT_BLACK);
+    tft.fillRect(0, 294, 480, 26, TFT_BLACK);
     tft.setCursor(0, 303);
     tft.setTextColor(TFT_GREEN);
     tft.printf("Band looping: %s\n", loopBands ? "Enabled" : "Disabled");
@@ -69,10 +74,32 @@ void setBand(bool isWaterfall) {  // Use Select Band button to set start freq to
     if (strcmp(sel.bandName, "NEXT") == 0)
       page = (page + 1);  // load pages
 
-    else {
+    else {  // select modType depending on Band
       if (!isWaterfall) {
-        FREQ = 1000ULL * sel.startFreqKHz;
 
+
+        FREQ = 1000ULL * sel.startFreqKHz;
+        if (sel.isAmateurRadioBand && FREQ < 10000000l && modType != LSB) {
+          modType = LSB;
+          loadSi4735parameters();
+
+        } else if (sel.isAmateurRadioBand && FREQ >= 10000000l && modType != USB) {
+          modType = USB;
+          loadSi4735parameters();
+        }
+
+        else if (!sel.isAmateurRadioBand && FREQ < 137000000l && modType != AM) {  // use AM up to end of Air Band
+          modType = AM;
+          loadSi4735parameters();
+        }
+
+        else if (FREQ >= 137000000l && modType != NBFM) {
+          modType = NBFM;
+          loadSi4735parameters();
+        }
+
+        use1MHzSteps = false;
+        displaySTEP(true);
 
 
 #ifdef TINYSA_PRESENT
@@ -101,7 +128,7 @@ void autoloopBands() {
     return;
 
   if (loopBands == true) {  // when true and a band is loaded, freq will loop
-    long freqKHz = FREQ / 1000;
+    long freqKHz = FREQ_TO_KHZ;
     BandInfo& sel = bandList[selected_band];
     if (freqKHz < sel.startFreqKHz)
       freqKHz = sel.stopFreqKHz;
@@ -112,7 +139,7 @@ void autoloopBands() {
 
   else {
 
-    long freqKHz = FREQ / 1000;
+    long freqKHz = FREQ_TO_KHZ;
     BandInfo& sel = bandList[selected_band];
     if (freqKHz < sel.startFreqKHz)
       selected_band = -1;

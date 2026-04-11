@@ -5,7 +5,7 @@
 
 #define LINE_WIDTH 320  // Width of the image
 #define FREQ_MIN 1500   // Minimum frequency for pixel decoding
-#define FREQ_MAX 2300   // Maximum frequency for pixel decoding 
+#define FREQ_MAX 2300   // Maximum frequency for pixel decoding
 
 
 int numLines = 256;
@@ -59,7 +59,7 @@ void decodeLines() {
 
       tft.fillRect(350, 80, 130, 16, TFT_BLACK);
       tft.setCursor(350, 80);
-      tft.print("Automode");
+      tft.print(F("Automode"));
       tft.fillRect(350, 100, 130, 16, TFT_BLACK);
       tft.setCursor(350, 100);
       tft.printf("Sync:%ldms", syncInterval);
@@ -84,7 +84,7 @@ void decodeLines() {
   for (uint16_t line = 0; line < numLines; line++) {  // / Decode and draw individual lines
 
 
-    tft.fillCircle(322, line, 3, TFT_YELLOW); // line cursor
+    tft.fillCircle(322, line, 3, TFT_YELLOW);  // line cursor
 
     if (sMode == 1 || sMode == 3)
       decodeLineS(line);  // Scottie
@@ -102,7 +102,7 @@ void decodeLines() {
         return;
     }
   }
-  
+
   if (!imageLoop)
     while (digitalRead(ENCODER_BUTTON) == HIGH)  // display full image until pressed
       ;
@@ -115,16 +115,16 @@ void showMode() {
   tft.setCursor(350, 40);
 
   if (sMode == 1)
-    tft.print("Scottie S1");
+    tft.print(F("Scottie S1"));
 
   if (sMode == 3)
-    tft.print("Scottie S2");
+    tft.print(F("Scottie S2"));
 
   if (sMode == 2)
-    tft.print("Martin 1");
+    tft.print(F("Martin 1"));
 
   if (sMode == 4)
-    tft.print("Martin 2");
+    tft.print(F("Martin 2"));
 }
 //##########################################################################################################################/
 
@@ -151,17 +151,17 @@ void adjustFreq() {  // helper function to fine tune the the frequency and see w
   tft.setTextColor(TFT_GREEN);
   tft.setTextSize(1);
   tft.setCursor(330, 270);
-  tft.print("1K");
+  tft.print(F("1K"));
   tft.drawFastHLine(0, 270, 320, TFT_DARKGREY);
   tft.setCursor(330, 220);
-  tft.print("2K");
+  tft.print(F("2K"));
   tft.drawFastHLine(0, 220, 320, TFT_DARKGREY);
   tft.setCursor(330, 170);
-  tft.print("3K");
+  tft.print(F("3K"));
   tft.drawFastHLine(0, 170, 320, TFT_DARKGREY);
   tft.setTextSize(1);
   tft.setCursor(10, 280);
-  tft.print("Adjust to see white sync mark (1200Hz) at left corner");
+  tft.print(F("Adjust to see white sync mark (1200Hz) at left corner"));
   tft.setTextSize(2);
 
 
@@ -253,14 +253,14 @@ void adjustFreq() {  // helper function to fine tune the the frequency and see w
       if (clw) {     // encoder clockwise
         FREQ += 25;  // fine tune in 25Hz steps
         displayFREQ(FREQ);
-        setLO();
+        setFreq();
         clw = false;
       }
 
       if (cclw) {
         FREQ -= 25;
         displayFREQ(FREQ);
-        setLO();
+        setFreq();
         cclw = false;
       }
     }
@@ -294,7 +294,7 @@ int getSSTVMode() {
     if (ty >= 200 && ty <= 240) {
       imageLoop = true;  //
       tft.setCursor(350, 300);
-      tft.print("Loop:ON");
+      tft.print(F("Loop:ON"));
     }
 
     tx = ty = 0;
@@ -491,7 +491,7 @@ void decodeLineM(uint16_t line) {  // Martin decoder
 //##################################################################################################################/
 
 void waitForHorizontalSyncPulse() {
- volatile uint32_t currentTime = 0;
+  volatile uint32_t currentTime = 0;
   uint16_t ctr = 0;
   while (true) {
 
@@ -513,10 +513,9 @@ void waitForHorizontalSyncPulse() {
       }
     }
 
-    if ((frq <= 1250 && frq >= 1150) || ctr > 60 ) {  // break also  if no sync pulse detected so that screen does not get stuck. Ctr 60 is around 440 ms syncInterval.
+    if ((frq <= 1250 && frq >= 1150) || ctr > 60) {  // break also  if no sync pulse detected so that screen does not get stuck. Ctr 60 is around 440 ms syncInterval.
       break;
     }
-  
   }
 }
 
@@ -529,9 +528,9 @@ void waitForVerticalSyncPulse() {  // Wait for transmission start
 
 
   tft.setCursor(10, 280);
-  tft.print("Waiting for vertical sync...");
+  tft.print(F("Waiting for vertical sync..."));
   tft.setCursor(10, 300);
-  tft.print("Press encoder to skip");
+  tft.print(F("Press encoder to skip"));
 
   while (true) {
 
@@ -565,9 +564,9 @@ void waitForVerticalSyncPulse() {  // Wait for transmission start
       tft.fillRect(400, 280, 40, 15, TFT_BLACK);
 
       tft.setCursor(10, 280);
-      tft.print("Use encoder for fine tune.");
+      tft.print(F("Use encoder for fine tune."));
       tft.setCursor(10, 300);
-      tft.print("Press encoder to leave.");
+      tft.print(F("Press encoder to leave."));
       break;
     }
   }
@@ -603,7 +602,7 @@ void encoderModifyFreq() {  // debug function
     tft.fillRect(340, 280, 130, 16, TFT_BLACK);
     tft.setCursor(340, 280);
     tft.printf("F:%ld", FREQ);
-    setLO();
+    setFreq();
   }
 }
 

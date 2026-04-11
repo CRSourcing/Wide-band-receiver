@@ -3,15 +3,15 @@
 void connectWIFI() {
 
   int ctr = 0;
-  tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
-  WiFi.begin(ssid, password);
-  tft.setCursor(5, 20);
-  tft.print("Connecting to WIFI\n");
+  tft.fillScreen(TFT_BLACK);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  tft.setCursor(5, 5);
+  tft.print(F("Connecting to WIFI\n"));
   while (WiFi.status() != WL_CONNECTED) {
     ctr++;
     if (ctr == 20)
       ESP.restart();
-    tft.print(".");
+    tft.print(F("."));
     delay(500);
   }
   tft.println("connected.");
@@ -32,20 +32,19 @@ void downloadFile(bool fill) {  // downloads a jpg or png file
   } else
     tft.printf("\n\nLittleFS mounted\n\nDownloading...");
 
-  
-File file;  
 
-if (downloadSelector < 6) {
+  File file;
+
+  if (downloadSelector < 6) {
     file = LittleFS.open("/image.img", FILE_WRITE);
-} else {
-    file = LittleFS.open("/sked-b25.lst", FILE_WRITE); // EiBi station list must not end with .csv (no automatic load)
+  } else {
+    file = LittleFS.open("/sked-b25.lst", FILE_WRITE);  // EiBi station list must not end with .csv (no automatic load)
+  }
 
-}
-
-if (!file) {
-    tft.print("Failed to open file for writing\n");
+  if (!file) {
+    tft.print(F("Failed to open file for writing\n"));
     return;
-}
+  }
 
   WiFiClientSecure client;
   HTTPClient http;
@@ -69,9 +68,9 @@ if (!file) {
     case 5:
       http.begin(client, host5);
       break;
-      case 6:
+    case 6:
       http.begin(client, eibi);
-      break;  
+      break;
   }
 
   int16_t httpCode = http.GET();
@@ -151,7 +150,12 @@ void drawIBtns() {
     const char *label;
   };
 
-  Button buttons[] = {
+  const Button buttons[] PROGMEM = {
+
+    { 20, 133, "Get" },
+    { 20, 153, "UTC" },
+    { 100, 133, "Stream" },
+    { 100, 153, "Audio" },
     { 20, 190, "Downl." },
     { 20, 210, "EiBi" },
     { 100, 190, "SW" },
@@ -188,7 +192,7 @@ void readIBtns() {
   tDoublePress();
 
   preferences.putBool("fB", true);  // Does not go back to main menu, uses fast restart instead. Image displays eats up too much memory and does not reliably free it
-                                          //, so better reboot after leaving
+                                    //, so better reboot after leaving
   int buttonID = getButtonID();
 
   if (buttonID >= 31)
@@ -196,14 +200,21 @@ void readIBtns() {
 
   switch (buttonID) {
     case 21:
-    break;
-    case 31:  
-    downloadSelector = 6; // EiBi station list
-    connectWIFI();
-    downloadFile(true);
-    WiFi.disconnect();
-    preferences.putBool("fB", true);  // set fastboot
-    ESP.restart();
+      tft.setCursor(10, 80);
+      tft.print(F("Connecting to pool.ntp.org."));
+      getTime();
+      break;
+    case 22:
+      prepareStream();
+      stream();
+      break;
+    case 31:
+      downloadSelector = 6;  // EiBi station list
+      connectWIFI();
+      downloadFile(true);
+      WiFi.disconnect();
+      preferences.putBool("fB", true);  // set fastboot
+      ESP.restart();
       break;
     case 32:  // SW fade map
       downloadSelector = 1;
@@ -475,3 +486,146 @@ void displayReport(size_t offset) {
 }
 
 //##########################################################################################################################//
+
+
+
+void getTime() {
+
+  uint8_t ctr = 0;
+
+  WiFi.begin(ssid.c_str(), password.c_str());
+
+  while (WiFi.status() != WL_CONNECTED) {
+    if (++ctr == 20) {
+      WiFi.disconnect();
+      WiFi.mode(WIFI_OFF);
+      return;
+    }
+    delay(500);
+  }
+
+
+  configTime(0, 0, "pool.ntp.org");
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to get time");
+    tft.setCursor(10, 100);
+    tft.println("Failed to get time");
+    delay(1000);
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    return;
+  }
+
+  else timeSet = true;
+  tft.setCursor(10, 100);
+  getLocalTime(&timeinfo);
+  tft.print(&timeinfo, "Time: %H:%M UTC");
+  delay(1000);
+  WiFi.disconnect();
+  WiFi.mode(WIFI_OFF);
+}
+
+
+//##########################################################################################################################//
+
+//routines to stream audio via http
+
+// WAV header for 8kHz, mono, 8-bit PCM (streaming, size fields = 0)
+uint8_t wavHeader[44] = {
+  'R', 'I', 'F', 'F',
+  0x00, 0x00, 0x00, 0x00,  // ChunkSize (0 for streaming)
+  'W', 'A', 'V', 'E',
+  'f', 'm', 't', ' ',
+  16, 0, 0, 0,             // Subchunk1Size
+  1, 0,                    // AudioFormat = PCM
+  1, 0,                    // NumChannels = 1
+  0x40, 0x1F, 0x00, 0x00,  // SampleRate = 8000
+  0x40, 0x1F, 0x00, 0x00,  // ByteRate = 8000
+  1, 0,                    // BlockAlign = 1
+  8, 0,                    // BitsPerSample = 8
+  'd', 'a', 't', 'a',
+  0x00, 0x00, 0x00, 0x00  // Subchunk2Size (0 for streaming)
+};
+
+void handleStream() {
+  WiFiClient client = server.client();
+
+  int16_t offsetComp = 2048 - gpio36_Offset;
+
+
+  // Send HTTP header
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: audio/wav");
+  client.println("Connection: close");
+  client.println();
+
+  client.write(wavHeader, sizeof(wavHeader));
+
+
+  unsigned long nextMicros = micros();
+  const int BUF_SIZE = 4096;
+  uint8_t buf[BUF_SIZE];
+
+
+  while (client.connected()) {
+    for (int i = 0; i < BUF_SIZE; i++) {
+      uint8_t shifted = (analogRead(AUDIO_INPUT_PIN) + offsetComp) >> 4;
+
+      buf[i] = shifted;
+
+      nextMicros += 125;  // 1/8000 sec = 125 µs
+      while (micros() < nextMicros) {
+        if (clw || cclw) {
+          preferences.putBool("fB", true);  // set fastboot
+          ESP.restart();
+        }
+        // wait until time for the next sample
+      }
+    }
+
+
+    client.write(buf, BUF_SIZE);
+  }
+}
+
+//##########################################################################################################################//
+void prepareStream() {
+
+  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(0, 0);
+
+  si4735.setVolume(55);
+
+  WiFi.begin(ssid, password);
+  tft.println("Streams audio to a http client.\n");
+  tft.println("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    tft.print(".");
+  }
+  tft.println();
+
+
+  tft.println("\nWiFi connected!\n\n");
+  tft.print("Open ");
+  tft.setTextColor(TFT_WHITE);
+  tft.print(WiFi.localIP());
+  tft.print("/stream.wav");
+  tft.setTextColor(textColor);
+  tft.print(" in browser\n\nor in player.\n\n");
+  tft.println("Allow time for buffering.\n");
+  tft.println("Move encoder to leave.\n");
+  server.on("/stream.wav", handleStream);
+  server.begin();
+}
+
+
+
+//##########################################################################################################################//
+
+void stream() {
+
+  while (true) {
+    server.handleClient();
+  }
+}

@@ -32,8 +32,29 @@ void drawTSABtns() {
     const char* text;
   };
 
-  Button buttons[] = {
-    { 20, 132, "Span" }, { 20, 153, "10K" }, { 102, 132, "Span" }, { 102, 153, "50K" }, { 182, 132, "Span" }, { 182, 153, "200K" }, { 266, 132, "Span" }, { 270, 151, "500K" }, { 25, 190, "Span" }, { 25, 210, "1M" }, { 110, 190, "Span" }, { 110, 210, "2M" }, { 190, 190, "Span" }, { 190, 210, "10M" }, { 270, 200, "Listen" }, { 272, 210, "" }, { 276, 245, "Rbw" }, { 276, 268, "Auto" }, { 192, 245, "Rbw" }, { 195, 268, "10K" }, { 105, 245, "Water" }, { 110, 268, "Fall" }
+  const Button buttons[] PROGMEM = {
+    { 20, 132, "Span" },
+    { 20, 153, "10K" },
+    { 102, 132, "Span" },
+    { 102, 153, "50K" },
+    { 182, 132, "Span" },
+    { 182, 153, "200K" },
+    { 266, 132, "Span" },
+    { 270, 151, "500K" },
+    { 25, 190, "Span" },
+    { 25, 210, "1M" },
+    { 110, 190, "Span" },
+    { 110, 210, "2M" },
+    { 190, 190, "Span" },
+    { 190, 210, "10M" },
+    { 270, 200, "Listen" },
+    { 272, 210, "" },
+    { 276, 245, "Rbw" },
+    { 276, 268, "Auto" },
+    { 192, 245, "Rbw" },
+    { 195, 268, "10K" },
+    { 105, 245, "Water" },
+    { 110, 268, "Fall" }
   };
 
 
@@ -46,7 +67,7 @@ void drawTSABtns() {
   drawButton(8, 236, 75, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 255);
-  etft.print("Back");
+  etft.print(F("Back"));
   etft.setTextColor(textColor);
   tDoublePress();
 }
@@ -64,7 +85,7 @@ void readTSABtns() {
 
     int buttonID = getButtonID();
     if (!buttonID)
-       return;  // outside of area
+      return;  // outside of area
     switch (buttonID) {
       case 21:
 
@@ -160,20 +181,25 @@ void readTSABtns() {
 void synctinySA() {  // sync with tuned FREQ and extract signal strength of marker 1
 
 
+  static long OLDFREQ = FREQ;
+
+
   if (syncEnabled == false) {
-    
-    if(centerTSA == true)
-      centerTinySA(); // still center when freq runs out of window 
+
+    if (tinySACenterMode == true && (FREQ > OLDFREQ + 4000 || FREQ < OLDFREQ - 4000)) {  // shift TSA center to FREQ
+      adjustTSACenterToFREQ();
+      OLDFREQ = FREQ;
+      return;
+    } else if (centerTSA == true)
+      centerTinySA();  // still center when freq runs out of window
     return;
   }
 
-
-  static long OLDFREQ = FREQ;
   static bool setFREQtoMarker1 = false;
   static bool setFREQtoMarker2 = false;
   static bool blink = false;
   static bool init = false;
-   
+
 
   blink = !blink;
 
@@ -208,49 +234,49 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
     sscanf(marker1Buffer, "%*s %*s %*s %*s %ld -", &freqM1);  // extract frequency from marker 1 string
     sscanf(marker2Buffer, "%*s %*s %*s %*s %ld -", &freqM2);  // extract frequency from marker 2 string
 
-  if (! (marker1Buffer[0] + marker2Buffer[0])) //
-   
-    if (serialDebugTSA) {  // debug frequency and markers
-      tft.fillRect(0, 121, 336, 171, TFT_BLACK);
-      tft.setTextColor(TFT_GREEN);
-      tft.setCursor(0, 125);
-      tft.println(marker1Buffer);
-      tft.setCursor(0, 170);
-      tft.println(marker2Buffer);
-      if (digitalRead(ENCODER_BUTTON) == LOW)
-        serialDebugTSA = false;
-      delay(500);
-    }
+    if (!(marker1Buffer[0] + marker2Buffer[0]))  //
+
+      if (serialDebugTSA) {  // debug frequency and markers
+        tft.fillRect(0, 121, 336, 171, TFT_BLACK);
+        tft.setTextColor(TFT_GREEN);
+        tft.setCursor(0, 125);
+        tft.println(marker1Buffer);
+        tft.setCursor(0, 170);
+        tft.println(marker2Buffer);
+        if (digitalRead(ENCODER_BUTTON) == LOW)
+          serialDebugTSA = false;
+        delay(500);
+      }
 
 
     if (freqM1 > MIN_FREQ) {
       // Marker 1 blink when in use
-  
+
       if (blink && setFREQtoMarker1)
         tft.fillRoundRect(257, 300, 30, 19, 4, TFT_BLUE);
 
       if (!blink) {
-      tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
-      tft.fillRoundRect(233, 300, 15, 19, 4, TFT_ORANGE);       // Sync
-      tft.fillRoundRect(295, 300, 30, 19, 4, TFT_RED);        // Marker 2
-      tft.fillRoundRect(337, 300, 42, 19, 4, TFT_PINK);  // Marker 2 Follow
-      tft.fillRoundRect(387, 300, 42, 19, 4, TFT_YELLOW);
+        tft.fillRoundRect(257, 300, 30, 19, 4, TFT_GREEN);
+        tft.fillRoundRect(233, 300, 15, 19, 4, TFT_ORANGE);  // Sync
+        tft.fillRoundRect(295, 300, 30, 19, 4, TFT_RED);     // Marker 2
+        tft.fillRoundRect(337, 300, 42, 19, 4, TFT_PINK);    // Marker 2 Follow
+        tft.fillRoundRect(387, 300, 42, 19, 4, TFT_YELLOW);
 
 
 
-      tft.setTextColor(TFT_BLACK);
-      tft.setTextSize(2);
-      tft.setCursor(235, 302);
-      tft.print("R");
-      tft.setCursor(262, 302);
-      tft.print("M1");
-      tft.setCursor(300, 302);
-      tft.print("M2");
-      tft.setCursor(340, 302);
-      tft.print("M2F");
-      tft.setCursor(392, 302);
-      tft.print("Cfg");
-      tft.setTextColor(textColor);
+        tft.setTextColor(TFT_BLACK);
+        tft.setTextSize(2);
+        tft.setCursor(235, 302);
+        tft.print(F("R"));
+        tft.setCursor(262, 302);
+        tft.print(F("M1"));
+        tft.setCursor(300, 302);
+        tft.print(F("M2"));
+        tft.setCursor(340, 302);
+        tft.print(F("M2F"));
+        tft.setCursor(392, 302);
+        tft.print(F("Cfg"));
+        tft.setTextColor(textColor);
       }
 
 
@@ -342,11 +368,7 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
   long DELTA = FREQ - OLDFREQ;
   if (DELTA > 4000 || DELTA < -4000) {  // update when change of FREQ more than 4KHz, this is roughly 1 pixel of the tinySA using 1 MHz span
     if (tinySACenterMode == true) {
-      sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
-      Serial.println(buffer);
-      delay(5);
-      sprintf(buffer, "sweep center %ld", FREQ);  // sync TSA center frequency with receiver frequency. This is slow!
-      Serial.println(buffer);
+      adjustTSACenterToFREQ();
 
     } else {
       sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
@@ -356,13 +378,30 @@ void synctinySA() {  // sync with tuned FREQ and extract signal strength of mark
   }
 }
 //##########################################################################################################################//
+
+void adjustTSACenterToFREQ() {
+
+  char buffer[50];  // buffer for commands
+
+  if (FREQ < 350000000)
+    sprintf(buffer, "marker 1 %ld", FREQ);  // set position marker one at the current frequency
+  Serial.println(buffer);
+  delay(5);
+  sprintf(buffer, "sweep center %ld", FREQ);  // sync TSA center frequency with receiver frequency. This is slow!
+  Serial.println(buffer);
+}
+
+//##########################################################################################################################//
+
+
+
 void centerTinySA() {  // centers TSA when FREQ moves outside window
 
 
   static long CENTER_FREQ = FREQ;
 
- if (FREQ >= 350000000l) // out of range, avoid TSA locking up
-   return;
+  if (FREQ >= 350000000l)  // out of range, avoid TSA locking up
+    return;
 
 
   char buffer[50];  // buffer for arguments
@@ -425,10 +464,10 @@ void synctinySAWaterfall(long midPoint, long startPoint, long endPoint) {  // sy
 void initTSA() {
 
   char buffer[50];
-  
+
   Serial.println("load 0");  // preset 0
   delay(100);
-  sprintf(buffer, "sweep center %ld", FREQ);
+  sprintf(buffer, "sweep center %ld", WINDOW_CENTER_FREQ);
   Serial.println(buffer);  // set the tinySA center to current FREQ
   delay(100);
   centerTinySA();
@@ -436,7 +475,7 @@ void initTSA() {
   sprintf(buffer, "sweep span %ld", span);
   Serial.println(buffer);  // change span to default
   delay(100);
-  Serial.println("rbw 16");  // default resolution bandwidth
+  Serial.println("rbw 10");  // default resolution bandwidth
   delay(100);
   sprintf(buffer, "marker 1 %ld", FREQ);  // set marker 1 on current freq
   Serial.println(buffer);
@@ -468,25 +507,25 @@ void convertTodBm(char* extractedSS) {
 
   if (t == 3) {
 
-    TSAdBm = (int)atof(extractedSS);
+    TSAdBmValue = (int)atof(extractedSS);
 
-    //Serial.printf("tinySA dBm: %d\n", TSAdBm);
-    if (syncEnabled && TSAdBm) {  // we have a valid dBm read from the TSA
-      
+    //Serial.printf("tinySA dBm: %d\n", TSAdBmValue);
+    if (syncEnabled && TSAdBmValue) {  // we have a valid dBm read from the TSA
+
       if (tinySAfound == false) {
-        tft.fillRect(230, 296, 244, 24, TFT_BLACK); // erase "No sync..."
+        tft.fillRect(230, 296, 244, 24, TFT_BLACK);  // erase "No sync..."
         tinySAfound = true;
-      }  
-     calculateAndDisplaySignalStrength();
+      }
+      calculateAndDisplaySignalStrength();
     }
 
 
-    if (syncEnabled && !TSAdBm) { 
+    if (syncEnabled && !TSAdBmValue) {
       tinySAfound = false;
       tft.fillRect(230, 296, 250, 24, TFT_BLACK);
       tft.setCursor(235, 302);
       tft.setTextColor(TFT_RED);
-      tft.print("No sync with tinySA!");
+      tft.print(F("No sync with tinySA!"));
     }
 
     t = 0;
@@ -497,7 +536,7 @@ void convertTodBm(char* extractedSS) {
 
 void resetTSA() {  //forces TSA to center when needed, or by pressing orange "R" button
 
-  if (tinySACenterMode == true)
+  if (tinySACenterMode == true || FREQ > 350000000)
     return;
 
   long CENTER_FREQ = FREQ;
@@ -517,7 +556,7 @@ void resetTSA() {  //forces TSA to center when needed, or by pressing orange "R"
   sprintf(buffer, "sweep span %ld", span);
   Serial.println(buffer);
   delay(100);
-  
+
   Serial.println("rbw 10");  // reset resolution bandwidth
   delay(100);
   sprintf(buffer, "marker 1 %ld", FREQ);  // set marker 1 on current freq
@@ -545,10 +584,10 @@ void cfgTSA() {  // Touch "Cfg" in lower right corner to open Config Menu
   delay(100);
 
   tft.fillRect(0, 296, 480, 24, TFT_BLACK);  // clear infobar
-  
-  if(! useNixieDial)
+
+  if (!useNixieDial)
     tft.fillRect(330, 3, 135, 20, TFT_BLACK);  // clear microvolt indicator area
-  
+
   tft.fillRect(3, 61, 336, 230, TFT_BLACK);  // clear  area for buttons
 
   drawButton(35, 95, TILE_WIDTH, TILE_HEIGHT, TFT_BTNCTR, TFT_BTNBDR);   //div +
@@ -565,24 +604,24 @@ void cfgTSA() {  // Touch "Cfg" in lower right corner to open Config Menu
   tft.setTextColor(TFT_GREEN);
 
   tft.setCursor(45, 115);
-  tft.print("Div -");
+  tft.print(F("Div -"));
   tft.setCursor(245, 115);
-  tft.print("Div +");
+  tft.print(F("Div +"));
 
   tft.setCursor(45, 182);
-  tft.print("Span-");
+  tft.print(F("Span-"));
   tft.setCursor(245, 182);
-  tft.print("Span+");
+  tft.print(F("Span+"));
 
 
   tft.setCursor(45, 250);
-  tft.print("Rbw -");
+  tft.print(F("Rbw -"));
   tft.setCursor(245, 250);
-  tft.print("Rbw +");
+  tft.print(F("Rbw +"));
 
   tft.setTextColor(TFT_RED);
   tft.setCursor(150, 182);
-  tft.print("Back");
+  tft.print(F("Back"));
   tft.setTextColor(TFT_GREEN);
 
   tx = ty = 0;
@@ -704,3 +743,5 @@ void showSelectedBand() {
 }
 
 #endif
+
+//##########################################################################################################################//

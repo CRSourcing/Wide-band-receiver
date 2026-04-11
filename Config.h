@@ -20,12 +20,8 @@
 #define SHORTWAVE_MODE_UPPER_LIMIT 50000000
 #endif
 
-#define LOWEST_ALLOWED_FREQUENCY 100000  // could probably go lower, but noise gets dominant
+#define LOWEST_ALLOWED_FREQUENCY 100000  // could go lower, but noise gets dominant
 //##########################################################################################################################//
-
-
-
-
 
 //Colors
 #define TFT_BLACK 0x0000 /*   0,   0,   0 */
@@ -73,7 +69,7 @@
 #define TFT_MAINBTN_CTR TFT_GREY
 
 // retro dial colors
-#define TFT_DIAL_BACKGROUND  TFT_BLACK
+#define TFT_DIAL_BACKGROUND TFT_BLACK
 #define TFT_DIAL_TICKS TFT_LIGHTBULB
 
 // button and sprite button sizes
@@ -110,7 +106,7 @@
 #define IF_FILTER_BANDWIDTH_PIN 0  // switches filter bandwidth, GPIO 0 okay for this
 #define RESET_PIN 12               // SI4735 reset
 #define NBFM_MUTE_PIN 13           // Hardware NBFM demodulator mute pin, muted when another modType is in use
-#define RELAY_SWITCH_OUTPUT 14          // activates IF  and LNA relays. Low = tvTuner connected to LNA and AD831
+#define RELAY_SWITCH_OUTPUT 14     // activates IF  and LNA relays. Low = tvTuner connected to LNA and AD831
 #define ENCODER_PIN_B 16           // Encoder left and right pins
 #define ENCODER_PIN_A 17           // Encoder left and right pins
 #define ESP32_I2C_SDA 21           // I2C bus
@@ -135,18 +131,14 @@
 
 // Waterfall
 #define WATERFALL_SCREEN_WIDTH 480
-#define WATERFALL_SCREEN_HEIGHT 220  // more than that will lead to a memory allocation error
-#define FRAMEBUFFER_HALF_WIDTH 120   // need to use two half size frame buffers, couldn't allocate a full size 240*231 buffer
-#define FRAMEBUFFER_FULL_WIDTH 240
-#define FRAMEBUFFER_HEIGHT 220  // was 231, but crashed with new Arduino IDE 2.3.5
+#define WATERFALL_SCREEN_HEIGHT 220
+#define FRAMEBUFFER_240 240
+#define FRAMEBUFFER_HEIGHT 220
 #define AUDIO_FRAMEBUFFER_HEIGHT 40
 
 // Fun
 #define TIME_UNTIL_ANIMATIONS 60  // seconds until animations start (pacm, audio waterfall)
 
-// 3D drawing
-#define NUM_COLUMNS 333
-#define COLUMN_HEIGHT NUM_COLUMNS / 4
 
 //TFT
 #define TFT_SCK 18
@@ -173,6 +165,9 @@
 
 //tinySA
 #define DEFAULT_SPAN 1000000  // cover 1MHz
+#define FREQ_TO_MHZ FREQ / 1000000 * 1000000
+#define FREQ_TO_KHZ FREQ / 1000
+#define WINDOW_CENTER_FREQ (FREQ / 1000000 * 1000000) + (DEFAULT_SPAN / 2)
 
 //Splashscreen  will show file splash.jpeg at startup
 #define SHOW_SPLASHSCREEN
@@ -204,20 +199,21 @@
 
 Rotary encoder = Rotary(ENCODER_PIN_A, ENCODER_PIN_B);
 TFT_eSPI tft = TFT_eSPI();
-TFT_eSPI_ext etft = TFT_eSPI_ext(&tft); // Install from https://github.com/FrankBoesing/TFT_eSPI_ext
+TFT_eSPI_ext etft = TFT_eSPI_ext(&tft);  // Install from https://github.com/FrankBoesing/TFT_eSPI_ext // Fonts avail. in the following sizes:
+// 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48, 60, 72 and 96
 
-// These 3 sprites can hold data simultaneously, so 3 objects needed
-TFT_eSprite spr1 = TFT_eSprite(&tft); // miniwindow, bottom center of screen
+// Up to 3 sprites need to hold data, so 3 objects needed
+TFT_eSprite spr1 = TFT_eSprite(&tft);  // miniwindow, bottom center of screen
 TFT_eSprite spr2 = TFT_eSprite(&tft);  // rolling RSSI indicator
 TFT_eSprite spr3 = TFT_eSprite(&tft);  // audio waterfall after user inactivity
 
 
 Si5351 si5351(0x60);  //Si5351 I2C Address 0x60
 SI4735 si4735;
-Preferences preferences;  // EEPROM save data
+Preferences preferences;  // Flash save data
 PNG png;
 File myfile;
-SdFat sd; // SdFat library 
+SdFat sd;  // SdFat library
 FsFile f;
 SPIClass spiSD = SPIClass(VSPI);                // for SDcard
 DacESP32 dac2(GPIO_NUM_26), dac1(GPIO_NUM_25);  // dac2 for sine wave oscillator, dac1 for tuner AGC or SW RF attenuator
@@ -225,7 +221,9 @@ DacESP32 dac2(GPIO_NUM_26), dac1(GPIO_NUM_25);  // dac2 for sine wave oscillator
 float RvReal[SAMPLES * 2];
 float RvImag[SAMPLES * 2];
 ArduinoFFT<float> FFT = ArduinoFFT<float>(RvReal, RvImag, 512, 5850);  // Max freq = 5850/2 Hz, 256 usable bins
-RingBuffer logBuffer; // debug logs
+RingBuffer logBuffer;                                                  // debug logs
+
+WebServer server(80);  // Wifi uploader and streamer
 //##########################################################################################################################//
 
 // global variables
@@ -242,48 +240,51 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.573";         // version
+const char ver[] = "V.602";  // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
 long OLDSTEP;
-long MIN_FREQ = 100000;  // lowest frequency
-long SI5351calib = 0;    //  si5351.set_correction
-
+const long MIN_FREQ = 100000;          // lowest frequency
+long SI5351calib = 0;                  //  si5351.set_correction
+long fineTuneOffset = 0;               // used when fine tune offset will not get displayed
+long passbandShift = 0;                // shift SI4732 frequency through filter passband
+const long tunerIFLowEnd = 37000000l;  // Defines the 1 MHz segment of the tuner IF spectrum which will be used. This constant determines the low end of the segment.
+                                       // For Philips NTSC tuners use: const long tunerIFLowEnd = 45000000l;
 
 long FREQ = 100000;            // receiver tuned frequency
 long FREQ_OLD = -1;            // start with != FREQ value
-long F_OLD = -1;               // value holder for displayLOFreq() 
+long F_OLD = -1;               // value holder for displayLOFreq()
 long LO_RX;                    // SI5351 frequency in Hz
-int SI4735TUNED_FREQ = 21400;  // 1st IF in KHz Also mid frequency of crystal filter, SI4732 needs to be tuned to it. 
+int SI4735TUNED_FREQ = 21400;  // 1st IF in KHz Also mid frequency of crystal filter, SI4732 needs to be tuned to it.
 
 
-bool wideIFFilter = true;      // IF filter bandwidth false = narrow, true = wide;
-bool afcEnable = false;         
-int NBFMOffset = 0;           // shift of  SI4735TUNED_FREQ in KHz to demodulate FM on the flank of the filter.
-int afcVoltage = 0;           // voltage tap from the quadrature demodulator
-int discriminatorZero = 100;  // middle of the tuning meter needle
-int RFGainCorrection = -6;    //  corrects overall gain provided by the 1st gain block after splitter and filter
-uint8_t SWAttn = 0;     // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
-uint8_t SWMinAttn= 0;  // Shortwave attenuator minimum attenuation, 0 = 0dB, 255= 30dB attenuation
-bool attnOFF = true;   // SW Attenuator off
-long lastAMFREQ = -1;  // AM frequency before switching to WBFM
-long span = 1000000;   // tinySA default span, configured in TSA Presets 0 and 1
-long potVal;           // fine tune potentiometer read value
-long lim2 = 0;         // frequency limits from touchpad entries
-long lim1 = 0;         // frequency limits from touchpad entries
-long keyVal = 0;       // scan mode frequencies delivered from touchpad
+bool wideIFFilter = true;  // IF filter bandwidth false = narrow, true = wide;
+bool afcEnable = false;
+int NBFMOffset = 0;              // shift of  SI4735TUNED_FREQ in KHz to demodulate FM on the flank of the filter.
+int afcVoltage = 410;            // voltage tap from the quadrature demodulator
+int discriminatorZero;           // middle of the tuning meter needle
+uint8_t tuningMeterDivider = 5;  // adjust so that the tuning meter shows deviation in KHz correctly
+int8_t SWGainCorrection = 10;    //  corrects shortwave S Meter
+uint8_t SWAttn = 0;              // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
+uint8_t SWMinAttn = 0;           // Shortwave attenuator minimum attenuation, 0 = 0dB, 255= 30dB attenuation
+bool attnOFF = true;             // SW Attenuator off
+long lastAMFREQ = -1;            // AM frequency before switching to WBFM
+long span = 1000000;             // tinySA default span, configured in TSA Presets 0 and 1
+long potVal;                     // fine tune potentiometer read value
+long lim2 = 0;                   // frequency limits from touchpad entries
+long lim1 = 0;                   // frequency limits from touchpad entries
+long keyVal = 0;                 // scan mode frequencies delivered from touchpad
 
 
 bool TVTunerActive = false;     //will get set to true when tuner in use
 bool lowSideInjection = false;  // for debugging, this will change injection mode
-uint8_t initialGain = 180;     // adjust tuner gain when no signal received, depending on gain of the LNA. Must be as low as possible to reduce cross modulation
-uint8_t agcVal = initialGain;  // starting point of the AGC
+uint8_t gainLimit = 180;        // adjust tuner gain when no signal received, depending on gain of the LNA. Must be as low as possible to reduce cross modulation
+uint8_t agcVal = gainLimit;     // starting point of the AGC
 uint32_t OLDPLLFREQ = -1;
-uint32_t PLLFREQ = 0;            // PLL freq of the TV tuner
-int16_t tunerOffsetPPM = 0;      // corrects tuner crystal offset
-uint8_t tunerGain = 32;          // dB gain provided by (tuner - attenuator)
-uint8_t tunerdBmcorrection = 0;  // correcta sMeter and dBm values when tuner AGC kicks in, since tuner gain decreases
+uint32_t PLLFREQ = 0;              // PLL freq of the TV tuner
+int16_t tunerOffsetPPM = 0;        // corrects tuner crystal offset
+int8_t tunerGainCorrection = -10;  // corrects sMeter and dBm values when tuner is in use
 #ifdef TV_TUNER_PRESENT
 long MAX_FREQ = HIGHEST_ALLOWED_FREQUENCY;
 #endif
@@ -292,7 +293,7 @@ long MAX_FREQ = HIGHEST_ALLOWED_FREQUENCY;
 long MAX_FREQ = 50000000;
 #endif
 
-bool tinySACenterMode = false;  // tinySA in RF mode synchronizes with receiver frequency
+bool tinySACenterMode = false;  // centermode = tuned freq stays in center of TSA display. windowmode = marker of tuned freq moves through window
 bool tinySAfound = false;
 bool syncEnabled = false;     // syncs tinySA frequency with receiver and uses tinySA markers for Smeter and dBm and uV indicators
 bool centerTSA = true;        // track and sync TSA with current frequency. Do not use markers;
@@ -305,34 +306,35 @@ bool encLockedtoSynth = true;  // locks encoder to SI5351
 bool ssbLoaded = false;
 bool SI4735WBFMTune = false;  // for WBFM, will set SI4732 Frequency
 bool SI4732found = false;
-bool altStyle = false;         // false = use bitmaps, true = use tiles
-bool displayDebugInfo = true;  // display clock info and looptimer
-bool showScanRange = true;     // show scan range after entered
-bool singleConversionMode  = true; // true = single conversion (shortwave)
-bool WBFMactive = false;       // to switch back to AM/SSB after WBFM
-bool loopBands = false;        // if true then FREQ will cycle when a band end is reached
-bool use1MHzSteps = false;     // use 1MHz Steps after encoder pressed;
-bool showFREQ = true;          // false supresses FREQ display
-bool roundToStep = true;   // round  FREQ up or down to the next STEP when STEP or modulation gets changed
-int selected_band = -1;    // number of the selected band  -1 means no band selected
-bool showMeters = false;   // shows analog meters on right side
-bool resetSmeter = false;  // reset Smeter when frequency changes, to avoid decay delay
-bool funEnabled = false;   // animations
+bool altStyle = false;              // false = use bitmaps, true = use tiles
+bool displayDebugInfo = true;       // display clock info and looptimer
+bool showScanRange = true;          // show scan range after entered
+bool singleConversionMode = true;   // true = single conversion (shortwave)
+bool WBFMactive = false;            // to switch back to AM/SSB after WBFM
+bool loopBands = false;             // if true then FREQ will cycle when a band end is reached
+bool use1MHzSteps = false;          // use 1MHz Steps after encoder pressed;
+bool showFREQ = true;               // false supresses FREQ display
+bool displayFineTuneOffset = true;  //if true will show frequency deviation when fine tune pot was moved off center. Otherwise not
+bool roundToStep = true;            // round  FREQ up or down to the next STEP when STEP or modulation gets changed
+int selected_band = -1;             // number of the selected band  -1 means no band selected
+bool showMeters = false;            // shows analog meters on right side
+bool resetSmeter = false;           // reset Smeter when frequency changes, to avoid decay delay
+bool funEnabled = false;            // animations
 bool enableAnimations = false;
 bool useNixieDial = false;
-bool fastBoot = false;     // quick boot when enabled
+bool fastBoot = false;  // quick boot when enabled
 
 
 const int Xsmtr = 10;  // Smeter position
 const int Ysmtr = 58;  // Smeter position
 int dBm = 0;           // dBm based onn RSSI
-int TSAdBm = 0;        // dBm coming from tinySA readings
+int TSAdBmValue = 0;   // dBm coming from tinySA readings
 
 
 const int HorSpacing = 86;     // buttons horizontal distance
 const int VerSpacing = 65;     // buttons vertical distance
 const int vTouchSpacing = 68;  // vertical touch spacing divider
-bool loadHistory = false;      // right panel available
+bool loadFromHistory = false;  // right panel available
 
 uint8_t bandWidth = 0;
 uint8_t lastSSBBandwidth = 3;
@@ -342,9 +344,11 @@ uint8_t AGCIDX = 0;  //AGC Index (0 = Minimum attenuation (max gain); 1 – 36 =
 uint8_t SNR = 0;
 int8_t signalStrength = 0;  // RSSI
 float microVolts;
-uint8_t modType = 1;                        //modulation type, 
+uint8_t modType = 1;                        //modulation type,
 uint16_t tx = 0, ty = 0, ttx = 0, tty = 0;  // touchscreen coordinates and temporary copies
 uint16_t row = 0, column = 0;               // buttons are grouped in rows and columns
+uint16_t recordStartTime;                   // for audio recording to SDCard
+uint16_t recordEndTime;
 
 // Bodmer analog meters
 int xSh = 340;   // xshift meters
@@ -360,35 +364,36 @@ int old_analog2 = 0;                                // Value last displayed
 
 // misc
 const uint16_t textColor = TFT_ORANGE;
-bool audioMuted = false;            // mute state
-char miniWindowMode = 3;            // mini window mode: 1 = 16 channel, 2 = 85 channel, 3= minioscilloscope, 4 = waterfall, 5 = envelope
-int amplitude = 150;                // amplitute divider for spectrum analyzer
-uint8_t showRSSITrace =1;           // trace in lower right corner initially enabled      
-uint8_t fTrigger = 0;                   // triggers functions in main loop
-int currentSquelch = 0;             // squelch trigger level
-uint8_t vol = 50;                   // global volume, should be around 50
-bool disableFFT = false;            // stops the spectrum analyzer during time critical operations
-bool SNRSquelch = true;             // use either RSSI or SNR to trigger squelch
-bool noMixer = false;               // run with antenna directly connected to SI4732 for testing
+bool audioMuted = false;    // mute state
+char miniWindowMode = 3;    // mini window mode: 1 = 16 channel, 2 = 85 channel, 3= minioscilloscope, 4 = waterfall, 5 = envelope
+int amplitude = 150;        // amplitute divider for spectrum analyzer
+uint8_t showRSSITrace = 1;  // trace in lower right corner initially enabled
+uint8_t fTrigger = 0;       // triggers functions in main loop
+int currentSquelch = 0;     // squelch trigger level
+uint8_t vol = 50;           // global volume, should be around 50
+bool disableFFT = false;    // stops the spectrum analyzer during time critical operations
+bool SNRSquelch = true;     // use either RSSI or SNR to trigger squelch
+bool noMixer = false;       // run with antenna directly connected to SI4732 for testing
 bool vfo1Active = true;
 bool showTouchCoordinates = false;  // debug
-bool sprite2Init = false;            // sprite for rolling RSSI graph needs 15K ram   
+bool sprite2Init = false;           // sprite for rolling RSSI graph needs 15K ram
 int loopDelay = 0;                  // stabilize loop at not less than 10ms
 int16_t cRow = 1;                   // channel row when displaying memory.csv file
 
 
 
 // Waterfall
-uint16_t* framebuffer1;                       // First framebuffer for waterfall, also used in panoramascan
-uint16_t* framebuffer2;                       // Second framebuffer for waterfall
-uint16_t stretchedX[FRAMEBUFFER_FULL_WIDTH] = { 0 };  // array audio waterfall to strech 240 to 331 pixels
-int currentLine = 0;                          // Current line being written to
-uint16_t newLine[DISP_WIDTH] = { 0 };             // line transfer buffer
-bool smoothColorGradient = false;             // smooth = blue to white, otherwise blue to red
+uint8_t* frameBuf = nullptr;                              // 8 bit framebuffer for full screen waterfall
+uint16_t* frameBuf1 = nullptr;                            // 16 bit frame buffer for 1MHz waterfall and panoramascan
+uint16_t stretchedX[FRAMEBUFFER_240] = { 0 };             // array audio waterfall to strech 240 to 331 pixels
+int currentLine = 0;                                      // Current line being written to
+uint16_t transferBuffer[WATERFALL_SCREEN_WIDTH] = { 0 };  // line transfer buffer
+const long defaultSpan = 1000000;                         //  1 MHz default span of slow waterfall
+bool smoothColorGradient = false;                         // smooth = blue to white, otherwise blue to red
 bool showAudioWaterfall = false;
 bool audiowf = false;
 bool showPanorama = false;  //Panorama screen while squelch is closed
-bool show1MhzSegment = 0; // 0 shows +-500KHz around FREQ, 1 starts with full MHz 
+bool show1MhzSegment = 0;   // 0 shows +-500KHz around FREQ, 1 starts with full MHz
 
 // Slow scan
 unsigned long stationDuration = 3;  // Duration per station in seconds
@@ -406,15 +411,12 @@ int audioTreshold = 45;
 
 //FFT
 int Rpeak[256] = { 0 };
-float pk;  // peak frequency
-long FFTAccum = 0; // volume meter
-int FFTGain = 80;  //  adjustable through config menue
-int gpio36_Offset;       // dc offset of pin 36, should be around 1.65V
+float pk;            // peak frequency
+long currentVU = 0;  // for volume meter
+int FFTGain = 80;    //  adjustable through config menue
+int gpio36_Offset;   //  dc offset of pin 36, should be around 1.65V
 
-// touch tune
-bool touchTune = false;
-bool drawTrapezoid = false;
-const long tSpan = 1000000;  //  1 MHz default span of touchtune
+
 
 #ifdef AUDIO_SQUAREWAVE_PRESENT
 // Pulse counter
@@ -431,11 +433,19 @@ uint16_t buttonSelected = 4;  // 4-11
 
 
 // Web
+
+String password;
+String ssid;
+
 uint8_t downloadSelector = 0;
 bool swappedJPEG = false;
 int yShift = 0;
 int xShift = 0;
 int reportSelector = 0;
+
+struct tm timeinfo;
+bool timeSet = false;
+static uint16_t timeOld = 0;
 
 // URL's for png and jpeg images. Change as you like. Resolution is limited to 480 * 320 pixels
 const char* host1 = "https://www.sws.bom.gov.au/Images/HF%20Systems/Global%20HF/Fadeout%20Charts/rtalf.jpeg";
@@ -447,8 +457,8 @@ const char* host5 = "https://services.swpc.noaa.gov/images/animations/d-rap/glob
 
 const char* al = "https://services.swpc.noaa.gov/products/alerts.json";     // Spaceweather alerts from NOAA
 const char* fr = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";  // Forecast from NOAA
+const char* eibi = "https://www.eibispace.de/dx/sked-b25.csv";              //EIBI SW station list
 
-const char* eibi = "https://www.eibispace.de/dx/sked-b25.csv"; //EIBI SW station list
 
 //##########################################################################################################################//
 // structures
@@ -726,9 +736,6 @@ struct FreqMode {  // frequency history buffer
   char mode;
 };
 
-FreqMode buffer[10];
+FreqMode buffer[8];
 uint8_t bufferIndex = 0;
 bool bufferFull = false;  //history buffer full
-
-
-

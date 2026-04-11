@@ -2,18 +2,18 @@
 
 void setScanRange() {
 
-  if (!getFreqLimits()) {  // keypad return pressed
+  if (!getLimits()) {  // keypad return pressed
     redrawMainScreen = true;
     return;
   }
   tft.fillRect(5, 3, 470, 40, TFT_BLACK);
   tft.setCursor(12, 7);
-  tft.print("Press 1 and RETURN for stop mode");
+  tft.print(F("Press 1 and RETURN for stop mode"));
   tft.setCursor(12, 26);
-  tft.print("Press 2 and RETURN for cont. mode");
+  tft.print(F("Press 2 and RETURN for cont. mode"));
   tPress();
-  readKeypadButtons();
-  tft.fillRect(5, 3,470, 40, TFT_BLACK);
+  readKeypadButtons(true);
+  tft.fillRect(5, 3, 470, 40, TFT_BLACK);
   redrawMainScreen = true;
   mainScreen();
   tft.setCursor(10, 123);
@@ -31,9 +31,9 @@ void printScanRange() {
   tft.fillRect(3, 119, 334, 58, TFT_BLACK);  // overwrite highest button row
   tft.setCursor(10, 123);
   if (keyVal == 1)
-    tft.print("Stay when signal drops");
+    tft.print(F("Stay when signal drops"));
   if (keyVal == 2)
-    tft.print("Move on when signal drops");
+    tft.print(F("Move on when signal drops"));
   tft.setCursor(10, 150);
   tft.printf("Range:%ldKHz - %ldKHz", lim2 / 1000, lim1 / 1000);
 }
@@ -62,7 +62,7 @@ void scanUpDown(bool stop) {  // changes Freq when SCAN buttons are pressed
 
 //##########################################################################################################################//
 
-void freq_UP_DOWN() {  // called from setMode(), changes freq when frequency display pressed, starts slow and gets faster if no signal found
+void freq_UP_DOWN() {  // called from setMode()
 
 
   long stpsize;
@@ -79,53 +79,50 @@ void freq_UP_DOWN() {  // called from setMode(), changes freq when frequency dis
   else
     stpsize = STEP;
 
-  getRSSIAndSNR(); 
+  getRSSIAndSNR();
 
 
 
-  if (! showMeters) {
+  if (!showMeters) {
 
-  if (ty > 45 && ty < 115 && FREQ < (MAX_FREQ - STEP))   // UP pressed
-      FREQ += stpsize; 
+    if (ty > 45 && ty < 115 && FREQ < (MAX_FREQ - STEP))  // UP pressed
+      FREQ += stpsize;
 
-  if (ty > 130 && ty < 200 && FREQ > (MIN_FREQ + STEP)) {  // DOWN pressed
+    if (ty > 130 && ty < 200 && FREQ > (MIN_FREQ + STEP)) {  // DOWN pressed
       FREQ -= stpsize;
     }
   }
 
 
-else if (showMeters && ! useNixieDial ) {
+  else if (showMeters && !useNixieDial) {
 
-  if (ty < 45 && tx < 115 && FREQ < (MAX_FREQ - STEP)) {  // Freq display left = DOWN, use when meters are displayed
-    FREQ -= stpsize;
-  }
+    if (ty < 45 && tx >= 400 && FREQ < (MAX_FREQ - STEP)) {  // step display right side touched = 1 step uo
+      FREQ += stpsize;
+    }
 
-  if (ty < 45 && tx > 115 && tx < 330 && FREQ > (MIN_FREQ + STEP)) {  // Freq display right = UP
-    FREQ += stpsize;
-  }
-}
-
-
-if (useNixieDial) {
-
-
-  if (ty < 45  && tx > 240 && tx < 350 && FREQ < (MAX_FREQ - STEP)) {  // Freq display left = DOWN, x coordinates are different when using nixie display
-    FREQ -= stpsize;
-  }
-
-  if (ty < 45 && tx >= 350 && FREQ > (MIN_FREQ + STEP)) {  // Freq display right = UP
-    FREQ += stpsize;
+    if (ty < 45 && tx > 335 && tx < 400 && FREQ > (MIN_FREQ + STEP)) {  // step display left side touched = 1 step down
+      FREQ -= stpsize;
+    }
   }
 
 
- if (tx > 3 && tx < 220 && ty > 3 && ty < 65){ // fine tune through dial
-    disableFFT = true;  
-   dialFineTune();
+  if (useNixieDial) {
+
+
+    if (ty < 45 && tx > 240 && tx < 350 && FREQ < (MAX_FREQ - STEP)) {  // Freq display left = DOWN, x coordinates are different when using nixie display
+      FREQ -= stpsize;
+    }
+
+    if (ty < 45 && tx >= 350 && FREQ > (MIN_FREQ + STEP)) {  // Freq display right = UP
+      FREQ += stpsize;
+    }
+
+
+    if (tx > 3 && tx < 220 && ty > 3 && ty < 65) {  // fine tune through dial
+      disableFFT = true;
+      dialFineTune();
+    }
   }
-
-
-
-}
 
 
 
@@ -147,25 +144,25 @@ if (useNixieDial) {
 //##########################################################################################################################//
 
 
-bool getFreqLimits() {
+bool getLimits() {
   bool result;
 
   drawNumPad();
   drawKeypadButtons();
-  tft.fillRect (4, 4, 470, 40, TFT_BLACK);
-  tft.setCursor (10, 20);
-  tft.print("Enter low limit:");
+  tft.fillRect(4, 4, 470, 40, TFT_BLACK);
+  tft.setCursor(10, 20);
+  tft.print(F("Enter low limit:"));
   tPress();  // wait until pressed
-  result = readKeypadButtons();
+  result = readKeypadButtons(false);
   if (!result)
     return false;
 
   lim1 = FREQ;
-  tft.fillRect (4, 4, 470, 40, TFT_BLACK);
-  tft.setCursor (10, 20);
-  tft.print("Enter high limit:");
+  tft.fillRect(4, 4, 470, 40, TFT_BLACK);
+  tft.setCursor(10, 20);
+  tft.print(F("Enter high limit:"));
   tPress();
-  result = readKeypadButtons();
+  result = readKeypadButtons(false);
   if (!result)
     return false;
   lim2 = FREQ;

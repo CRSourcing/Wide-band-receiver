@@ -1,4 +1,4 @@
-void ConfigScreen1() {  //first configuration screen
+void ConfigScreen1() {  //first configuration screenvoid
   clearStatusBar();
   redrawMainScreen = true;
   drawCf1Btns();
@@ -24,7 +24,7 @@ void drawCf1Btns() {
     const char *text;
   };
 
-  Button buttons[] = {
+  const Button buttons[] PROGMEM = {
     { 20, 134, "Show" },
     { 20, 152, "Panor." },
     { 105, 132, "Retro" },
@@ -33,16 +33,16 @@ void drawCf1Btns() {
     { 187, 151, "Meters " },
     { 270, 132, "Auto" },
     { 270, 151, "Sqlch" },
-    { 16, 190, "Set IF" },
-    { 16, 210, "SI4732" },
+    { 25, 190, "Fine" },
+    { 25, 210, "Tune" },
     { 105, 190, "Loop" },
     { 105, 210, "Bands" },
     { 190, 190, "Set" },
     { 190, 210, "AVC" },
-    { 272, 190, "Have" },
-    { 272, 210, "Fun" },
-    { 267, 245, "Calib" },
-    { 267, 268, "5351" },
+    { 272, 190, "Btn" },
+    { 272, 210, "Style" },
+    { 270, 245, "WIFI" },
+    { 268, 265, "Cred." },
     { 182, 245, "Master" },
     { 178, 268, "Volume" },
     { 100, 245, "Set" },
@@ -59,9 +59,9 @@ void drawCf1Btns() {
   drawButton(8, 236, 75, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 245);
-  etft.print("More");
+  etft.print(F("More"));
   etft.setCursor(20, 265);
-  etft.print("Config");
+  etft.print(F("Config"));
   tDoublePress();
 }
 
@@ -96,13 +96,13 @@ void readCf1Btns() {
       showMeters = !showMeters;
       if (showMeters) {
         tft.setCursor(10, 75);
-        tft.print("Tap frequency display L/R");
+        tft.print(F("Tap step display L/R"));
         tft.setCursor(10, 95);
-        tft.print("to change frequency");
+        tft.print(F("to change frequency"));
         delay(1000);
       }
       preferences.putBool("sM", showMeters);
-      preferences.putBool("fB", true); // activate fastboot
+      preferences.putBool("fB", true);  // activate fastboot
       ESP.restart();
       break;
 
@@ -117,7 +117,12 @@ void readCf1Btns() {
       break;
 
     case 31:
-      setIF();
+      displayFineTuneOffset = !displayFineTuneOffset;
+      preferences.putBool("dft", displayFineTuneOffset);
+      tft.setCursor(10, 90);
+      tft.printf("Show fine tune offset: %s", displayFineTuneOffset ? "Yes" : "No");
+      delay(1000);
+
       break;
     case 32:
       loopBands = !preferences.getBool("uBL", false);
@@ -126,19 +131,12 @@ void readCf1Btns() {
       tft.print(loopBands ? "Band looping enabled!" : "Band looping disabled!");
       delay(1000);
       return;
-    
+
     case 33:
       setAvcAmMaxGain();
       break;
     case 34:
-      funEnabled = !funEnabled;
-      tft.setCursor(10, 75);
-      if (funEnabled)
-        tft.print("Have fun!");
-      else
-        tft.print("Fun disabled");
-      preferences.putBool("fun", funEnabled);
-      delay(500);
+      selectButtonStyle();
       break;
     case 41:
       clearStatusBar();
@@ -151,7 +149,7 @@ void readCf1Btns() {
       setVol();
       break;
     case 44:
-      calibSI5351();
+      saveWifiCredentials();
       break;
     default:
       resetMainScreen();
@@ -177,7 +175,6 @@ void calibSI5351() {  // calibrates the SI5351.
     clw = 0;
     cclw = 0;
 
-
     si5351.set_correction(SI5351calib, SI5351_PLL_INPUT_XO);
     calculateAndDisplaySignalStrength();
     tft.fillRect(5, 100, 333, 16, TFT_GREY);
@@ -186,6 +183,8 @@ void calibSI5351() {  // calibrates the SI5351.
     delay(50);
   }
   preferences.putLong("calib", SI5351calib);
+  while (digitalRead(ENCODER_BUTTON) == LOW)
+    ;
   encLockedtoSynth = true;
 }
 
@@ -222,7 +221,7 @@ void setVol() {  //sets SI4732 master volume
     cclw = false;
   }
   preferences.putChar("Vol", vol);
-  while (digitalRead(ENCODER_BUTTON) == LOW)  // wait so that it does not jump into the setStep function
+  while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
   encLockedtoSynth = true;
 }
@@ -244,20 +243,20 @@ void setIF() {  // adjusts 21.4 MHz IF up and down so that it matches center fre
     delay(50);
 
     if (clw) {
-      FREQ++;
       si4735.setFrequencyUp();
     }
     if (cclw) {
-      FREQ--;
       si4735.setFrequencyDown();
     }
 
-    clearNotification();
-    tft.setCursor(5, 75);
-    SI4735TUNED_FREQ = si4735.getCurrentFrequency();
-    tft.printf("IF: %d KHz", SI4735TUNED_FREQ);
-    clw = false;
-    cclw = false;
+    if (clw + cclw) {
+      clearNotification();
+      tft.setCursor(5, 75);
+      SI4735TUNED_FREQ = si4735.getCurrentFrequency();
+      tft.printf("IF: %d KHz", SI4735TUNED_FREQ);
+      clw = false;
+      cclw = false;
+    }
   }
 
   while (digitalRead(ENCODER_BUTTON) == LOW)
@@ -359,7 +358,7 @@ void setSMute() {
     cclw = false;
   }
 
-  while (digitalRead(ENCODER_BUTTON) == LOW)  // wait so that it does not jump into the setStep function
+  while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
   preferences.putChar("SMute", AMSoftMuteSnrThreshold);
   encLockedtoSynth = true;
@@ -395,10 +394,143 @@ void panoramaScreen() {
     showAudioWaterfall = false;  // panoramascan has priority
 
   tft.setCursor(10, 65);
-  tft.print("Shows waterfall when");
+  tft.print(F("Shows waterfall when"));
   tft.setCursor(10, 85);
-  tft.print("squelch is closed (AM/FM).");
+  tft.print(F("squelch is closed (AM/FM)."));
   tft.setCursor(10, 110);
   tft.printf("Panorama: %s\n", showPanorama ? "ON" : "OFF");
   delay(2000);
+}
+
+
+//##########################################################################################################################//
+
+
+
+void shiftPassBand() {
+
+  encLockedtoSynth = false;
+  audioMuted = false;
+  tft.fillRect(5, 63, 333, 229, TFT_BLACK);
+  tft.setCursor(10, 65);
+  tft.print(F("Shifts passband through"));
+  tft.setCursor(10, 90);
+  tft.print(F("crystal filter window."));
+
+  tft.setCursor(10, 150);
+  tft.printf("Passband shift: %ld KHz", passbandShift / 1000);
+
+  int16_t offset = 0;
+
+  if (modType == USB && singleConversionMode)
+    offset = preferences.getInt("B1", 0);
+  if (modType == USB && !singleConversionMode)
+    offset = preferences.getInt("B2", 0);
+
+  if (modType == LSB && singleConversionMode)
+    offset = preferences.getInt("B3", 0);
+  if (modType == LSB && !singleConversionMode)
+    offset = preferences.getInt("B4", 0);
+
+
+
+  if (modType == SYNC)
+    offset = preferences.getInt("SYNCBfoOffset", 0);
+  if (modType == CW)
+    offset = preferences.getInt("CWBfoOffset", 0);
+
+
+
+  while (digitalRead(ENCODER_BUTTON) == HIGH) {
+
+    delay(50);
+
+    if (clw) {
+
+      SI4735TUNED_FREQ++;
+      si4735.setFrequencyUp();
+      passbandShift += 1000;
+
+      tune();
+    }
+    if (cclw) {
+      SI4735TUNED_FREQ--;
+      si4735.setFrequencyDown();
+      passbandShift -= 1000;
+
+      tune();
+    }
+
+    if (clw + cclw) {
+
+      si4735.setSSBBfo(offset + passbandShift);
+
+
+      tft.fillRect(10, 150, 325, 15, TFT_BLACK);
+      tft.setCursor(10, 150);
+      tft.printf("Passband shift: %ld KHz", passbandShift / 1000);
+      clw = false;
+      cclw = false;
+    }
+  }
+
+  while (digitalRead(ENCODER_BUTTON) == LOW)
+    ;
+  encLockedtoSynth = true;
+}
+
+//##########################################################################################################################//
+void saveWifiCredentials() {
+
+  String ssid, password;
+
+  tft.fillScreen(TFT_BLACK);
+
+  displayText(0, 0, 0, 0, "Enter network name:");
+
+  ssid = readKeyboard();
+
+  if (ssid.length() == 0) {
+    rebuildMainScreen(false);
+    return;
+  }
+
+
+  tft.fillRect(0, 0, 480, 50, TFT_BLACK);
+
+  displayText(0, 0, 0, 0, "Enter password:");
+  password = readKeyboard();
+
+  if (password.length() == 0) {
+    rebuildMainScreen(false);
+    return;
+  }
+
+
+  tft.fillRect(0, 0, 480, 50, TFT_BLACK);
+  tft.setCursor(0, 0);
+  tft.printf("SSID: %s\nPassword: %s", ssid.c_str(), password.c_str());
+
+  displayText(0, 50, 0, 0, "Tap Enter to save, move encoder to skip.");
+  tRel();
+
+  pressed = false;
+
+  while (true) {
+    pressed = get_Touch();
+
+    if (pressed && (ty >= 270 && ty <= 304) && (tx >= 340 && tx <= 440)) {
+      preferences.putString("ssid", ssid);
+      preferences.putString("password", password);
+      preferences.putBool("fB", true);
+      ESP.restart();
+    }
+
+    else if (clw + cclw) {
+      clw = false;
+      cclw = false;
+      rebuildMainScreen(false);
+      return;
+    }
+  }
 }

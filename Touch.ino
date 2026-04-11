@@ -5,12 +5,16 @@ void freqScreen() {  // displays and reads frequency numeric keypad
   drawNumPad();
   drawKeypadButtons();
   tRel();
-  readKeypadButtons();
+  readKeypadButtons(true);
 
   if (modType == WBFM && (FREQ < 88000000 || FREQ > 108000000)) {
     modType = AM;
     loadSi4735parameters();
   }
+
+#ifdef TINYSA_PRESENT
+  resetTSA();
+#endif
 }
 
 //##########################################################################################################################//
@@ -31,7 +35,7 @@ void drawKeypadButtons() {
   }
 
   tft.setCursor(25, 244);
-  tft.print("0");
+  tft.print(F("0"));
 
   struct TextPos {
     int x, y;
@@ -58,7 +62,7 @@ void drawKeypadButtons() {
 
 //##########################################################################################################################//
 
-bool readKeypadButtons() {
+bool readKeypadButtons(bool showInfo) {
 
   double f = 0;
   uint16_t xPos = 10;
@@ -72,15 +76,19 @@ bool readKeypadButtons() {
 
   tft.fillRect(10, 3, 465, 40, TFT_BLACK);
 
-  showFreqHistory();
+  if (showInfo)
+    showFreqHistory();
 
   while (index < 8) {  //6 digits frequency input
     tPress();
 
-    if (tx > 345 && loadHistory) {  // touch was in history area, load history
+    if (tx > 345 && ty > 80 && loadFromHistory && showInfo) {  // touch was in history area, load history
       loadFreqFromHistory();
       tRel();
       tx = 0;
+      ty = 0;
+      pressed = false;
+      displayFREQ(FREQ);
       return false;
     }
 
@@ -163,7 +171,7 @@ bool readKeypadButtons() {
       tft.printf("%3.3f", f);
     }
 
-    if (row == 4 && column == 2) {            // restart ESP if pressed
+    if (row == 4 && column == 2) {      // restart ESP if pressed
       preferences.putBool("fB", true);  // set fastboot
       ESP.restart();
     }
@@ -175,7 +183,10 @@ bool readKeypadButtons() {
       tft.fillRect(10, 3, 325, 40, TFT_BLACK);  // overwrite frequency window
       FREQ = freqSave;
       FREQ_OLD = -1;
-      displayFREQ(FREQ);
+
+      if (showInfo)
+        displayFREQ(FREQ);
+
       tRel();
       return false;
     }
@@ -213,7 +224,7 @@ void keyPadErr() {
   FREQ_OLD = -1;  // no valid result
   tft.fillRect(10, 5, 325, 40, TFT_BLACK);
   etft.setCursor(10, 3);
-  etft.print("Invalid entry");
+  etft.print(F("Invalid entry"));
   delay(500);
   tft.fillRect(10, 3, 325, 40, TFT_BLACK);
 }
@@ -424,7 +435,7 @@ void checkTouchCoordinates() {  // touch coordinates for loop and mainscreen
 
 
 
-  if (tx > 345 && loadHistory && redrawMainScreen == true) {  // main loop interrupted, big buttons are hidden, waiting for user input
+  if (tx > 345 && loadFromHistory && redrawMainScreen == true) {  // main loop interrupted, big buttons are hidden, waiting for user input
     loadFreqFromHistory();
   }
 
@@ -432,3 +443,177 @@ void checkTouchCoordinates() {  // touch coordinates for loop and mainscreen
   indicatorTouch();  //check whether indicators get touched directly
 }
 //##########################################################################################################################//
+// Keyboard draw and read
+
+void drawKeyboard(int layoutIndex) {
+
+  int keyWidth = 30;
+  int gap = 19;
+  int baseY = 70;
+
+  // Layouts
+  String upper[4][10] = {
+    { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" },
+    { "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P" },
+    { "A", "S", "D", "F", "G", "H", "J", "K", "L", "_" },
+    { "Z", "X", "C", "V", "B", "N", "M", ";", ":", "-" }
+  };
+
+  String lower[4][10] = {
+    { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" },
+    { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" },
+    { "a", "s", "d", "f", "g", "h", "j", "k", "l", "@" },
+    { "z", "x", "c", "v", "b", "n", "m", ",", ".", "#" }
+  };
+
+  String symbols[4][10] = {
+    { "!", "@", "#", "$", "%", "^", "&", "*", "(", ")" },
+    { "-", "_", "=", "+", "[", "]", "{", "}", "\\", "|" },
+    { "`", "~", "<", ">", "/", "?", ":", "\"", "'", "," },
+    { "", "", ";", ":", "'", "\"", "", "", "", "" }
+  };
+
+
+  String(*layouts[3])[10] = { lower, upper, symbols };
+
+
+
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE);
+
+  // Draw keys
+  for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < 10; i++) {  // 10 keys, 4 rows
+      int x = i * (keyWidth + gap);
+      int y = j * 50 + baseY;
+
+
+      tft.fillRoundRect(x, y, keyWidth, 34, 3, TFT_DARKDARKGREY);
+      tft.drawRoundRect(x, y, keyWidth, 34, 3, TFT_ORANGE);
+
+      // Print label
+      tft.setCursor(x + (keyWidth / 2 - 5), y + 8);
+      tft.print(layouts[layoutIndex][j][i]);
+    }
+  }
+
+  // special keys
+  tft.fillRoundRect(0, 270, 80, 34, 3, TFT_NAVY);
+  tft.drawRoundRect(0, 270, 80, 34, 3, TFT_ORANGE);
+  tft.setCursor(15, 280);
+  tft.print("More");
+
+  tft.fillRoundRect(100, 270, 100, 34, 3, TFT_DARKGREEN);
+  tft.drawRoundRect(100, 270, 100, 34, 3, TFT_ORANGE);
+  tft.setCursor(130, 280);
+  tft.print("<<");
+
+  tft.fillRoundRect(220, 270, 100, 34, 3, TFT_DARKGREEN);
+  tft.drawRoundRect(220, 270, 100, 34, 3, TFT_ORANGE);
+  tft.setCursor(230, 280);
+  tft.print("Space");
+
+  tft.fillRoundRect(340, 270, 100, 34, 3, TFT_BLUE);
+  tft.drawRoundRect(340, 270, 100, 34, 3, TFT_ORANGE);
+  tft.setCursor(360, 280);
+  tft.print("Enter");
+}
+
+//##########################################################################################################################//
+String readKeyboard() {
+
+  int keyWidth = 30;
+  int gap = 19;
+  int baseY = 70;
+  int keyHeight = 34;
+
+  // Layouts
+  String upper[4][10] = {
+    { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" },
+    { "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P" },
+    { "A", "S", "D", "F", "G", "H", "J", "K", "L", "_" },
+    { "Z", "X", "C", "V", "B", "N", "M", ";", ":", "-" }
+  };
+
+  String lower[4][10] = {
+    { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" },
+    { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" },
+    { "a", "s", "d", "f", "g", "h", "j", "k", "l", "@" },
+    { "z", "x", "c", "v", "b", "n", "m", ",", ".", "#" }
+  };
+
+  String symbols[4][10] = {
+    { "!", "@", "#", "$", "%", "^", "&", "*", "(", ")" },
+    { "-", "_", "=", "+", "[", "]", "{", "}", "\\", "|" },
+    { "`", "~", "<", ">", "/", "?", ":", "\"", "'", "," },
+    { "", "", ";", ":", "'", "\"", "", "", "", "" }
+  };
+
+
+  String(*layouts[3])[10] = { lower, upper, symbols };
+  int currentLayout = 0;
+
+  String result = "";
+  drawKeyboard(currentLayout);
+
+
+  bool done = false;
+  while (!done) {
+
+    pressed = get_Touch();
+    if (!pressed) continue;
+
+    // Big buttons
+    if (ty >= 270 && ty <= 304) {
+      if (tx >= 0 && tx <= 80) {
+        currentLayout = (currentLayout + 1) % 3;
+        drawKeyboard(currentLayout);
+      } else if (tx >= 100 && tx <= 200) {
+        if (result.length() > 0)
+          result.remove(result.length() - 1);  // Back
+        if (result.length() == 0) {            // leave
+          rebuildMainScreen(false);
+          return result;
+        }
+      }
+
+      else if (tx >= 220 && tx <= 320) {
+        result += " ";  // Space
+      } else if (tx >= 340 && tx <= 440) {
+        done = true;  // Enter
+      }
+    } else {
+
+      int row = (ty - baseY) / 50;
+      int col = tx / (keyWidth + gap);
+
+      int keyY = row * 50 + baseY;
+      int keyX = col * (keyWidth + gap);
+      if (row >= 0 && row < 4 && col >= 0 && col < 10 && ty >= keyY && ty <= keyY + keyHeight) {
+        String key = layouts[currentLayout][row][col];
+        if (key != "") {
+          result += key;
+
+          // feedback
+          tft.fillRoundRect(keyX, keyY, keyWidth, keyHeight, 3, TFT_YELLOW);  // highlight
+          delay(150);
+          tft.fillRoundRect(keyX, keyY, keyWidth, keyHeight, 3, TFT_DARKDARKGREY);  // normal
+          tft.drawRoundRect(keyX, keyY, keyWidth, keyHeight, 3, TFT_ORANGE);
+          tft.setCursor(keyX + (keyWidth / 2 - 5), keyY + 8);
+          tft.print(key);
+        }
+      }
+    }
+
+    // print current string on top
+    tft.fillRect(0, 0, 480, 55, TFT_BLACK);
+    tft.setCursor(0, 35);
+    tft.setTextColor(TFT_GREEN);
+    tft.print(result);
+    tft.setTextColor(TFT_WHITE);
+
+    delay(50);
+  }
+
+  return result;
+}

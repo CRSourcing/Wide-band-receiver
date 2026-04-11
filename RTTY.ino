@@ -40,28 +40,28 @@ void tuneRTTYFreq() {  // helper function to fine tune the the receiving frequen
 
   tft.setCursor(0, 65);
   tft.setTextColor(TFT_GREEN);
-  tft.print("MARK = 2125 Hz");
+  tft.print(F("MARK = 2125 Hz"));
   tft.setTextColor(TFT_RED);
-  tft.print(" SPACE = 2295 Hz");
+  tft.print(F(" SPACE = 2295 Hz"));
 
   tft.setTextSize(1);
 
   tft.setCursor(330, 140);
-  tft.print("Space");
+  tft.print(F("Space"));
   tft.drawFastHLine(0, 140, 320, TFT_RED);
 
   tft.setTextColor(TFT_GREEN);
   tft.setCursor(330, 240);
-  tft.print("Mark");
+  tft.print(F("Mark"));
   tft.drawFastHLine(0, 240, 320, TFT_GREEN);
 
 
   tft.setTextSize(2);
   tft.setCursor(10, 280);
 
-  tft.print("Match Mark and Space w. lines");
+  tft.print(F("Match Mark and Space w. lines"));
   tft.setCursor(10, 300);
-  tft.print("Press encoder to continue");
+  tft.print(F("Press encoder to continue"));
   displayFREQ(FREQ);
 
   while (true) {
@@ -125,14 +125,14 @@ void tuneRTTYFreq() {  // helper function to fine tune the the receiving frequen
 
       FREQ += 25;  // Fine tune 25Hz with encoder
       displayFREQ(FREQ);
-      setLO();
+      setFreq();
       clw = false;
     }
 
     if (cclw) {
       FREQ -= 25;
       displayFREQ(FREQ);
-      setLO();
+      setFreq();
       cclw = false;
     }
   }
@@ -244,32 +244,32 @@ typedef struct {
 
 // Baudot Code Lookup Table based on frequency of letters in English
 const BaudotCode baudot_table[32] = {
-  { 0b00001, 'E', '3' }, 
-  { 0b00011, 'A', '-' }, 
-  { 0b00110, 'I', '8' }, 
-  { 0b10000, 'T', '5' }, 
-  { 0b00101, 'S', '\'' }, 
-  { 0b01010, 'R', '4' }, 
-  { 0b01100, 'N', ',' }, 
-  { 0b00111, 'U', '7' }, 
-  { 0b01001, 'D', '$' }, 
-  { 0b10100, 'H', '#' }, 
-  { 0b11000, 'O', '9' }, 
-  { 0b01101, 'F', '!' }, 
-  { 0b10010, 'L', ')' }, 
-  { 0b10101, 'Y', '6' }, 
-  { 0b11010, 'G', '&' }, 
-  { 0b11100, 'M', '.' }, 
-  { 0b10011, 'W', '2' }, 
-  { 0b01011, 'J', '\a' }, 
-  { 0b10110, 'P', '0' }, 
-  { 0b11101, 'X', '/' }, 
-  { 0b11001, 'B', '?' }, 
-  { 0b01110, 'C', ':' }, 
-  { 0b10111, 'Q', '1' }, 
-  { 0b01111, 'K', '(' }, 
-  { 0b10001, 'Z', '+' }, 
-  { 0b11110, 'V', '=' }, 
+  { 0b00001, 'E', '3' },
+  { 0b00011, 'A', '-' },
+  { 0b00110, 'I', '8' },
+  { 0b10000, 'T', '5' },
+  { 0b00101, 'S', '\'' },
+  { 0b01010, 'R', '4' },
+  { 0b01100, 'N', ',' },
+  { 0b00111, 'U', '7' },
+  { 0b01001, 'D', '$' },
+  { 0b10100, 'H', '#' },
+  { 0b11000, 'O', '9' },
+  { 0b01101, 'F', '!' },
+  { 0b10010, 'L', ')' },
+  { 0b10101, 'Y', '6' },
+  { 0b11010, 'G', '&' },
+  { 0b11100, 'M', '.' },
+  { 0b10011, 'W', '2' },
+  { 0b01011, 'J', '\a' },
+  { 0b10110, 'P', '0' },
+  { 0b11101, 'X', '/' },
+  { 0b11001, 'B', '?' },
+  { 0b01110, 'C', ':' },
+  { 0b10111, 'Q', '1' },
+  { 0b01111, 'K', '(' },
+  { 0b10001, 'Z', '+' },
+  { 0b11110, 'V', '=' },
   { 0b11011, ' ', ' ' },  // FIGS
   { 0b11111, ' ', ' ' },
   { 0b00010, '\n', '\n' },
@@ -347,7 +347,7 @@ void decodeRTTYCharacter() {
   yPos = tft.getCursorY();
 
   if (xPos > 460)
-    tft.print("\n\n");
+    tft.print(F("\n\n"));
 
   if (yPos > 300) {  // reset screen
     tft.fillScreen(TFT_BLACK);

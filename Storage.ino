@@ -1,15 +1,15 @@
 
 
-void SDCard() {  // SDCard functions are here except play and record 
+void SDCard() {  // SDCard functions are here except play and record
 
   if (!altStyle)  // clear  background
     tft.fillRect(2, 61, 337, 228, TFT_BLACK);
   else
     drawButton(2, 61, 337, 228, TFT_NAVY, TFT_DARKGREY);  //Background
   tft.setCursor(10, 65);
-  tft.print("SDCard: Max 32GB, FAT32.");
+  tft.print(F("SDCard: Max 32GB, FAT32."));
   tft.setCursor(10, 85);
-  tft.print("Some SDCards cause issues.");
+  tft.print(F("Some SDCards cause issues."));
 
   draw12Buttons(TFT_BTNCTR, TFT_BTNBDR);
   redrawMainScreen = true;
@@ -28,7 +28,7 @@ void drawSDBtns() {
     const char* label;
   };
 
-  Button buttons[] = {
+  const Button buttons[] PROGMEM = {
     { 18, 132, "Test" },
     { 15, 153, "SDcard" },
     { 97, 130, "Upload" },
@@ -39,20 +39,20 @@ void drawSDBtns() {
     { 265, 151, "to SD" },
     { 20, 188, "Show" },
     { 14, 210, "LittleFS" },
-    { 100, 188, "" },
-    { 100, 210, "" },
-    /*
-    { 183, 190, "" },
-    { 183, 210, "" },
-    
-    { 265, 190, "  "}, 
-    { 270, 210, "  "}, 
-    */
+    { 100, 200, "Record" },
+    //{ 100, 210, "" },
+
+    { 183, 190, "Timer" },
+    { 183, 210, "Record" },
+
+    { 260, 188, "" },
+    { 270, 210, "" },
+
     { 265, 245, "Play" },
     { 263, 268, "Audio" },
 
-    { 183, 245, "Record" },
-    { 183, 268, "Audio" }
+    { 181, 245, "Squelch" },
+    { 183, 268, "Record" }
   };
 
 
@@ -66,13 +66,13 @@ void drawSDBtns() {
   }
   drawButton(8, 236, 74, 49, TFT_MIDGREEN, TFT_DARKGREEN);
   etft.setCursor(20, 254);
-  etft.print("BACK");
+  etft.print(F("BACK"));
 
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(105, 245);
-  etft.print("WIFI");
-  etft.setCursor(100, 265);
-  etft.print("Sync");
+  etft.print(F("WIFI"));
+  etft.setCursor(105, 265);
+  etft.print(F("Sync"));
 
   etft.setTextColor(textColor);
   tDoublePress();
@@ -84,8 +84,8 @@ void readSDBtns() {
 
   if (!pressed) return;
   int buttonID = getButtonID();
- 
- if (!buttonID)
+
+  if (!buttonID)
     return;  // outside of area
   switch (buttonID) {
 
@@ -110,8 +110,12 @@ void readSDBtns() {
         rebuildMainScreen(1);
       break;
     case 32:
+      wavRecord(0);
+      rebuildMainScreen(1);
       break;
     case 33:
+      wavRecord(1);
+      rebuildMainScreen(1);
       break;
     case 34:
       break;
@@ -122,7 +126,7 @@ void readSDBtns() {
       runUpLoader();
       break;
     case 43:
-      wavRecord();
+      wavRecord(2);
       rebuildMainScreen(1);
       break;
     case 44:
@@ -159,10 +163,10 @@ void readSDCard(bool close) {  // 0 = read and close,  1 = leave open
   while (!SD.begin(SD_CS, spiSD, 2000000)) {
 
     ctr++;
-    tft.print("Mounting SD card...\n");
+    tft.print(F("Mounting SD card...\n"));
     if (ctr == 10) {
       tft.setTextColor(TFT_RED);
-      tft.print("-SD Card Mount failed!\n");
+      tft.print(F("-SD Card Mount failed!\n"));
       tft.setTextColor(TFT_GREEN);
       delay(1000);
       return;
@@ -170,7 +174,7 @@ void readSDCard(bool close) {  // 0 = read and close,  1 = leave open
     delay(100);
   }
 
-  tft.print("\nSD Card Mounted\n");
+  tft.print(F("\nSD Card Mounted\n"));
   uint64_t cardSize = SD.cardSize() / (1048567);
   tft.printf("\nSD Card Size: %lluMB\n", cardSize);
 
@@ -221,7 +225,7 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels) {
     return;
   }
 
-  tft.print("FILES ON SDCard:\n");
+  tft.print(F("FILES ON SDCard:\n"));
 
   File file = root.openNextFile();
   while (file) {
@@ -357,7 +361,7 @@ void listLittleFSFiles() {
 
   while (file) {
     tft.print(file.name());
-    tft.print(" - ");
+    tft.print(F(" - "));
     tft.print(file.size());
     tft.println(" bytes");
     file = root.openNextFile();
@@ -368,13 +372,13 @@ void listLittleFSFiles() {
   uint64_t remainingBytes = totalBytes - usedBytes;
 
   tft.println("----------------");
-  tft.print("Total space: ");
+  tft.print(F("Total space: "));
   tft.print(totalBytes);
   tft.println(" bytes");
-  tft.print("Used space: ");
+  tft.print(F("Used space: "));
   tft.print(usedBytes);
   tft.println(" bytes");
-  tft.print("Remaining space: ");
+  tft.print(F("Remaining space: "));
   tft.print(remainingBytes);
   tft.println(" bytes");
 }
@@ -398,7 +402,7 @@ void copyFilesToLittleFS() {
   tft.setCursor(0, 0);
 
   if (SD.begin(SD_CS, spiSD, 20000000)) {
-    tft.print("\nSD Card Mounted\n");
+    tft.print(F("\nSD Card Mounted\n"));
   }
   uint64_t cardSize = SD.cardSize() / (1024 * 1024);
   tft.printf("\nSD Card Size: %lluMB\n\n", cardSize);
@@ -406,9 +410,9 @@ void copyFilesToLittleFS() {
   listDir(SD, "/", 0);
 
 
-  tft.print("\nTouch to copy files to LittleFS.\n");
+  tft.print(F("\nTouch to copy files to LittleFS.\n"));
   tft.setTextColor(TFT_RED);
-  tft.print("All existing files on LittleFS will be deleted!\n");
+  tft.print(F("All existing files on LittleFS will be deleted!\n"));
   tft.setTextColor(TFT_GREEN);
   tDoublePress();
 
@@ -628,7 +632,7 @@ void copyMemoInfoToSD() {
 
   File srcFile = LittleFS.open("/MemoInfo.csv", FILE_READ);
   if (!srcFile) {
-    tft.print("\nFailed to open MemoInfo.csv onLittleFS");
+    tft.print(F("\nFailed to open MemoInfo.csv onLittleFS"));
     return;
   }
 
@@ -636,18 +640,18 @@ void copyMemoInfoToSD() {
 
   File destFile = SD.open("/MemoInfo.csv", FILE_WRITE);
   if (!destFile) {
-    tft.print("\nFailed to open dest. file");
+    tft.print(F("\nFailed to open dest. file"));
     srcFile.close();
     return;
   }
 
-  tft.print("\nCopying MemoInfo.csv to SDCard\n");
+  tft.print(F("\nCopying MemoInfo.csv to SDCard\n"));
 
   while (srcFile.available()) {
     destFile.write(srcFile.read());
   }
 
-  tft.print("\nDone!\n");
+  tft.print(F("\nDone!\n"));
 
   srcFile.close();
   destFile.close();
@@ -753,10 +757,10 @@ void formatLittleFSWithWarning() {
   tft.fillScreen(TFT_BLACK);
   tft.setCursor(0, 0);
   tft.setTextColor(TFT_RED);
-  tft.print("\n\nLittleFS is the ESP32 file system.\n");
-  tft.print("\nPress encoder to format LittleFS.\n");
-  tft.print("All files on LittleFS will be deleted!\n");
-  tft.print("Touch to leave without formatting");
+  tft.print(F("\n\nLittleFS is the ESP32 file system.\n"));
+  tft.print(F("\nPress encoder to format LittleFS.\n"));
+  tft.print(F("All files on LittleFS will be deleted!\n"));
+  tft.print(F("Touch to leave without formatting"));
   pressed = false;
   while (true) {
     if (digitalRead(ENCODER_BUTTON) == LOW) {
@@ -806,10 +810,10 @@ void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ lo
 
   tft.setTextSize(1);
 
-  tft.fillRect(345, 48, 130, 242, TFT_BLACK);
+  tft.fillRect(345, 48, 130, 242, TFT_BLACK);  // overwrite big button/meters panel
   tft.setTextColor(TFT_RED);
   tft.setCursor(x, 53);
-  tft.print("Events:");
+  tft.print(F("Events:"));
   tft.setTextColor(TFT_GREEN);
   tft.setCursor(x, currentY);
 
@@ -846,7 +850,6 @@ void displayLogsFromBuffer(uint16_t x, uint16_t y) {  // displays the Serial_ lo
 //##########################################################################################################################//
 // WIFI upload/download files to LittleFS or SDCard
 
-WebServer server(80);
 
 bool useLittleFS = true;
 fs::FS* storage;
@@ -1062,10 +1065,10 @@ void startUploader() {
     storage = &SD;
   }
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid.c_str(), password.c_str());
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    tft.print(".");
+    tft.print(F("."));
   }
   tft.println("\n\nUpload/download files via WIFI.\n\nWiFi is now connected.\n\nOpen IP in browser: " + WiFi.localIP().toString());
   tft.println("\n\nMove encoder when finished.");
@@ -1090,3 +1093,5 @@ void runUpLoader() {
     }
   }
 }
+
+//##########################################################################################################################//

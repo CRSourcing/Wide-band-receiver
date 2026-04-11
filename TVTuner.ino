@@ -35,8 +35,8 @@ Samsung tuners use inverse 3 bits for band selection, Alps and Sony use 2 bits
 */
 
 uint8_t I2CDataPacket[4] = { dividerByte1, dividerByte2, controlDataByte, bandSwitchByte };
-const long tunerStepSize = 50000l;        // Tuner step size (Hz), either 50000, 62500, or 31250
-const long segmentSize = 1000000l;        // segment that will be covered before the tuner PLL gets reprogrammed, must be a multiple of tunerStepSize
+const long tunerStepSize = 50000l;  // Tuner step size (Hz), either 50000, 62500, or 31250
+const long segmentSize = 1000000l;  // segment that will be covered before the tuner PLL gets reprogrammed, must be a multiple of tunerStepSize
 
 #endif
 
@@ -60,81 +60,23 @@ void setDividerBytes(int PLLFreq) {
 
 //##########################################################################################################################//
 
-void tune() {  // selects tuning method depending on frequency and programs si5351
-
 #ifdef TV_TUNER_PRESENT
 
-  if (FREQ > HIGH_BAND_UPPER_LIMIT)  // upper limit
-    FREQ = HIGH_BAND_UPPER_LIMIT;
-#endif
+void programTVTuner() {
 
-#ifndef TV_TUNER_PRESENT
-  if (FREQ > HIGHEST_ALLOWED_FREQUENCY)   // upper limit without tuner
-    FREQ = HIGHEST_ALLOWED_FREQUENCY;
-#endif
+  static long errorComp = 0;
+  digitalWrite(RELAY_SWITCH_OUTPUT, LOW);                                      // switch input to TV tuner
+  PLLFREQ = (FREQ + tunerIFLowEnd + segmentSize) / segmentSize * segmentSize;  // round down and add 1 segment to get the PLL freq
 
 
 
-    // The below sequences programs the SI5351 directly if the RF is within DIRECTMODE range (tuner not in use)
-    if (FREQ <= SHORTWAVE_MODE_UPPER_LIMIT && FREQ >= LOWEST_ALLOWED_FREQUENCY) {
-      TVTunerActive = false;
+  if (PLLFREQ != OLDPLLFREQ) {               // reprogram PLL only if the segment changes
+    setDividerBytes(PLLFREQ);                // update the divider
+    setBandSwitchByte();                     // set band byte
+                                             // update frequency display
+    dac1.outputVoltage((uint8_t)gainLimit);  // relevant if we come from shortwave and dac1 is set to a low voltage
 
-
-      if (!singleConversionMode ) {
-        singleConversionMode  = true;  // single conversion with LO above the IF, update needed to select BFO's 
-        loadSi4735parameters();
-      }
-
-
-      OLDPLLFREQ = -1;
-      digitalWrite(RELAY_SWITCH_OUTPUT, HIGH);  // connect bandpass with AD831
-      
-      
-      if(! lowSideInjection)
-         LO_RX = abs((SI4735TUNED_FREQ * 1000) + FREQ); // normal mode with LO above RF
-      else 
-         LO_RX = abs((SI4735TUNED_FREQ * 1000) - FREQ); // debugging mode with LO above RF
-      
-
-      si5351.set_freq(LO_RX * 100ULL, SI5351_CLK2);
-      return;
-    }
-
-#ifdef TV_TUNER_PRESENT
-    // If the freq is higher, we need to build the I2C data packet and program the TV tuner
-    if (FREQ > SHORTWAVE_MODE_UPPER_LIMIT) {
-      TVTunerActive = true;
-
-      if (singleConversionMode ) {
-        singleConversionMode  = false;  // double conversion, 2 * sideband inversion  cancel themselves out
-        loadSi4735parameters();
-      }
-
-      programTVTuner();
-    }
-
-#endif
-  }
-
-  //##########################################################################################################################//
-
-#ifdef TV_TUNER_PRESENT
-
-  void programTVTuner() {
-
-    static long errorComp = 0;
-    digitalWrite(RELAY_SWITCH_OUTPUT, LOW);                                              // switch input to TV tuner
-    PLLFREQ = (FREQ + tunerIFLowEnd + segmentSize) / segmentSize * segmentSize;  // round down and add 1 segment to get the PLL freq
-
-
-
-    if (PLLFREQ != OLDPLLFREQ) {  // reprogram PLL only if the segment changes
-      setDividerBytes(PLLFREQ);   // update the divider
-      setBandSwitchByte();        // set band byte
-            // update frequency display
-      dac1.outputVoltage((uint8_t) initialGain); // relevant if we come from shortwave and dac1 is set to a low voltage    
-
-/*
+    /*
 If fwanted > fcurrent, use telegram as :
 Start – ADB – ACK - DB1 – ACK – DB2 – ACK - CB – ACK - BB – ACK – Stop
 
@@ -143,193 +85,181 @@ Start – ADB – ACK - CB – ACK – BB – ACK - DB1 – ACK - DB2 – ACK �
 
 */
 
-      if (PLLFREQ > OLDPLLFREQ) {
-        I2CDataPacket[0] = dividerByte1;
-        I2CDataPacket[1] = dividerByte2;
-        I2CDataPacket[2] = controlDataByte;
-        I2CDataPacket[3] = bandSwitchByte;
-      }
-
-      if (PLLFREQ < OLDPLLFREQ) {
-        I2CDataPacket[0] = controlDataByte;
-        I2CDataPacket[1] = bandSwitchByte;
-        I2CDataPacket[2] = dividerByte1;
-        I2CDataPacket[3] = dividerByte2;
-      }
-
-
-      Wire.endTransmission();  // End any communication with the SI chip(s), otherwise NACK errors
-      delay(5);
-      Wire.setClock(400000);                // Adjust for tuner
-      Wire.beginTransmission(addressByte);  // Start communication
-      // Send all bytes in the data packet
-      for (int i = 0; i < sizeof(I2CDataPacket); i++) {
-        Wire.write(I2CDataPacket[i]);  // Write each byte
-      }
-      Wire.endTransmission();  // End da transmission
-      Wire.setClock(I2C_BUSSPEED);
-
-      errorComp = tunerOffsetPPM * (long)(PLLFREQ / 1000000);  // calculate  ppm compensation
-      OLDPLLFREQ = PLLFREQ;
+    if (PLLFREQ > OLDPLLFREQ) {
+      I2CDataPacket[0] = dividerByte1;
+      I2CDataPacket[1] = dividerByte2;
+      I2CDataPacket[2] = controlDataByte;
+      I2CDataPacket[3] = bandSwitchByte;
     }
 
-    // now program the SI5351
+    if (PLLFREQ < OLDPLLFREQ) {
+      I2CDataPacket[0] = controlDataByte;
+      I2CDataPacket[1] = bandSwitchByte;
+      I2CDataPacket[2] = dividerByte1;
+      I2CDataPacket[3] = dividerByte2;
+    }
 
 
-    if (!lowSideInjection) 
-       LO_RX = tunerIFLowEnd + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
-    else 
-       LO_RX = tunerIFLowEnd + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // for debugging expression for LO below RF
+    Wire.endTransmission();  // End any communication with the SI chip(s), otherwise NACK errors
+    delay(5);
+    Wire.setClock(400000);                // Adjust for tuner
+    Wire.beginTransmission(addressByte);  // Start communication
+    // Send all bytes in the data packet
+    for (int i = 0; i < sizeof(I2CDataPacket); i++) {
+      Wire.write(I2CDataPacket[i]);  // Write each byte
+    }
+    Wire.endTransmission();  // End da transmission
+    Wire.setClock(I2C_BUSSPEED);
 
-    si5351.set_freq((LO_RX + errorComp) * 100ULL, SI5351_CLK2);  // add the tuner  offset correction
-
-    //Serial_printf("PLL: %lu KHz,  SI5351: %lu KHz, FREQ: %lu KHz, errorComp: %ld\n", PLLFREQ / 1000, LO_RX / 1000, FREQ / 1000, errorComp);
+    errorComp = tunerOffsetPPM * (long)(PLLFREQ / 1000000);  // calculate  ppm compensation
+    OLDPLLFREQ = PLLFREQ;
   }
-  //##########################################################################################################################//
 
-  void setBandSwitchByte() {
+  // now program the SI5351
 
 
-    /*
+  if (!lowSideInjection)
+    LO_RX = tunerIFLowEnd + segmentSize - (FREQ % segmentSize) + ((long)SI4735TUNED_FREQ * 1000);  // expression for LO above RF, to calculate SI5351 frequency
+  else
+    LO_RX = tunerIFLowEnd + segmentSize - (FREQ % segmentSize) - ((long)SI4735TUNED_FREQ * 1000);  // for debugging expression for LO below RF
+
+
+  if (passbandShift)
+    LO_RX -= passbandShift;
+
+  if (!displayFineTuneOffset)  // when using fine tune as "clarifier"
+    LO_RX -= fineTuneOffset;
+
+
+  si5351.set_freq((LO_RX + errorComp) * 100ULL, SI5351_CLK2);  // add the tuner  offset correction
+
+  //Serial_printf("PLL: %lu KHz,  SI5351: %lu KHz, FREQ: %lu KHz, errorComp: %ld\n", PLLFREQ / 1000, LO_RX / 1000, FREQ / 1000, errorComp);
+}
+//##########################################################################################################################//
+
+void setBandSwitchByte() {
+
+
+  /*
  Last 3 bits: P2 P1 P0 Selected band
 0 0 1 low-band
 0 1 0 mid-band
 1 0 0 high-band
 */
 
-  
-    // Set the correct band based on frequency
-    if (FREQ >= LOW_BAND_LOWER_LIMIT && FREQ <= LOW_BAND_UPPER_LIMIT) {
-      //bandSwitchByte = 0b00011001;
-      bandSwitchByte = 0b00000001;
-    }
 
-    else if (FREQ > LOW_BAND_UPPER_LIMIT && FREQ <= MID_BAND_UPPER_LIMIT) {
-      //bandSwitchByte = 0b00011010;
-      bandSwitchByte = 0b00000010;
- 
-    }
-
-    else if (FREQ > MID_BAND_UPPER_LIMIT && FREQ <= HIGH_BAND_UPPER_LIMIT) {
-      //bandSwitchByte = 0b00011100;
-      bandSwitchByte = 0b00000100;
- 
-    }
+  // Set the correct band based on frequency
+  if (FREQ >= LOW_BAND_LOWER_LIMIT && FREQ <= LOW_BAND_UPPER_LIMIT) {
+    //bandSwitchByte = 0b00011001;
+    bandSwitchByte = 0b00000001;
   }
 
+  else if (FREQ > LOW_BAND_UPPER_LIMIT && FREQ <= MID_BAND_UPPER_LIMIT) {
+    //bandSwitchByte = 0b00011010;
+    bandSwitchByte = 0b00000010;
 
-  //##########################################################################################################################//
+  }
 
-  void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
-
-
-    if (!TVTunerActive)
-      return;
-    static unsigned char oldRSSI = initialGain;
-    static unsigned char newRSSI = 0;
-    unsigned char adj =  signalStrength * 2;
-    const unsigned char minGain = 70; 
-
-    newRSSI = (255 - adj + 5);   // test formula
-
-  if (newRSSI > initialGain) // max allowed gain
-      newRSSI = initialGain;
-
-  if (newRSSI < minGain) // min. allowed gain
-      newRSSI = minGain;
-
-     agcVal = newRSSI;                                       
+  else if (FREQ > MID_BAND_UPPER_LIMIT && FREQ <= HIGH_BAND_UPPER_LIMIT) {
+    //bandSwitchByte = 0b00011100;
+    bandSwitchByte = 0b00000100;
+  }
+}
 
 
-    //Serial_printf("agcVal%d oldRSSSI%d newRSSI%d\n", agcVal, oldRSSI, newRSSI);
-    //tft.fillRect(250,300,230,18, TFT_BLACK);
-    //tft.setCursor (250, 300);
-    //tft.printf("DAC:%d newRSSI%d",agcVal, newRSSI);
+//##########################################################################################################################//
 
-   if (showValues) {
+void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
+
+
+  if (!TVTunerActive)
+    return;
+
+
+  static unsigned char currentAGCVal = gainLimit;  // start with max tuner gain
+  static unsigned char agcResult;
+  static unsigned char lastSignalStrength = 0;
+  const unsigned char minGain = 70;
+
+  agcResult = (255 - (signalStrength * 2) + 5);  // empirical formula
+  agcResult = constrain(agcResult, minGain, gainLimit);
+
+  if ((showValues) && displayDebugInfo && (agcResult != currentAGCVal || signalStrength != lastSignalStrength)) {
     tft.setTextColor(TFT_SKYBLUE);
     tft.setTextSize(1);
-    tft.fillRect(143, 140, 16, 24, TFT_BLACK);
+    tft.fillRect(143, 140, 18, 28, TFT_BLACK);
     tft.setCursor(143, 140);
     tft.printf("%d", signalStrength);
+    lastSignalStrength = signalStrength;
     tft.setTextColor(TFT_WHITE);
-    tft.setCursor(143, 155);
-    tft.printf("%d",oldRSSI);
+    tft.setCursor(143, 158);
+    tft.printf("%d", currentAGCVal);
     tft.setTextSize(2);
-     tft.setTextColor(textColor);
-   }
-
-
-    if (newRSSI > oldRSSI) {
-    dac1.outputVoltage((uint8_t)oldRSSI);  // stronger signal, gradual increase during each call
-    oldRSSI++;
-    }
-
-    else if (newRSSI < oldRSSI) {
-    dac1.outputVoltage((uint8_t)oldRSSI);  // weaker signal
-    oldRSSI--;
-    }
-
-
-    //DAC level vs tuner attenuation: 255 = 0dB, 159  = - 10dB, 145 = -20dB, 129 = -30dB, 105 = -40dB attenuation. Attenuation kicking in at around 180
-  }
-
-  //##########################################################################################################################//
-
-  void setInitialTunerGain() {  // biases the AGC so that the tuner does not run with full gain when no signal
-                                // This reduces cross modulation and helps compensate for gain differences if a higher gain LNA is used.
-    uint8_t oldinitialGain = 0;
-
-    encLockedtoSynth = false;
-
     tft.setTextColor(textColor);
-    tft.fillRect(10, 60, 328, 64, TFT_BLACK);
-    tft.setCursor(10, 63);
-    tft.print("Use encoder to set gain");
-    tft.setCursor(10, 83);
-    tft.print("limit. Press enc. to leave.");
-
-    while (digitalRead(ENCODER_BUTTON) == HIGH) {
+  }
 
 
-      if (oldinitialGain != initialGain) {
-        tft.fillRect(10, 104, 323, 20, TFT_BLACK);
-        tft.setCursor(10, 104);
-        tft.printf("Gain limit: %d   DAC:%d", (initialGain - 100) / 2, agcVal);
-        oldinitialGain = initialGain;
-      }
+  if (agcResult > currentAGCVal)
+    dac1.outputVoltage((uint8_t)currentAGCVal++);  // stronger signal, gradual increase
 
-      delay(20);
-      if (clw)
-        initialGain += 5;
-      if (cclw)
-        initialGain -= 5;
+  else if (agcResult < currentAGCVal)
+    dac1.outputVoltage((uint8_t)currentAGCVal--);  // weaker signal, gradua decrease
 
-      if (initialGain > 200) // DAC 200 means full gain, reduction kicks in at around 180
-        initialGain = 200;
+  //DAC level vs tuner attenuation: 255 = 0dB, 159  = - 10dB, 145 = -20dB, 129 = -30dB, 105 = -40dB attenuation. Attenuation kicking in at around 180
+}
 
-      if (initialGain < 70)
-        initialGain = 70;
+//##########################################################################################################################//
 
-      agcVal = initialGain;
-      dac1.outputVoltage((uint8_t)agcVal);  // set the dac
-      clw = false;
-      cclw = false;
+void setInitialTunerGain() {  // biases the AGC so that the tuner does not run with full gain when no signal
+                              // This reduces cross modulation and helps compensate for gain differences if a higher gain LNA is used.
+  uint8_t oldgainLimit = 0;
+
+  encLockedtoSynth = false;
+
+  tft.setTextColor(textColor);
+  tft.fillRect(10, 60, 328, 64, TFT_BLACK);
+  tft.setCursor(10, 63);
+  tft.print(F("Use encoder to set gain"));
+  tft.setCursor(10, 83);
+  tft.print(F("limit. Press enc. to leave."));
+
+  while (digitalRead(ENCODER_BUTTON) == HIGH) {
+
+
+    if (oldgainLimit != gainLimit) {
+      tft.fillRect(10, 104, 323, 20, TFT_BLACK);
+      tft.setCursor(10, 104);
+      tft.printf("Gain limit: %d   DAC:%d", (gainLimit - 100) / 2, agcVal);
+      oldgainLimit = gainLimit;
     }
 
-    while (digitalRead(ENCODER_BUTTON) == LOW)
-      ;
-    encLockedtoSynth = true;
+    delay(20);
+    if (clw)
+      gainLimit += 5;
+    if (cclw)
+      gainLimit -= 5;
 
-    preferences.putUChar("agcS", initialGain);  // write selected gain to flash
-    Serial_printf ("Tuner initial gain set %d\n", initialGain);
-    clearStatusBar();
 
-delay(200);
+    gainLimit = constrain(gainLimit, 70, 200);  // DAC 200 means full gain, reduction kicks in at around 180
 
+
+    agcVal = gainLimit;
+    dac1.outputVoltage((uint8_t)agcVal);  // set the dac
+    clw = false;
+    cclw = false;
   }
+
+  while (digitalRead(ENCODER_BUTTON) == LOW)
+    ;
+  encLockedtoSynth = true;
+
+  preferences.putUChar("agcS", gainLimit);  // write selected gain to flash
+  Serial_printf("Tuner initial gain set %d\n", gainLimit);
+  clearStatusBar();
+  delay(500);
+}
 
 #endif
 
 
-  //##########################################################################################################################//
+//##########################################################################################################################//
