@@ -1,4 +1,4 @@
-void ConfigScreen1() {  //first configuration screenvoid
+void ConfigScreen1() {  //first configuration screen
   clearStatusBar();
   redrawMainScreen = true;
   drawCf1Btns();
