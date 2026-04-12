@@ -11,25 +11,25 @@
 
 //#define SATELLITE_TUNER_PRESENT // Uses a satellite tuner to cover 900 - 2500MHz, generating an IF of 432 MHz that gets then fed into the AD831. Work in progress.
 
-#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
+//#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
 #define FAST_TOUCH_HANDLER  // Invokes a faster touch handler with reduced sampling. Could cause spurious errors if the touchscreen is worn out, but increases speed significantly. No problems so far.
 
 #define SHOW_DEBUG_UTILITIES  // Will show Debug utilities panel. Contains helper functions and status messages.
 
-#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator.
+//#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator.
 // Provides a "tuning" meter like in old FM Stereo receivers and software AFC.
 
 //#define CRYSTAL_FREQ_BELOW_IF  // Activate only if using an NBFM demdulator with a crystal frequency below 21.4MHz. Commenting will reverse afc and tuning meter direction.
 
-#define SI5351_GENERATES_CLOCKS  //If active, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732.
+//#define SI5351_GENERATES_CLOCKS  //If active, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732.
 
-#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
+//#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
 
 //#define SW_ATTENUATOR_PRESENT  // Activate only if a voltage controlled attenuator is present in the shortwave RF path.
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
-#define FLIP_IMAGE  // Activate this if the image is upside down.
+//#define FLIP_IMAGE  // Activate this if the image is upside down.
 //#define TFT_INVERSION_ON  // Comment if the image is inverted.
 
 
