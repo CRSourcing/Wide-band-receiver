@@ -608,7 +608,7 @@ void loadFreqFromHistory() {
 
   for (uint8_t i = 0; i < count; i++) {
     int yTop = baseY + i * rowSpacing;
-    int yBottom = yTop + boxH;
+    int yBottom = yTop + rowSpacing;
 
     if (ty >= yTop && ty < yBottom && !scanMode) {
       uint8_t entry = (startPos + i) % 8;
