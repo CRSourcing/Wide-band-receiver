@@ -111,13 +111,18 @@ void drawMainButtons() {
 
 void readMainBtns() {
 
+
+
   if (!pressed)
     return;
 
-  int buttonID = getButtonID();
 
+
+  int buttonID = getButtonID();
   if (!buttonID)
     return;  // outside of area
+
+
   redrawMainScreen = true;
   tft.fillRect(135, 295, 92, 25, TFT_BLACK);  // overwrite frozen spectrum window
   switch (buttonID) {
@@ -127,10 +132,8 @@ void readMainBtns() {
 #else
       setIFBandwidth();
 #endif
-
       tRel();
-      break;
-
+      return;
     case 22:
       hideBigBtns();
 #ifdef TV_TUNER_PRESENT
@@ -202,6 +205,8 @@ void readMainBtns() {
       return;
   }
 }
+
+
 
 //##########################################################################################################################//
 
@@ -406,6 +411,7 @@ void ScanMode() {
 
 //##########################################################################################################################//
 
+
 int getButtonID(void) {
 
 
@@ -421,14 +427,8 @@ int getButtonID(void) {
   row = 1 + ((ty - 35) / vTouchSpacing);
 
 
-  if (row > 4 || column > 4 || ty > 293 || ty < 121 || tx > 340) {  // outside area
-    tRel();
-    pressed = false;  // avoid jumping into mode
-    tx = 0;
-    ty = 0;
+  if (row > 4 || column > 4 || ty > 293 || ty < 121)  // outside area
     return 0;
-  }
-
   else
     return row * 10 + column;
 }
@@ -442,6 +442,8 @@ void setIFBandwidth() {
     digitalWrite(IF_FILTER_BANDWIDTH_PIN, HIGH);
   else
     digitalWrite(IF_FILTER_BANDWIDTH_PIN, LOW);
+
+  preferences.putBool("iff", wideIFFilter);
 
   showIFBandwidth();
 }

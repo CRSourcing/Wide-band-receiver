@@ -172,8 +172,8 @@ void calibSI5351() {  // calibrates the SI5351.
       SI5351calib += 500;
     if (cclw)
       SI5351calib -= 500;
-    clw = 0;
-    cclw = 0;
+    clw = false;
+    cclw = false;
 
     si5351.set_correction(SI5351calib, SI5351_PLL_INPUT_XO);
     calculateAndDisplaySignalStrength();

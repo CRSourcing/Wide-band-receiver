@@ -361,8 +361,8 @@ void reportWrapper(int cycle) {
       if (offset < 0)
         offset = 0;
 
-      clw = 0;
-      cclw = 0;
+      clw = false;
+      cclw = false;
 
       if (oldOffset != offset) {
         displayReport(offset);

@@ -406,8 +406,8 @@ void setSMeterCorrection(bool mode) {  // adjusts gain for : 0 = SW S Meter, 1 =
       tft.setCursor(10, 105);
       tft.printf("Gain corr.:%d dB", GainCorrection);
 
-      clw = 0;
-      cclw = 0;
+      clw = false;
+      cclw = false;
     }
 
     getRSSIAndSNR();
@@ -443,8 +443,8 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
       FFTGain += 5;
     if (cclw)
       FFTGain -= 5;
-    clw = 0;
-    cclw = 0;
+    clw = false;
+    cclw = false;
 
     FFTGain = constrain(FFTGain, 1, 255);
 
@@ -475,10 +475,8 @@ void AdjustTuningMeter() {
   tft.setCursor(5, 80);
   tft.print("Press encoder when done");
 
-
-  tft.setCursor(5, 100);
-  tft.printf("Sensitivity: %d", 26 - tuningMeterDivider);  // 1 - 25
-
+  clw = true;
+  cclw = true;
 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
 
@@ -492,35 +490,28 @@ void AdjustTuningMeter() {
     if (clw || cclw) {
 
       tuningMeterDivider = constrain(tuningMeterDivider, 1, 25);
-
-
       tft.fillRect(5, 100, 330, 16, TFT_BLACK);
       tft.setCursor(5, 100);
       tft.printf("Sensitivity: %d", 26 - tuningMeterDivider);
 
-      clw = 0;
-      cclw = 0;
+      clw = false;
+      cclw = false;
     }
   }
+
+
   preferences.putUChar("tmd", tuningMeterDivider);
 
-  while (digitalRead(ENCODER_BUTTON) == LOW)
-    ;
 
-
-  getDiscriminatorVoltage();
-  delay(5);
 
   tft.fillRect(5, 64, 333, 60, TFT_BLACK);
   displayText(10, 64, 0, 0, "Auto adjusting ");
   tft.setTextSize(2);
   displayText(10, 84, 0, 0, "tuning meter...");
 
-  while (afcVoltage) {
-
+  do {
     getDiscriminatorVoltage();
-
-    delay(5);
+      delay(5);
 
     if (afcVoltage > 0)
       discriminatorZero++;
@@ -532,6 +523,7 @@ void AdjustTuningMeter() {
     tft.printf("Offs: %d", afcVoltage);
   }
 
+  while (afcVoltage);
 
   tft.fillRect(10, 105, 125, 20, TFT_BLACK);
   tft.setCursor(10, 105);
@@ -542,6 +534,5 @@ void AdjustTuningMeter() {
 
   delay(1000);
 }
-
 #endif
 //##########################################################################################################################//

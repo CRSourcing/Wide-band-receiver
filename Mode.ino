@@ -24,7 +24,6 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode, ac
 
 #endif
 
-
   if (!scanMode && lim1 && lim2) {  // reset scan parameters
     lim1 = 0;
     lim2 = 0;
@@ -75,10 +74,12 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode, ac
     scanUpDown(stop);
   }
 
+
   if ((ty > 215 && ty < 295) && !scanMode && tx > btLeftBorder) {  // Mode button pressed
     tRel();
     selectModulation();
   }
+
 }
 
 //##########################################################################################################################//

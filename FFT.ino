@@ -249,8 +249,8 @@ void tuneCWDecoder() {  // shows a small waterfall that helps tune to 558 Hz aud
       FREQ += clw ? 25 : -25;
       displayFREQ(FREQ);
       setFreq();
-      clw = 0;
-      cclw = 0;
+      clw = false;
+      cclw = false;
     }
 
 
@@ -366,8 +366,8 @@ void CWDecoder() {
         FREQ -= 25;
       displayFREQ(FREQ);
       setFreq();
-      clw = 0;
-      cclw = 0;
+      clw = false;
+      cclw = false;
     }
 
     //////////////////////////////////// The basic goertzel calculation //////////////////////////////////////

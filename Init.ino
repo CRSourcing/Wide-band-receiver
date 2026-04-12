@@ -393,30 +393,44 @@ void loadLastSettings() {
   ssid = preferences.getString("ssid", "");
   password = preferences.getString("password", "");
   tuningMeterDivider = preferences.getUChar("tmd", 5);
+  wideIFFilter = preferences.getBool("iff", 0);
 
-  Serial_printf("\%s\n", "Settings loaded:", "");
-  Serial_printf("%ld Khz\n", "FREQ:", FREQ_TO_KHZ);
-  Serial_printf("%d Khz\n", "IF:", SI4735TUNED_FREQ);
-  Serial_printf("%d\n", "Mod Type:", modType);
-  Serial_printf("%s\n", "Alt Style:", altStyle ? "Enabled" : "Disabled");
-  Serial_printf("%d\n", "Mini Window Mode:", miniWindowMode);
-  Serial_printf("%s\n", "SNR Squelch:", SNRSquelch ? "Enabled" : "Disabled");
-  Serial_printf("%d\n", "Sprite Style:", buttonSelected);
-  Serial_printf("%s\n", "Loop bands when tuning:", loopBands ? "Yes" : "No");
-  Serial_printf("%s\n", "Show analog meters:", showMeters ? "Yes" : "No");
-  Serial_printf("%s\n", "Smooth Waterfall Colors:", smoothColorGradient ? "Yes" : "No");
-  Serial_printf("%s\n", "Audio Waterfall after inactivity:", showAudioWaterfall ? "Yes" : "No");
-  Serial_printf("%d\n", "Touch tune mode:", preferences.getChar("tGr", 0));
-  Serial_printf("%d\n", "Master Volume:", preferences.getChar("Vol", 50));
-  Serial_printf("%d\n", "NBFM Offset:", NBFMOffset);
-  Serial_printf("%d\n", "RF Gain Correction:", SWGainCorrection);
-  Serial_printf("%d ppm\n", "TV Tuner Offset:", tunerOffsetPPM);
-  Serial_printf("%s\n", "Show panorama when squelch closed:", showPanorama ? "Yes" : "No");
-  Serial_printf("%d\n", "Tuner AGC start value", gainLimit);
-  Serial_printf("%s\n", "Retro dial:", useNixieDial ? "Yes" : "No");
-  Serial.println("SSID: " + ssid);
-  Serial.println("Password: " + password);
-  Serial.println();
+
+Serial.println("Settings loaded:");
+Serial.printf("Frequency: %ld kHz\n", FREQ);
+Serial.printf("Bandwidth: %d\n", bandWidth);
+Serial.printf("Mod Type: %d\n", modType);
+Serial.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
+Serial.printf("Press Sound: %s\n", pressSound ? "On" : "Off");
+Serial.printf("Mini Window Mode: %d\n", miniWindowMode);
+#ifdef TINYSA_PRESENT
+Serial.printf("TinySA Sync: %s\n", syncEnabled ? "Enabled" : "Disabled");
+#endif
+Serial.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
+Serial.printf("Sprite Style: %d\n", buttonSelected);
+Serial.printf("Loop Bands: %s\n", loopBands ? "Yes" : "No");
+Serial.printf("Smooth Waterfall: %s\n", smoothColorGradient ? "Yes" : "No");
+Serial.printf("IF: %ld kHz\n", SI4735TUNED_FREQ);
+Serial.printf("Audio Waterfall: %s\n", showAudioWaterfall ? "Yes" : "No");
+Serial.printf("Panorama: %s\n", showPanorama ? "Yes" : "No");
+Serial.printf("NBFM Offset: %d\n", NBFMOffset);
+Serial.printf("Show Meters: %s\n", showMeters ? "Yes" : "No");
+Serial.printf("Tuner Offset PPM: %d\n", tunerOffsetPPM);
+Serial.printf("SW Gain Correction: %d\n", SWGainCorrection);
+Serial.printf("FFT Gain: %d\n", FFTGain);
+Serial.printf("Discriminator Zero: %d\n", discriminatorZero);
+Serial.printf("AGC Start Value: %d\n", gainLimit);
+Serial.printf("Fun Enabled: %s\n", funEnabled ? "Yes" : "No");
+Serial.printf("Fine Tune Offset: %s\n", displayFineTuneOffset ? "Yes" : "No");
+Serial.printf("Nixie Dial: %s\n", useNixieDial ? "Yes" : "No");
+Serial.printf("Debug Info: %s\n", displayDebugInfo ? "Yes" : "No");
+Serial.printf("Tuner Gain Correction: %d\n", tunerGainCorrection);
+Serial.printf("RSSI Trace: %d\n", showRSSITrace);
+Serial.printf("Tuning Meter Divider: %d\n", tuningMeterDivider);
+Serial.printf("Wide IF Filter: %s\n", wideIFFilter ? "Yes" : "No");
+Serial.println("SSID: " + ssid);
+Serial.println("Password: " + password);
+Serial.println();
   tRel();
 
   if (!fastBoot) {  // provide option to calibrate touchscreen

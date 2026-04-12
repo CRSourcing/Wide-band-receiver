@@ -847,8 +847,8 @@ void loadPanoramaScan(bool show1MhzSegment) {  // helper that blocks calling pan
         FREQ += STEP;
       if (cclw)
         FREQ -= STEP;
-      clw = 0;
-      cclw = 0;
+      clw = false;
+      cclw = false;
       setFreq();
       redrawIndicators();
     }

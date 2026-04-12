@@ -434,13 +434,20 @@ void checkTouchCoordinates() {  // touch coordinates for loop and mainscreen
 
 
 
-
   if (tx > 345 && loadFromHistory && redrawMainScreen == true) {  // main loop interrupted, big buttons are hidden, waiting for user input
     loadFreqFromHistory();
   }
 
 
+
+
+
   indicatorTouch();  //check whether indicators get touched directly
+
+
+
+
+
 }
 //##########################################################################################################################//
 // Keyboard draw and read

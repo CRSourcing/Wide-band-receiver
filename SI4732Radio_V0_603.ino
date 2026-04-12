@@ -11,25 +11,25 @@
 
 //#define SATELLITE_TUNER_PRESENT // Uses a satellite tuner to cover 900 - 2500MHz, generating an IF of 432 MHz that gets then fed into the AD831. Work in progress.
 
-//#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
+#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
 #define FAST_TOUCH_HANDLER  // Invokes a faster touch handler with reduced sampling. Could cause spurious errors if the touchscreen is worn out, but increases speed significantly. No problems so far.
 
 #define SHOW_DEBUG_UTILITIES  // Will show Debug utilities panel. Contains helper functions and status messages.
 
-//#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator.
+#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator.
 // Provides a "tuning" meter like in old FM Stereo receivers and software AFC.
 
 //#define CRYSTAL_FREQ_BELOW_IF  // Activate only if using an NBFM demdulator with a crystal frequency below 21.4MHz. Commenting will reverse afc and tuning meter direction.
 
-//#define SI5351_GENERATES_CLOCKS  //If active, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732.
+#define SI5351_GENERATES_CLOCKS  //If active, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732.
 
-//#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
+#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
 
 //#define SW_ATTENUATOR_PRESENT  // Activate only if a voltage controlled attenuator is present in the shortwave RF path.
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
-//#define FLIP_IMAGE  // Activate this if the image is upside down.
+#define FLIP_IMAGE  // Activate this if the image is upside down.
 //#define TFT_INVERSION_ON  // Comment if the image is inverted.
 
 
@@ -601,17 +601,18 @@ void loop() {
   if (fTrigger % 3 == 0) {
 
     checkTouchCoordinates();  // this function takes long. Calling it 1 out of 3 loop cycles is suficient.
+
 #ifdef NBFM_DEMODULATOR_PRESENT
-    getDiscriminatorVoltage();  // display Tuning meter
+  getDiscriminatorVoltage();  // display Tuning meter
 
 #else
-    if (dBm < 0 && (!scanMode) && showMeters)
-      plotNeedle(signalStrength - SWGainCorrection, 2);  // update the SMeter needle
+if (dBm < 0 && (!scanMode) && showMeters)
+   plotNeedle(signalStrength - SWGainCorrection, 2);  // update the SMeter needle
 #endif
 
     setMode();     //  set mode (tune or scan mode), must run after checkTouchCoordinates().
     RSSITrace();   // show a rolling signal strength trace in the lower right infobar area
-    mainScreen();  // build main window
+    mainScreen();  // build main window if needed
   }
 
 
@@ -657,6 +658,9 @@ void loop() {
 
   if (loopDelay)  // prevents the main loop from running faster than 10ms since several functions would then run too fast
     delay(loopDelay);
+
+
+
 }
 //##########################################################################################################################//
 
@@ -1267,8 +1271,11 @@ void slowTaskHandler() {  // handles tasks with a long period. not precise.
     tft.setTextSize(1);
 
     if (WiFi.status() == WL_CONNECTED) {
-      tft.print("Wifi connected");
-      wStat = true;
+      tft.fillRect(340, 6, 136, 16, TFT_BLACK);  // overwrite last time
+      tft.setCursor(340, 6);
+      tft.setTextSize(2);
+      tft.setTextColor(TFT_YELLOW);
+      tft.print("Getting UTC");
 
       Serial.printf("WiFi: Connected | RSSI: %d dBm\n", WiFi.RSSI());
       configTime(0, 0, "time.google.com", "time.cloudflare.com", "pool.ntp.org");  // providing 3 server addresses seems to lock faster
@@ -2022,7 +2029,7 @@ void showTime() {
     getLocalTime(&timeinfo);
     uint16_t tm = timeinfo.tm_hour * 100 + timeinfo.tm_min;
     if (timeOld != tm) {
-      tft.fillRect(340, 6, 116, 16, TFT_BLACK);  // overwrite last time
+      tft.fillRect(340, 6, 136, 16, TFT_BLACK);  // overwrite last time
       tft.setCursor(340, 6);
       tft.setTextColor(TFT_GREEN);
       tft.print(&timeinfo, "%H:%M UTC");

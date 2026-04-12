@@ -445,7 +445,7 @@ String selectFileWithExtension(const char* extension) {
         selected--;
         if (selected < indx) indx--;
       }
-      cclw = 0;
+      cclw = false;
       redraw = true;
     }
 
@@ -454,7 +454,7 @@ String selectFileWithExtension(const char* extension) {
         selected++;
         if (selected >= indx + maxRows) indx++;
       }
-      clw = 0;
+      clw = false;
       redraw = true;
     }
 

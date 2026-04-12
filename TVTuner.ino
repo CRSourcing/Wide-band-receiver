@@ -11,9 +11,10 @@ The SI4732 is always used as a demodulator at 21.4MHz. The SI5351 is set to RF+I
 
 If FREQ exceeds SHORTWAVE_MODE_UPPER_LIMIT, the AD831 gets connected to the tuner output. 
 The TV tuner gets activated and converts RF to an IF spectrum roughly 8MHz wide, centering at 36MHz.
-The AD831 will then use a 1MHz slot in the IF range and mit ix down to 21.4MHz.
+The AD831 will then use a 1MHz slot in the IF range and mix it down to 21.4MHz.
 Since the tuner's LO is using highside injection, the spectum gets mirrored and 38MHz corresponds to the low end of the RF spectrum and 37MHz to the high end.
 Once the SI5351 frequency reaches either end, the tuner will get reprogrammed. 
+
 
 
 */
