@@ -11,25 +11,25 @@
 
 //#define SATELLITE_TUNER_PRESENT // Uses a satellite tuner to cover 900 - 2500MHz, generating an IF of 432 MHz that gets then fed into the AD831. Work in progress.
 
-//#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
+#define AUDIO_SQUAREWAVE_PRESENT  // Audio squarewave present on GPIO39 for SSTV and RTTY decoding. Experimental.
 
 #define FAST_TOUCH_HANDLER  // Invokes a faster touch handler with reduced sampling. Could cause spurious errors if the touchscreen is worn out, but increases speed significantly. No problems so far.
 
 #define SHOW_DEBUG_UTILITIES  // Will show Debug utilities panel. Contains helper functions and status messages.
 
-//#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator.
+#define NBFM_DEMODULATOR_PRESENT  // Uses an additional MC3361 as hardware NBFM demodulator. Better audio than the SI4732 flank demodulator.
 // Provides a "tuning" meter like in old FM Stereo receivers and software AFC.
 
 //#define CRYSTAL_FREQ_BELOW_IF  // Activate only if using an NBFM demdulator with a crystal frequency below 21.4MHz. Commenting will reverse afc and tuning meter direction.
 
-//#define SI5351_GENERATES_CLOCKS  //If active, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732.
+#define SI5351_GENERATES_CLOCKS  //If active, the SI5351 will generate the LO frequency plus 2 clocks, 4MHz for the tuner and 32768Hz for the SI4732.
 
-//#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
+#define TINYSA_PRESENT  // Syncs and controls a tinySA with receiving frequency, if connected via serial to the ESP32.
 
 //#define SW_ATTENUATOR_PRESENT  // Activate only if a voltage controlled attenuator is present in the shortwave RF path.
 //Generates gain control voltage on dac1(GPIO_NUM_25). 0V = max. gain, 3.3V = min gain.
 
-//#define FLIP_IMAGE  // Activate this if the image is upside down.
+#define FLIP_IMAGE  // Activate this if the image is upside down.
 //#define TFT_INVERSION_ON  // Comment if the image is inverted.
 
 
@@ -76,8 +76,10 @@ If sensitivity is insufficient (around -110dBm for a cearly discernable AM signa
 This will however decrease dynamic range and increase intermodulation products. 
 
 A small signal relay switches the LNA output between the tuner input (75Ohms) and the 0-50MHz lowpass filter for SW mode.
+Schematic for an optional frontend has been included. The optional frontend uses the CD1316 tuner, pin diodes as switches and a tapped coil filter at the tuner output.
+This frontend has superior RF properties, but is harder to build and requires careful tuning of the tapped coil filter.  
 
-The UR 1316 tuner output pins are connected to the IF relay, the I2C bus, +33V from a 5->33V bost converter and the AGC output of the ESP32. 
+The TV tuner output pins are connected to the IF relay, the I2C bus, +33V from a 5->33V bost converter and the AGC output of the ESP32. 
 A transistor logic switches the tuner and the boost converter power off when frequency < 50MHz. If frequency stability of the tuner is more important than 
 power consumption, omit this logic. It helps saving current and eliminates possible crosstalk fromt he tuner output when in shortwave mode. 
 It means however that the tuner will warm up and cool down and have frequency drift. My tuner drifts about 2KHz.
@@ -161,7 +163,7 @@ Do not introduce additional commas, CR or else anyting into the lines of the CSV
 
 15. An additional NBFM demodulator has been developed since the SI4732 demodulates NBFM only via flank demodulation. 
 An MC3361 converts 21.4MHz to around 400KHz and uses a quadrature demodulator to generate audio and the discriminator voltage which can be displayed on the upper tuning meter.
-The Q of the quadrature LC is critical, you may need to experiment with different values.
+The Q of the quadrature LC is critical, you may need to experiment with different L and C values.
 
 16. I have not designed a PCB. The ESP board is directly attached to the backside of the display and so is the LM386 audio amp.  
 The IF/RF part is build upon the copper sides of two seperate (unetched) PCB's with the SI4732, the NBFM demodulator, crystal filter and voltage regulators on one.
@@ -177,7 +179,7 @@ Carefully remove the 4MHz crystal from tuner. Connect CLK1 via attenuator (see s
 
 18. The TV tuner provides good attenuation outside it's filter bandwidth. By design it does not provide attenuation within it's channel bandwith (+-4MHz), 
 so strong signals within the bandwidth can cause intermodulation in the first tuner stage.
-The "Tun. Attn" submenue  will reduce the tuner gain. It will also affect the point where the tuner agc kicks in. 
+The "Tun. Attn" submenu  will reduce the tuner gain. It will also affect the point where the tuner agc kicks in. 
 If you hear crossmodulation, use the "Tuner Attn" button to adjust the AGC until crossmodulation disappears.
 
 19. Using a wide band antenna (discone) can cause intermodulation in the SBA4089. The most obvious effect is an increased noise floor. Try a FM bandstop filter.  
