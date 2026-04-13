@@ -1268,6 +1268,7 @@ void slowTaskHandler() {  // handles tasks with a long period. not precise.
 
   if (sTmr > WIFI_STARTUP_TIME_CHECK && !wStat) {  // check for successful connection
 
+    wStat = true; 
     tft.fillRect(0, 308, 135, 12, TFT_BLACK);
     tft.setCursor(0, 311);
     tft.setTextSize(1);
@@ -1292,7 +1293,6 @@ void slowTaskHandler() {  // handles tasks with a long period. not precise.
 
     if (WiFi.status() != WL_CONNECTED) {
       tft.print("No Wifi!");
-      wStat = true;
     }
 
 
