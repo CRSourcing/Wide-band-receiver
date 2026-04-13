@@ -410,7 +410,7 @@ Serial.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
 Serial.printf("Sprite Style: %d\n", buttonSelected);
 Serial.printf("Loop Bands: %s\n", loopBands ? "Yes" : "No");
 Serial.printf("Smooth Waterfall: %s\n", smoothColorGradient ? "Yes" : "No");
-Serial.printf("IF: %ld kHz\n", SI4735TUNED_FREQ);
+Serial.printf("IF: %d kHz\n", SI4735TUNED_FREQ);
 Serial.printf("Audio Waterfall: %s\n", showAudioWaterfall ? "Yes" : "No");
 Serial.printf("Panorama: %s\n", showPanorama ? "Yes" : "No");
 Serial.printf("NBFM Offset: %d\n", NBFMOffset);
