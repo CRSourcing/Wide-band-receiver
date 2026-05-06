@@ -19,13 +19,17 @@ ESP32, ILI9488 with an RESISTIVE touch display (the red pcb), SI4732, SI5351 and
 Volume, squelch and fine tune get directly controlled via potentiometers.
 Different options like a TCXO version or a hardware narrow band FM demodulator are available.
 
-It does include some nice features, such as morse decoder, slow scan waterfall, memory bank scanning, station lists, .wav recorder, WIFI file transfer, etc.
+It does include some nice features, such as remote control over WiFi, morse decoder, slow scan waterfall, memory bank scanning, station lists, .wav recorder, WIFI file transfer, etc.
 To build the hardware you should have experience with RF circuits and the appropiate toolset. At least a tinySA and NanoVNA are strongly recommended. 
 
-See the main file SI4732Radio_V0_603.ino for more details.
+See the main file SI4732Radio_V0_605.ino for more details.
 ![Alt text](pics/1.jpg)
 
 
 ![Alt text](pics/20250804_183503.jpg)
 
+![Alt text](pics/20260429_180323.jpg)
+
 ![Alt text](pics/20260209_152241.jpg).
+
+
