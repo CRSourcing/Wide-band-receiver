@@ -97,7 +97,10 @@ void waterFall(bool useKeypad) {
     }
 
 
-    uint16_t mult = 5 + (analogRead(FINETUNE_PIN) / 200);  // mult range from 5 to 25
+     
+      adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &raw34);  
+
+    uint16_t mult = 5 + (raw34/200);  // mult range from 5 to 25
 
 
     uint32_t corrFactor = (cellSize / 2000);     // ajust accum to cellsize

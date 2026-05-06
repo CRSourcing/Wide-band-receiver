@@ -433,9 +433,12 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
 
   FFTGain = preferences.getInt("FFTGain", 100);  // load last calibration factor
 
+ static uint8_t oldFFTGain = 0; 
   encLockedtoSynth = false;
   clearStatusBar();
+ char save = miniWindowMode;
 
+  miniWindowMode = 3; // mini oscilloscope 
   while (digitalRead(ENCODER_BUTTON) == HIGH) {
     clearNotification();
 
@@ -447,19 +450,24 @@ void setFFTGain() {  // sets gain (amplitude) for the AF spectrum analyzers and 
     cclw = false;
 
     FFTGain = constrain(FFTGain, 1, 255);
-
+     
+    if(FFTGain != oldFFTGain) { 
     tft.fillRect(5, 100, 333, 16, TFT_BLACK);
     tft.setCursor(5, 100);
     tft.printf("FFT Gain :%d ", FFTGain);
-    tft.fillRect(135, 294, 86, 27, TFT_NAVY);
-    FFTSample(256, 0, true);
-    delay(15);
+    oldFFTGain = FFTGain;
+    }
+   
+  
+    audioSpectrum(); // miniwindow
+  
   }
 
   preferences.putInt("FFTGain", FFTGain);
   while (digitalRead(ENCODER_BUTTON) == LOW)
     ;
   encLockedtoSynth = true;
+   miniWindowMode = save; 
 }
 
 

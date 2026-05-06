@@ -6,7 +6,7 @@ void connectWIFI() {
   tft.fillScreen(TFT_BLACK);
   WiFi.begin(ssid.c_str(), password.c_str());
   tft.setCursor(5, 5);
-  tft.print(F("Connecting to WIFI\n"));
+  tft.print(F("Connecting to AP\n"));
   while (WiFi.status() != WL_CONNECTED) {
     ctr++;
     if (ctr == 20)
@@ -154,8 +154,10 @@ void drawIBtns() {
 
     { 20, 133, "Get" },
     { 20, 153, "UTC" },
-    { 100, 133, "Stream" },
-    { 100, 153, "Audio" },
+    { 100, 133, "" },
+    { 100, 153, "" },
+    { 190, 133, "WiFi" },
+    { 190, 153, "Interf." },
     { 20, 190, "Downl." },
     { 20, 210, "EiBi" },
     { 100, 190, "SW" },
@@ -179,7 +181,8 @@ void drawIBtns() {
 
   etft.setTTFFont(Arial_14);
 
-  for (int i = 0; i < 14; i++) {
+
+  for (int i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
     etft.setCursor(buttons[i].x, buttons[i].y);
     etft.print(buttons[i].label);
   }
@@ -205,8 +208,9 @@ void readIBtns() {
       getTime();
       break;
     case 22:
-      prepareStream();
-      stream();
+      break;
+    case 23:
+      webIF();
       break;
     case 31:
       downloadSelector = 6;  // EiBi station list
@@ -526,106 +530,133 @@ void getTime() {
 }
 
 
-//##########################################################################################################################//
 
-//routines to stream audio via http
-
-// WAV header for 8kHz, mono, 8-bit PCM (streaming, size fields = 0)
-uint8_t wavHeader[44] = {
-  'R', 'I', 'F', 'F',
-  0x00, 0x00, 0x00, 0x00,  // ChunkSize (0 for streaming)
-  'W', 'A', 'V', 'E',
-  'f', 'm', 't', ' ',
-  16, 0, 0, 0,             // Subchunk1Size
-  1, 0,                    // AudioFormat = PCM
-  1, 0,                    // NumChannels = 1
-  0x40, 0x1F, 0x00, 0x00,  // SampleRate = 8000
-  0x40, 0x1F, 0x00, 0x00,  // ByteRate = 8000
-  1, 0,                    // BlockAlign = 1
-  8, 0,                    // BitsPerSample = 8
-  'd', 'a', 't', 'a',
-  0x00, 0x00, 0x00, 0x00  // Subchunk2Size (0 for streaming)
-};
-
-void handleStream() {
-  WiFiClient client = server.client();
-
-  int16_t offsetComp = 2048 - gpio36_Offset;
-
-
-  // Send HTTP header
-  client.println("HTTP/1.1 200 OK");
-  client.println("Content-Type: audio/wav");
-  client.println("Connection: close");
-  client.println();
-
-  client.write(wavHeader, sizeof(wavHeader));
-
-
-  unsigned long nextMicros = micros();
-  const int BUF_SIZE = 4096;
-  uint8_t buf[BUF_SIZE];
-
-
-  while (client.connected()) {
-    for (int i = 0; i < BUF_SIZE; i++) {
-      uint8_t shifted = (analogRead(AUDIO_INPUT_PIN) + offsetComp) >> 4;
-
-      buf[i] = shifted;
-
-      nextMicros += 125;  // 1/8000 sec = 125 µs
-      while (micros() < nextMicros) {
-        if (clw || cclw) {
-          preferences.putBool("fB", true);  // set fastboot
-          ESP.restart();
-        }
-        // wait until time for the next sample
-      }
-    }
-
-
-    client.write(buf, BUF_SIZE);
-  }
-}
 
 //##########################################################################################################################//
-void prepareStream() {
+void prepareWebIF() {
 
   tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_GREEN);
   tft.setCursor(0, 0);
 
-  si4735.setVolume(55);
+
+  tft.println("Starting WiFi interface...\n");
+  tft.println("WiFi interface needs to disable\nseveral other functions.\n\n");
 
   WiFi.begin(ssid, password);
-  tft.println("Streams audio to a http client.\n");
-  tft.println("Connecting to WiFi");
+  tft.print("Connecting to: ");
+  tft.print(ssid.c_str());
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     tft.print(".");
   }
-  tft.println();
+  
 
 
-  tft.println("\nWiFi connected!\n\n");
-  tft.print("Open ");
+  tft.println("\n\nWiFi connected!\n\n");
+  tft.print("Touch to continue and open ");
   tft.setTextColor(TFT_WHITE);
   tft.print(WiFi.localIP());
-  tft.print("/stream.wav");
+  tft.setTextColor(TFT_GREEN);
+  tft.print("in browser.\n\n");
   tft.setTextColor(textColor);
-  tft.print(" in browser\n\nor in player.\n\n");
-  tft.println("Allow time for buffering.\n");
-  tft.println("Move encoder to leave.\n");
-  server.on("/stream.wav", handleStream);
-  server.begin();
+  tPress();
+  tRel();
+  delay(1000);
+  tft.fillScreen(TFT_BLACK);
+  rebuildMainScreen(false);
+}
+
+
+
+
+//##########################################################################################################################//
+
+//##########################################################################################################################//
+
+
+
+void notifyClients() {
+  String msg = String(FREQ) + "," + String(signalStrength);
+  ws.textAll(msg);  // send to all connected clients
 }
 
 
 
 //##########################################################################################################################//
 
-void stream() {
+void webIF() { // webIF needs >95K free heap
 
-  while (true) {
-    server.handleClient();
-  }
+  prepareWebIF();
+
+  webIFActive = true;
+  spr2.deleteSprite();  // free heap from rolling RSSI trace
+  sprite2Init = false;
+
+  spr1.deleteSprite();  // free heap from miniwindow
+  sprite1Init = false;
+
+
+  // define routes, handlers
+  aserver.on("/", HTTP_GET, [](AsyncWebServerRequest *req) {
+    req->send(200, "text/html", index_html);
+  });
+
+  aserver.on("/setfreq", HTTP_GET, [](AsyncWebServerRequest *req) {
+    if (req->hasParam("f")) {
+      FREQ = req->getParam("f")->value().toInt();
+      notifyClients();
+      currAudioBufSize = 256;  // reduce audio buffer to reduce lag
+    }
+
+    req->send(200, "text/plain", "FREQ changed");
+  });
+
+  aserver.on("/setmode", HTTP_GET, [](AsyncWebServerRequest *req) {
+    if (req->hasParam("m")) {
+      newMode = req->getParam("m")->value().toInt();
+      modeChangeRequested = true;  // client changes modulation type
+      currAudioBufSize = 256;
+      if (streamAudio) {
+        streamAudio = false;  // interrupt audio streaming
+        wasStreaming = true;
+      }
+    }
+    req->send(200, "text/plain", "123 ");
+  });
+
+  aserver.on("/stepfreq", HTTP_GET, [](AsyncWebServerRequest *req) {
+    if (req->hasParam("step")) {
+      int step = req->getParam("step")->value().toInt();
+      FREQ += step;
+      notifyClients();
+    }
+    req->send(200, "text/plain", String(FREQ));
+    currAudioBufSize = 256;  // reduce audio buffer to reduce lag
+    frameIndex = 0;
+  });
+
+  aserver.on("/audioctl", HTTP_GET, [](AsyncWebServerRequest *req) {
+    if (req->hasParam("on")) {
+      streamAudio = (req->getParam("on")->value() == "1");
+    }
+    req->send(200, "text/plain", streamAudio ? "AUDIO ON" : "AUDIO OFF");
+  });
+
+
+
+
+  ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client,
+                AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    if (type == WS_EVT_CONNECT) {
+      client->text("Connected");
+    }
+  });
+
+  aserver.addHandler(&ws);
+  aserver.begin();
 }
+
+
+//##########################################################################################################################//

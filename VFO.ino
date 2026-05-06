@@ -152,8 +152,13 @@ void fineTune() {  // reads fine tune potentiometer and adjusts FREQ
   if (modType == WBFM)
     return;
 
-  for (int l = 0; l < 32; l++)
-    os += analogRead(FINETUNE_PIN);
+  for (int l = 0; l < 32; l++) {
+ 
+  adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &raw34); 
+   os += raw34;
+  } 
+
+  
   potVal = os / div;  // oversample and  set range from 0 to 12000 (= +-1 crystal filter bandwith)
 
   if (lastResult == potVal)

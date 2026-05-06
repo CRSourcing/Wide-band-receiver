@@ -416,7 +416,7 @@ void showEiBiStations(uint32_t FREQ) {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_YELLOW);
   tft.setCursor(0, 0);
-  tft.printf("Listing stations at %5.1f KHz...\n", targetFreq);
+  tft.printf("Loading stations at %5.1f KHz...\n", targetFreq);
   tft.println();
 
 

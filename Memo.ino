@@ -102,10 +102,10 @@ void showMemo(bool isRead, bool usePageZero) {  // displays memo buttons
     if (isRead)
       result = tuneMemo();
 
-  if (tx > 345 && ty >= 80) {  // touch was in history area
-    loadFreqFromHistory();
-    return;
-  }
+    if (tx > 345 && ty >= 80) {  // touch was in history area
+      loadFreqFromHistory();
+      return;
+    }
 
 
 
@@ -601,8 +601,6 @@ void loadFreqFromHistory() {
 
   const int baseY = 80;
   const int rowSpacing = 24;
-  const int boxH = 20;
-
   uint8_t startPos = bufferFull ? bufferIndex : 0;
   uint8_t count = bufferFull ? 8 : bufferIndex;
 
@@ -825,16 +823,14 @@ void playCurrentChannel() {
     return;
 
 
-  audioSpectrum();
+
   getRSSIAndSNR();
 
 #ifdef TV_TUNER_PRESENT
   setTunerAGC(false);  // use tuner AGC without printng values
 #endif
 
-  if (showRSSITrace == 1) {
-    drawRollingGraph(signalStrength);
-  }
+
 
   TSAdBmValue = 0;  // force to use RSSI for s meter
   calculateAndDisplaySignalStrength();
@@ -967,9 +963,9 @@ void setChannel(const char *buffer, int cRow, bool reloadModType, bool showEntry
   int y = 130;
 
   // static storage of last values
-  static char lastLabel[32] = "";
-  static char lastFreq[32] = "";
-  static char lastMode[32] = "";
+  static char lastLabel[35] = "";
+  static char lastFreq[35] = "";
+  static char lastMode[35] = "";
 
   // Split CSV string into tokens
   char temp[128];
@@ -1002,7 +998,7 @@ void setChannel(const char *buffer, int cRow, bool reloadModType, bool showEntry
     tft.setTextColor(TFT_SKYBLUE);
     tft.println(tokens[0]);
     tft.setTextColor(TFT_CYAN);
-    strncpy(lastLabel, tokens[0], sizeof(lastLabel));
+    strncpy(lastLabel, tokens[0], 32);
     tft.setTextSize(2);
   }
   y += 45;
@@ -1011,7 +1007,7 @@ void setChannel(const char *buffer, int cRow, bool reloadModType, bool showEntry
   if (count > 1 && strcmp(tokens[1], lastFreq) != 0) {
     tft.fillRect(x, y, 250, 18, TFT_BLACK);
     tft.setCursor(x, y);
-    strncpy(lastFreq, tokens[1], sizeof(lastFreq));
+    strncpy(lastFreq, tokens[1], 32);
     FREQ = atol((char *)lastFreq);
     tft.printf("Freq: %ldKHz", FREQ_TO_KHZ);
   }
@@ -1023,7 +1019,7 @@ void setChannel(const char *buffer, int cRow, bool reloadModType, bool showEntry
     tft.setTextColor(TFT_CYAN);
     tft.setCursor(250, 130);
     tft.println(tokens[4]);
-    strncpy(lastMode, tokens[4], sizeof(lastMode));
+    strncpy(lastMode, tokens[4], 32);
 
     if (strstr(lastMode, "AM") != NULL) {
       modType = AM;
@@ -1185,7 +1181,7 @@ void showChannelList() {
 
         if (clw || cclw) {
           pressedEntry += clw ? 1 : -1;  // 1 up or down
-          load_channel(0, true, pressedEntry, true, false);
+          load_channel(0, false, pressedEntry, true, false);
           clw = false;
           cclw = false;
         }

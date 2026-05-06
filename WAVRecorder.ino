@@ -4,7 +4,7 @@
 #define SAMPLE_RATE 8000  // 4KHz
 #define SAMPLE_INTERVAL (1000000 / SAMPLE_RATE)
 #define RECORD_TIME 9999
-#define BUFFER_SIZE 4096  // buffer for writing onto SD, bigger = better, less "plops".
+#define BUFFER_SIZE frSize
 
 // WAV file header structure
 typedef struct {
@@ -64,7 +64,6 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
       return;
   }
 
-
   int endHour = recordEndTime / 100;  // 17
   int endMin = recordEndTime % 100;   // 59
 
@@ -102,13 +101,11 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
   bool mutestat = audioMuted;
 
   si4735.setHardwareAudioMute(false);
-  si4735.setVolume(55);
-
-
+  si4735.setVolume(50);
 
   mountSDCard();
 
-  // Find next available file name
+  // Find next avail file name
   int fileIndex = 1;
   String fileName;
   do {
@@ -130,12 +127,8 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
   WavHeader_8bit header;
   createWavHeader8bit(&header, RECORD_TIME * SAMPLE_RATE);
   f.write((uint8_t*)&header, sizeof(header));
-
-  uint32_t samplesToRecord = RECORD_TIME * SAMPLE_RATE;
-  uint8_t buffer[BUFFER_SIZE];
-  uint32_t samplesRecorded = 0;
-  int16_t offsetComp = 2048 - gpio36_Offset;
   uint16_t ctr = 0;
+  recordWav = true;
 
 
   while (!(clw + cclw)) {  //encoder moved
@@ -170,33 +163,18 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
       }
 
 
-      uint32_t nextSampleTime = micros() + SAMPLE_INTERVAL;
 
-      for (int b = 0; b < BUFFER_SIZE && samplesRecorded < samplesToRecord; b++) {
-
-        buffer[b] = (analogRead(AUDIO_INPUT_PIN) + offsetComp) >> 4;
-
-        while ((int32_t)(micros() - nextSampleTime) < 0) {
-          delayMicroseconds(1);
-        }
-
-
-        samplesRecorded++;
-        nextSampleTime += SAMPLE_INTERVAL;
+      if (bufferFilled) { // buffer gets filled by timer interrupt 125uS
+          f.write((uint8_t*)frame, BUFFER_SIZE);
+          bufferFilled = false;
       }
 
-
-
-
-
-      f.write((uint8_t*)buffer, BUFFER_SIZE);
 
       if (mode == 1) {  // timer mode
         getLocalTime(&timeinfo);
         if (timeinfo.tm_hour == endHour && timeinfo.tm_min == endMin)
           break;
       }
-
     }
 
     else {
@@ -205,9 +183,11 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
     }
   }
 
-  samplesRecorded = samplesToRecord;
+
   clw = false;
   cclw = false;
+  recordWav = false;
+ 
 
   f.flush();
   f.close();

@@ -119,6 +119,22 @@ void drawFrame() {
 
 //##########################################################################################################################//
 
+void startAudioSampler() {
+
+  //set interrupt timer for sampling
+  timer = timerBegin(aSR);  //sample rate fixed 8000
+  timerAttachInterrupt(timer, &sampleAudio);
+
+  // ticks per interrupt
+  uint64_t baseFreq = timerGetFrequency(timer);
+  uint64_t ticks = baseFreq / aSR;
+
+  // enable alarm
+  timerAlarm(timer, ticks, true, 0);
+}
+
+//##########################################################################################################################//
+
 
 void SI5351_Init() {
 
@@ -186,6 +202,11 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
 */
 
 
+  adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+  gpio36_Offset = raw36;  // need to measure the collector voltage of the tft amplifier to center mini oscilloscope
+  Serial_printf("FFT DC Offset %d\n", gpio36_Offset);
+
+
 
 #ifdef SI5351_GENERATES_CLOCKS
   si4735.setPowerUp(0, 0, 0, 0, 1, 5);
@@ -197,12 +218,8 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
   si4735.radioPowerUp();
   si4735.setAM(520, 29900, SI4735TUNED_FREQ, 1);
 
-
-
   si4735.setAudioMuteMcuPin(MUTEPIN);
   digitalWrite(MUTEPIN, HIGH);
-  gpio36_Offset = analogRead(AUDIO_INPUT_PIN);  // need to measure the collector voltage of the tft amplifier to center mini oscilloscope
-  Serial_printf("FFT DC Offset %d\n", gpio36_Offset);
 
 
   if (modType == USB || modType == LSB)
@@ -216,9 +233,6 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
   else if (modType == NBFM)
     STEP = DEFAULT_NBFM_STEP;
 
-
-
-
   vol = preferences.getChar("Vol", 50);  // get global volume
   si4735.setVolume(vol);
   si4735.setAMSoftMuteSnrThreshold(preferences.getChar("SMute", 0));
@@ -226,7 +240,7 @@ uint8_t	OPMODE set the kind of audio mode you want to use.
   digitalWrite(MUTEPIN, LOW);
   digitalWrite(IF_FILTER_BANDWIDTH_PIN, HIGH);  // default use wide IF filter
   digitalWrite(NBFM_MUTE_PIN, LOW);             // LOW means the NBFM demodulator is muted
-
+  setIFBandwidth();
   loadSi4735parameters();  // finally load the parameters
 }
 
@@ -393,44 +407,48 @@ void loadLastSettings() {
   ssid = preferences.getString("ssid", "");
   password = preferences.getString("password", "");
   tuningMeterDivider = preferences.getUChar("tmd", 5);
-  wideIFFilter = preferences.getBool("iff", 0);
+  wideIFFilter = preferences.getBool("bwf", 0);
+  enableRigCtl = preferences.getBool("cat", 0);
+  SWMinAttn = preferences.getUChar("swattn", 0);
 
-
-Serial.println("Settings loaded:");
-Serial.printf("Frequency: %ld kHz\n", FREQ);
-Serial.printf("Bandwidth: %d\n", bandWidth);
-Serial.printf("Mod Type: %d\n", modType);
-Serial.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
-Serial.printf("Press Sound: %s\n", pressSound ? "On" : "Off");
-Serial.printf("Mini Window Mode: %d\n", miniWindowMode);
+  Serial.println("Settings loaded:");
+  Serial.printf("Frequency: %ld kHz\n", FREQ);
+  Serial.printf("Bandwidth: %d\n", bandWidth);
+  Serial.printf("Mod Type: %d\n", modType);
+  Serial.printf("Alt Style: %s\n", altStyle ? "Enabled" : "Disabled");
+  Serial.printf("Press Sound: %s\n", pressSound ? "On" : "Off");
+  Serial.printf("Mini Window Mode: %d\n", miniWindowMode);
 #ifdef TINYSA_PRESENT
-Serial.printf("TinySA Sync: %s\n", syncEnabled ? "Enabled" : "Disabled");
+  Serial.printf("TinySA Sync: %s\n", syncEnabled ? "Enabled" : "Disabled");
 #endif
-Serial.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
-Serial.printf("Sprite Style: %d\n", buttonSelected);
-Serial.printf("Loop Bands: %s\n", loopBands ? "Yes" : "No");
-Serial.printf("Smooth Waterfall: %s\n", smoothColorGradient ? "Yes" : "No");
-Serial.printf("IF: %d kHz\n", SI4735TUNED_FREQ);
-Serial.printf("Audio Waterfall: %s\n", showAudioWaterfall ? "Yes" : "No");
-Serial.printf("Panorama: %s\n", showPanorama ? "Yes" : "No");
-Serial.printf("NBFM Offset: %d\n", NBFMOffset);
-Serial.printf("Show Meters: %s\n", showMeters ? "Yes" : "No");
-Serial.printf("Tuner Offset PPM: %d\n", tunerOffsetPPM);
-Serial.printf("SW Gain Correction: %d\n", SWGainCorrection);
-Serial.printf("FFT Gain: %d\n", FFTGain);
-Serial.printf("Discriminator Zero: %d\n", discriminatorZero);
-Serial.printf("AGC Start Value: %d\n", gainLimit);
-Serial.printf("Fun Enabled: %s\n", funEnabled ? "Yes" : "No");
-Serial.printf("Fine Tune Offset: %s\n", displayFineTuneOffset ? "Yes" : "No");
-Serial.printf("Nixie Dial: %s\n", useNixieDial ? "Yes" : "No");
-Serial.printf("Debug Info: %s\n", displayDebugInfo ? "Yes" : "No");
-Serial.printf("Tuner Gain Correction: %d\n", tunerGainCorrection);
-Serial.printf("RSSI Trace: %d\n", showRSSITrace);
-Serial.printf("Tuning Meter Divider: %d\n", tuningMeterDivider);
-Serial.printf("Wide IF Filter: %s\n", wideIFFilter ? "Yes" : "No");
-Serial.println("SSID: " + ssid);
-Serial.println("Password: " + password);
-Serial.println();
+  Serial.printf("SNR Squelch: %s\n", SNRSquelch ? "Enabled" : "Disabled");
+  Serial.printf("Sprite Style: %d\n", buttonSelected);
+  Serial.printf("Loop Bands: %s\n", loopBands ? "Yes" : "No");
+  Serial.printf("Smooth Waterfall: %s\n", smoothColorGradient ? "Yes" : "No");
+  Serial.printf("IF: %d kHz\n", SI4735TUNED_FREQ);
+  Serial.printf("Audio Waterfall: %s\n", showAudioWaterfall ? "Yes" : "No");
+  Serial.printf("Panorama: %s\n", showPanorama ? "Yes" : "No");
+  Serial.printf("NBFM Offset: %d\n", NBFMOffset);
+  Serial.printf("Show Meters: %s\n", showMeters ? "Yes" : "No");
+  Serial.printf("Tuner Offset PPM: %d\n", tunerOffsetPPM);
+  Serial.printf("SW Gain Correction: %d\n", SWGainCorrection);
+  Serial.printf("FFT Gain: %d\n", FFTGain);
+  Serial.printf("Discriminator Zero: %d\n", discriminatorZero);
+  Serial.printf("AGC Start Value: %d\n", gainLimit);
+  Serial.printf("Fun Enabled: %s\n", funEnabled ? "Yes" : "No");
+  Serial.printf("Fine Tune Offset: %s\n", displayFineTuneOffset ? "Yes" : "No");
+  Serial.printf("Nixie Dial: %s\n", useNixieDial ? "Yes" : "No");
+  Serial.printf("Debug Info: %s\n", displayDebugInfo ? "Yes" : "No");
+  Serial.printf("Tuner Gain Correction: %d\n", tunerGainCorrection);
+  Serial.printf("RSSI Trace: %d\n", showRSSITrace);
+  Serial.printf("Tuning Meter Divider: %d\n", tuningMeterDivider);
+  Serial.printf("Wide IF Filter: %s\n", wideIFFilter ? "Yes" : "No");
+  Serial.printf("CAT: %s\n", enableRigCtl ? "Enabled" : "Disabled");
+  Serial.println("SSID: " + ssid);
+  Serial.println("Password: " + password);
+  Serial.println();
+
+
   tRel();
 
   if (!fastBoot) {  // provide option to calibrate touchscreen
@@ -487,3 +505,28 @@ Serial.println();
 }
 
 //##########################################################################################################################//
+
+
+void init_ADC_Oneshot() {
+  // setup ADC1
+  adc_oneshot_unit_init_cfg_t init_config;
+  init_config.unit_id = ADC_UNIT_1;
+  adc_oneshot_new_unit(&init_config, &adc1_handle);
+
+
+  adc_oneshot_chan_cfg_t config;
+  config.bitwidth = ADC_BITWIDTH_12;
+  config.atten = ADC_ATTEN_DB_12;  //0–3.3V range
+
+  // GPIO39 (ADC1_CHANNEL_3) Square wave
+  adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_3, &config);
+
+  //  GPIO36 (ADC1_CHANNEL_0) Audio
+  adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config);
+
+  //  GPIO34 (ADC1_CHANNEL_6) Fine tune
+  adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_6, &config);
+
+  // GPIO35 (ADC1_CHANNEL_7) Squelch
+  adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_7, &config);
+}

@@ -130,7 +130,9 @@ void readMainBtns() {
 #ifdef TINYSA_PRESENT
       tinySAScreen();
 #else
+      wideIFFilter = !wideIFFilter;
       setIFBandwidth();
+      showIFBandwidth();
 #endif
       tRel();
       return;
@@ -437,15 +439,13 @@ int getButtonID(void) {
 
 void setIFBandwidth() {
 
-  wideIFFilter = !wideIFFilter;
   if (wideIFFilter)
     digitalWrite(IF_FILTER_BANDWIDTH_PIN, HIGH);
   else
     digitalWrite(IF_FILTER_BANDWIDTH_PIN, LOW);
 
-  preferences.putBool("iff", wideIFFilter);
-
-  showIFBandwidth();
+    preferences.putBool("bwf", wideIFFilter);
+  Serial.printf("Wide IF Filter: %s\n", wideIFFilter ? "Yes" : "No");
 }
 
 

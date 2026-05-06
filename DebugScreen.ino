@@ -529,12 +529,18 @@ void showADCs() {
     }
 
     // Write and use Besenham to connect
-    int prevY1 = trH - 1 - (analogRead(36) >> 6);
-    int prevY2 = trH - 1 - (analogRead(39) >> 6);
+     
+
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+    int prevY1 = trH - 1 - (raw36 >> 6);
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &raw39);
+    int prevY2 = trH - 1 - (raw39 >> 6);
 
     for (int x = 1; x < width; x++) {
-      int currY1 = trH - 1 - (analogRead(36) >> 6);
-      int currY2 = trH - 1 - (analogRead(39) >> 6);
+       adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+      int currY1 = trH - 1 - (raw36 >> 6);
+      adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &raw39);
+      int currY2 = trH - 1 - (raw39 >> 6);
 
       int dy1 = abs(currY1 - prevY1);
       int sy1 = (prevY1 < currY1) ? 1 : -1;

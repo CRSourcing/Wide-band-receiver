@@ -375,7 +375,8 @@ void CWDecoder() {
 
     // Read analog input and do the Goertzel
     for (byte index = 0; index < n; index++) {
-      testData[index] = analogRead(AUDIO_INPUT_PIN);
+      adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+      testData[index] = raw36;
       float Q0;
       Q0 = coeff * Q1 - Q2 + (float)testData[index];
       Q2 = Q1;
@@ -696,6 +697,7 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
 
 void FFTSample(int sampleCount, int dly, bool drawOsci) {  // Basic FFT. also draws a mini oscilloscope and collects VU
 
+
   currentVU = 0;
   const int centerLineH = 308;  // centerline position
 
@@ -707,10 +709,15 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {  // Basic FFT. also dr
     if (!dly) {
       // Use oversampling instead of delay, 0-3KHz
       for (int j = 0; j < 4; j++) {
-        sum += (analogRead(AUDIO_INPUT_PIN) - gpio36_Offset);
+        
+           adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+        
+        sum += (raw36 - gpio36_Offset);
       }
     } else {
-      sum = analogRead(AUDIO_INPUT_PIN) - gpio36_Offset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
+           adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+
+      sum = raw36 - gpio36_Offset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
       delayMicroseconds(dly);
     }
 
@@ -727,9 +734,15 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {  // Basic FFT. also dr
 
     sum /= sampleCount / FFTGain;
 
+
+
     RvReal[i] = (float)sum;
     RvImag[i] = 0;
   }
+
+
+
+
   FFT.windowing(RvReal, sampleCount, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
   FFT.compute(RvReal, RvImag, sampleCount, FFT_FORWARD);
   FFT.complexToMagnitude(RvReal, RvImag, sampleCount);
@@ -746,7 +759,7 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {  // Basic FFT. also dr
 
 void audioFreqAnalyzer() {
   int y = 15;
-  const float stretchFactor = 1.92;
+  const float stretchFactor = 1.875; // 255 bins to 480pix
 
 
   for (int i = 1; i < DISP_WIDTH; i++)  // clean line buffer

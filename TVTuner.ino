@@ -172,6 +172,7 @@ void setBandSwitchByte() {
 
 void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
 
+#define GAIN_SHIFT 40  // less makes the AGC more effective
 
   if (!TVTunerActive)
     return;
@@ -182,14 +183,16 @@ void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
   static unsigned char lastSignalStrength = 0;
   const unsigned char minGain = 70;
 
-  agcResult = (255 - (signalStrength * 2) + 5);  // empirical formula
+  agcResult = (255 - (signalStrength * 2) + GAIN_SHIFT);  // was empirical formula
+  
+  
   agcResult = constrain(agcResult, minGain, gainLimit);
 
   if ((showValues) && displayDebugInfo && (agcResult != currentAGCVal || signalStrength != lastSignalStrength)) {
     tft.setTextColor(TFT_SKYBLUE);
     tft.setTextSize(1);
-    tft.fillRect(143, 140, 18, 28, TFT_BLACK);
-    tft.setCursor(143, 140);
+    tft.fillRect(140, 132, 22, 38, TFT_BLACK);
+    tft.setCursor(143, 135);
     tft.printf("%d", signalStrength);
     lastSignalStrength = signalStrength;
     tft.setTextColor(TFT_WHITE);

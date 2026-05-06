@@ -1,6 +1,5 @@
 //Macros and global variables
 
-
 #ifndef CONFIG_H
 #define CONFIG_H
 #endif
@@ -220,27 +219,23 @@ DacESP32 dac2(GPIO_NUM_26), dac1(GPIO_NUM_25);  // dac2 for sine wave oscillator
 
 float RvReal[SAMPLES * 2];
 float RvImag[SAMPLES * 2];
-ArduinoFFT<float> FFT = ArduinoFFT<float>(RvReal, RvImag, 512, 5850);  // Max freq = 5850/2 Hz, 256 usable bins
+ArduinoFFT<float> FFT = ArduinoFFT<float>(RvReal, RvImag, 512, 5850);  // 2.75KHz, 256 usable bins
 RingBuffer logBuffer;                                                  // debug logs
 
-WebServer server(80);  // Wifi uploader and streamer
+WebServer server(80);                // LittleFS uploader
+AsyncWebServer aserver(HTTTP_PORT);  // WiFi remote control
+AsyncWebSocket ws("/ws");            // websocket
+
+
 //##########################################################################################################################//
 
 // global variables
-
-/* GPTimer handle currently not in use
-
-static gptimer_handle_t gptimer = NULL;
-// Flag to check when timer fies
-volatile bool timer_fired = false;
-
-*/
 
 const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_content in patch_full.h or patch_init.h
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.603";  // version
+const char ver[] = "V.605";  // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -266,9 +261,8 @@ int afcVoltage = 410;            // voltage tap from the quadrature demodulator
 int discriminatorZero;           // middle of the tuning meter needle
 uint8_t tuningMeterDivider = 5;  // adjust so that the tuning meter shows deviation in KHz correctly
 int8_t SWGainCorrection = 10;    //  corrects shortwave S Meter
-uint8_t SWAttn = 0;              // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
+uint16_t SWAttn = 0;             // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
 uint8_t SWMinAttn = 0;           // Shortwave attenuator minimum attenuation, 0 = 0dB, 255= 30dB attenuation
-bool attnOFF = true;             // SW Attenuator off
 long lastAMFREQ = -1;            // AM frequency before switching to WBFM
 long span = 1000000;             // tinySA default span, configured in TSA Presets 0 and 1
 long potVal;                     // fine tune potentiometer read value
@@ -323,6 +317,8 @@ bool funEnabled = false;            // animations
 bool enableAnimations = false;
 bool useNixieDial = false;
 bool fastBoot = false;  // quick boot when enabled
+bool enableRigCtl = false;
+bool recordWav = false;
 
 
 const int Xsmtr = 10;  // Smeter position
@@ -410,6 +406,10 @@ int audioPeakVal = 0;
 int audioTreshold = 45;
 
 //FFT
+
+adc_oneshot_unit_handle_t adc1_handle;
+int raw34, raw35, raw36, raw39;
+
 int Rpeak[256] = { 0 };
 float pk;            // peak frequency
 long currentVU = 0;  // for volume meter
@@ -436,6 +436,24 @@ uint16_t buttonSelected = 4;  // 4-11
 
 String password;
 String ssid;
+
+// Web interface
+volatile bool modeChangeRequested = false;  // modulation change requested from browser
+volatile int newMode = 0;
+bool streamAudio = false;
+bool wasStreaming = false;
+bool webIFActive = false;
+
+// audio sampler
+const uint32_t aSR = 8000;  // sample rate
+hw_timer_t* timer = NULL;   // ISR
+const uint16_t frSize = 4096;
+uint8_t frame[frSize];  // ISR will fill this buffer
+uint16_t frameIndex = 0;
+uint16_t currAudioBufSize = frSize;
+volatile bool bufferFilled = false;
+
+
 
 uint8_t downloadSelector = 0;
 bool swappedJPEG = false;
