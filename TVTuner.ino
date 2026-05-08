@@ -172,7 +172,7 @@ void setBandSwitchByte() {
 
 void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
 
-#define GAIN_SHIFT 40  // less makes the AGC more effective
+#define GAIN_SHIFT 10  // less makes the AGC more effective
 
   if (!TVTunerActive)
     return;
