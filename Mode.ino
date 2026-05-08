@@ -341,6 +341,8 @@ void loadSi4735parameters() {  //for SSB this needs to consider whether in singl
     delay(10);
     si4735.setFM(6400, 10800, FMSTARTFREQ, DEFAULT_WBFM_STEP / 10000);
     si4735.setFmStereoOff();
+    vol = preferences.getChar("Vol", 50);
+    si4735.setVolume(vol);
 
 #ifdef NBFM_DEMODULATOR_PRESENT
     if (afcEnable) {
