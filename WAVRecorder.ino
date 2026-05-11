@@ -129,6 +129,7 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
   f.write((uint8_t*)&header, sizeof(header));
   uint16_t ctr = 0;
   recordWav = true;
+  currAudioBufSize = frSize; // 4096
 
 
   while (!(clw + cclw)) {  //encoder moved
