@@ -18,7 +18,7 @@ static bool sprite1Init = false;  // used for miniwindow and CW decoder tuner
 
 void audioSpectrum() {
 
-
+  const int centerLineTrace = 308;  // mini oscilloscope centerline position
 
 
   if (oldminiWindowMode != miniWindowMode) {  //  miniWindowMode selects btw off, low resolution, high resolution, mini osci. audio waterfall. Spectrums display , waterfall
@@ -33,6 +33,8 @@ void audioSpectrum() {
 
     preferences.putChar("spectr", miniWindowMode);        // save mode
     tft.fillRect(startX - 5, startY, 98, 26, TFT_BLACK);  // overwrite last window
+
+
   }
 
   if (audioMuted && !pressed) {
@@ -59,33 +61,35 @@ void audioSpectrum() {
     return;
 
 
+  FFTSample();
+
 
   if (miniWindowMode == 1) {  // low resolution spectrum analyzer, uses 16 channels
 
 
-    for (byte band = 0; band <= 16; band++) {  // overwrite black, slow decay
+    for (byte band = 0; band <= 15; band++) {  // overwrite black, slow decay
       int xPos = startX + 5 * band;
-      int yPos = DISP_HEIGHT - Rpeak[band];
+      int yPos = DISP_HEIGHT - RPeak[band];
 
       tft.fillRect(xPos, yPos, 3, 2, TFT_BLACK);
 
-      if (Rpeak[band] >= 1)
-        Rpeak[band] -= 1;
+      if (RPeak[band] >= 1)
+        RPeak[band] -= 1;
     }
 
-    for (int i = 2; i < (SAMPLES / 2); i++) {  // only use lower half of bins
-      if (RvReal[i] > 750) {                   // eliminate noise
+    for (int i = 2; i < SAMPLES; i++) {  // only use lower half of bins
+      if (RvReal[i] > 750) {             // eliminate noise
         byte band = getBandVal(i);
         displayBand(band, (int)RvReal[i]);
       }
     }
   }
 
-  if (miniWindowMode == 2) {  // high resolution, 85 channels
+  if (miniWindowMode == 2) {  // high resolution, 84 channels
 
-    for (int i = 2; i < SAMPLES / 3; i++) {
+    for (int i = 2; i < width; i++) {
       // calculate height
-      int height = DISP_HEIGHT - (int)(RvReal[i] / 5);
+      int height = DISP_HEIGHT - (int)(RvReal[i * 2] / 5);
       height = (height < startY) ? startY : height;
 
       for (int j = 0; j < 5; j++) {
@@ -93,7 +97,7 @@ void audioSpectrum() {
       }
       offset = (offset + 5) % 23;
 
-      int ampl = DISP_HEIGHT - (int)(RvReal[i] / (255 - FFTGain));
+      int ampl = DISP_HEIGHT - (int)(RvReal[i * 2] / (255 - FFTGain));
       ampl = (ampl < startY) ? startY : ampl;
 
       tft.drawFastVLine(startX + i, ampl, DISP_HEIGHT - ampl, TFT_SKYBLUE);
@@ -101,13 +105,26 @@ void audioSpectrum() {
   }
 
 
-  if (miniWindowMode == 3) {                         // mini oscilloscope, gets drawn from within FFTSample()
-    tft.fillRect(startX, startY, 86, 27, TFT_NAVY);  //background
-    FFTSample(256, 0, true);                         //256 samples, 0 uS delaytime, draw the mini osc.
-  }
+if (miniWindowMode == 3) {                         // mini oscilloscope
+    tft.fillRect(startX, startY, 86, 27, TFT_NAVY);  // background
 
-  else
-    FFTSample(256, 0, false);  //256 samples, 300 uS delaytime for the other miniwindows
+    int prevX = startX;
+    int prevY = centerLineTrace;
+
+    for (int i = 0; i < 255; i++) {
+      int shifted = (amplitudeBuffer[i] - 127) / 4;  // back to signed and adjust amplitude
+      shifted = constrain(shifted, -12, 12);
+
+      if (i % 3 == 0) {
+        int x = startX + i / 3;
+        int y = centerLineTrace + shifted;
+        tft.drawLine(prevX, prevY, x, y, TFT_WHITE);
+
+        prevX = x;
+        prevY = y;
+      }
+    }
+}
 
 
 
@@ -125,7 +142,7 @@ void audioSpectrum() {
 
     // Draw new top row
     for (int j = 0; j < width; j++) {
-      int value = (int)(RvReal[j + 2] / (255 - FFTGain));  // eliminate zero, reduce bandwidth
+      int value = (int)(RvReal[(j + 2) * 2] / (255 - FFTGain));  // eliminate zero, reduce bandwidth
       spr1.drawPixel(j, 0, valueToWaterfallColor(gradient * value));
     }
 
@@ -182,24 +199,24 @@ void audioSpectrum() {
 byte getBandVal(int i) {  // values for 16 channel spectrum analyzer
 
 
-  if (i <= 2) return 0;
-  if (i <= 4) return 1;
-  if (i <= 6) return 2;
-  if (i <= 8) return 3;
-  if (i <= 10) return 4;
-  if (i <= 12) return 5;
-  if (i <= 14) return 6;
-  if (i <= 17) return 7;
-  if (i <= 21) return 8;
-  if (i <= 26) return 9;
-  if (i <= 31) return 10;
-  if (i <= 36) return 11;
-  if (i <= 42) return 12;
-  if (i <= 48) return 13;
-  if (i <= 55) return 14;
-  if (i <= 62) return 15;
-  if (i <= 70) return 16;
-  return 16;
+
+  if (i <= 12) return 0;
+  if (i <= 24) return 1;
+  if (i <= 36) return 2;
+  if (i <= 48) return 3;
+  if (i <= 60) return 4;
+  if (i <= 72) return 5;
+  if (i <= 84) return 6;
+  if (i <= 96) return 7;
+  if (i <= 108) return 8;
+  if (i <= 120) return 9;
+  if (i <= 132) return 10;
+  if (i <= 144) return 11;
+  if (i <= 156) return 12;
+  if (i <= 168) return 13;
+  if (i <= 180) return 14;
+  if (i <= 192) return 15;  // 3KHz max
+  return 15;
 }
 
 //##########################################################################################################################//
@@ -214,8 +231,8 @@ void displayBand(int band, int dsize) {
     tft.drawPixel(startX + 5 * band + 1, DISP_HEIGHT - s, TFT_YELLOW);
     tft.drawPixel(startX + 5 * band + 2, DISP_HEIGHT - s, TFT_YELLOW);
   }
-  if (dsize > Rpeak[band])
-    Rpeak[band] = dsize;
+  if (dsize > RPeak[band])
+    RPeak[band] = dsize;
 }
 
 //##########################################################################################################################//
@@ -233,13 +250,13 @@ void tuneCWDecoder() {  // shows a small waterfall that helps tune to 558 Hz aud
 
   const int startX = 100;
   const int startY = 70;
-  const int width = 84;
+  const int width = 72;
   const int height = 24;
   const int gradient = 100;
 
 
 
-  tft.fillRect(startX + width, startY - 10, 3, 44, TFT_GREEN);  // center bar
+  tft.fillRect(startX + width - 2, startY - 10, 4, 44, TFT_GREEN);  // center bar
   spr1.deleteSprite();                                          // use miniwindow sprite
   spr1.createSprite(2 * width, height);
 
@@ -254,15 +271,15 @@ void tuneCWDecoder() {  // shows a small waterfall that helps tune to 558 Hz aud
     }
 
 
-    FFTSample(256, 300, false);  //256 samples, 300 uS delaytime, do not draw miniosci
+    FFTSample();  //256 samples = 4 KHz max. 558Hz = bin 36
 
     spr1.scroll(0, 1);
 
     // Draw new top row
-    for (int j = 0; j < width; j++) {
-      int value = (int)(RvReal[j + 2] / (255 - FFTGain));
+    for (int j = 0; j < width; j++) { // 0 - 72 so that bin 36 is centered
+      int value = (int)(RvReal[j + 2] / (255 - FFTGain)); 
 
-      // each column drawn twice horizontally
+      // spread each column drawn for better looks
       spr1.drawPixel(2 * j, 0, valueToWaterfallColor(gradient * value));
       spr1.drawPixel(2 * j + 1, 0, valueToWaterfallColor(gradient * value));
     }
@@ -594,7 +611,7 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
     tft.fillRect(0, 294, 480, 26, TFT_BLACK);  // info bar
 
     if (!useNixieDial)
-      tft.fillRect(330, 8, 135, 15, TFT_BLACK);  // microvolts indicator
+      tft.fillRect(330, 4, 135, 20, TFT_BLACK);  // microvolts indicator
 
     tft.drawFastHLine(2, 81, 338, TFT_SKYBLUE);
 
@@ -607,6 +624,9 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
     spr3.fillSprite(TFT_BLACK);
     sprite3Init = true;
   }
+
+
+
 
   while (digitalRead(ENCODER_BUTTON) == HIGH && !(clw + cclw) && !get_Touch()) {
 
@@ -626,7 +646,7 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
 #endif
     }
 
-    FFTSample(512, 0, false);
+    FFTSample();
     plotNeedle2(currentVU, 3);
     readSquelchPot(false);
     setSquelch();
@@ -639,16 +659,16 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
     for (int i = 0; i < FRAMEBUFFER_240; i++) {
 
 
-      int yP = DISP_HEIGHT - 1 - Rpeak[i];
+      int yP = DISP_HEIGHT - 1 - RPeak[i];
       int strX = stretchedX[i] + startX;
 
-      if (Rpeak[i]) {
+      if (RPeak[i]) {
         int yPos = yP - yOffset;
         tft.fillRect(strX, yPos, 1, 2, TFT_BLACK);  // spectrum display, decay peaks, draw 2-pixel-high black line
 
         if (strX > oldX + 1)
           tft.fillRect(oldX + 1, yPos, 1, 2, TFT_BLACK);  // gap decay
-        Rpeak[i] -= 2;
+        RPeak[i] -= 2;
       }
 
 
@@ -671,7 +691,7 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
         spr3.drawPixel(strX, 0, clr);
 
 
-      if (dsize > Rpeak[i]) Rpeak[i] = dsize;
+      if (dsize > RPeak[i]) RPeak[i] = dsize;
       oldX = strX;
     }
 
@@ -683,7 +703,7 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
   spr3.deleteSprite();
   sprite3Init = false;
   tft.fillRect(2, 48, 338, 74, TFT_BLACK);  // main area
-  for (int i = 0; i < 255; i++) Rpeak[i] = 0;
+  for (int i = 0; i < 255; i++) RPeak[i] = 0;
   resetSmeter = true;
   redrawIndicators();
   readMainBtns();
@@ -695,59 +715,37 @@ void audioSpectrum256() {  // spectrum display and waterfall instead of s meter 
 //##########################################################################################################################//
 
 
-void FFTSample(int sampleCount, int dly, bool drawOsci) {  // Basic FFT. also draws a mini oscilloscope and collects VU
+void FFTSample() {  // Basic FFT. also collects VU
+
+  if (!bufferFilled)
+    return;
+
+  currAudioBufSize = 512;
+  bufferFilled = false;
 
 
   currentVU = 0;
-  const int centerLineH = 308;  // centerline position
+  for (int i = 0; i < currAudioBufSize; i++) {  // sampling loop
 
-  int32_t sum = 0;
+    int32_t tmp = (int32_t)frame[i] - 127;  // back to signed
 
-  for (int i = 0; i < sampleCount; i++) {  // sampling loop
-    sum = 0;
+    if (miniWindowMode == 3)
+      amplitudeBuffer[i / 2] = frame[i];  // hold trace for mini oscilloscope
 
-    if (!dly) {
-      // Use oversampling instead of delay, 0-3KHz
-      for (int j = 0; j < 4; j++) {
-        
-           adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
-        
-        sum += (raw36 - gpio36_Offset);
-      }
-    } else {
-           adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &raw36);
+    tmp *= 16;  // back to original value
+    float sum = (float)tmp;
 
-      sum = raw36 - gpio36_Offset;  // remove the dc offset caused by the transistor collector voltage at around 1.65V
-      delayMicroseconds(dly);
-    }
+    sum /= currAudioBufSize / FFTGain;
 
-
-    if (drawOsci) {
-
-      int am = sum / (255 - FFTGain);  // calculate and limit amplitude
-
-      am = constrain(am, -12, 12);
-      if (i < 86)
-        tft.drawPixel(135 + i, centerLineH + am, TFT_WHITE);  // draw trace
-    }
-    // Adjust and store the averaged value
-
-    sum /= sampleCount / FFTGain;
-
-
-
-    RvReal[i] = (float)sum;
+    RvReal[i] = sum;
     RvImag[i] = 0;
   }
 
+  FFT.windowing(RvReal, currAudioBufSize, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+  FFT.compute(RvReal, RvImag, currAudioBufSize, FFT_FORWARD);
+  FFT.complexToMagnitude(RvReal, RvImag, currAudioBufSize);
 
-
-
-  FFT.windowing(RvReal, sampleCount, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-  FFT.compute(RvReal, RvImag, sampleCount, FFT_FORWARD);
-  FFT.complexToMagnitude(RvReal, RvImag, sampleCount);
-
-  for (int i = 2; i < SAMPLES / 2; i++) {
+  for (int i = 2; i < SAMPLES; i++) {
     currentVU += (int)RvReal[i];
   }
 
@@ -758,9 +756,10 @@ void FFTSample(int sampleCount, int dly, bool drawOsci) {  // Basic FFT. also dr
 
 
 void audioFreqAnalyzer() {
-  int y = 15;
-  const float stretchFactor = 1.875; // 255 bins to 480pix
 
+  int y = 15;
+  const float stretchFactor = 2.5;  //192 bins ( = 3KHz max freq) to 480pix
+  tRel();
 
   for (int i = 1; i < DISP_WIDTH; i++)  // clean line buffer
     transferBuffer[i] = 0;
@@ -778,7 +777,10 @@ void audioFreqAnalyzer() {
   tft.setSwapBytes(true);
 
   while (digitalRead(ENCODER_BUTTON) == HIGH && !get_Touch()) {
-    FFTSample(512, 0, 0);
+    FFTSample();
+
+    while (!bufferFilled)
+      delay(1);
 
     if (clw || cclw) {
       if (clw) FREQ += 100;
@@ -793,9 +795,8 @@ void audioFreqAnalyzer() {
     }
 
     // Fill linebuffer
-    for (int i = 1; i < DISP_WIDTH; i++) {
+    for (int i = 2; i < DISP_WIDTH; i++) {  // dicard DC and bleed in
       int fftIndex = (int)(i / stretchFactor);
-      if (fftIndex >= SAMPLES) fftIndex = SAMPLES - 1;
       transferBuffer[i] = valueToWaterfallColor((int)(RvReal[fftIndex]));
     }
 
@@ -819,7 +820,7 @@ void audioFreqAnalyzer() {
 //##########################################################################################################################//
 
 
-void audioScale() {
+void audioScale() {  // 0-3KHz scale
 
   tft.setTextSize(1);
   tft.drawFastHLine(0, 0, WATERFALL_SCREEN_WIDTH, TFT_WHITE);
@@ -846,7 +847,7 @@ void printMajorPeak() {
   float cpy[512] = { 0 };
   for (int i = 2; i < 512; i++)  // copy and disregard first 2 elements to remove DC spike
     cpy[i] = RvReal[i];
-  pk = FFT.majorPeak(cpy, 512, 5930);  //2.75KHz max
+  pk = FFT.majorPeak(cpy, 512, 8000);  //4KHz max
   tft.printf("Peak:%4.0fHz", pk);      // display peak frequency
   tft.setTextSize(2);
 }
@@ -870,20 +871,20 @@ void audioScan() {  //  240 channels spectrum in slow scan mode
     stretchedX[strX] = round(strX * stretch);  // Precalculate stretchedX;
   }
 
-  FFTSample(512, 0, false);
+  FFTSample();
 
   for (int i = 0; i < FRAMEBUFFER_240; i++) {  //  process 0 - 2.75 KHz in 240 bins
 
-    int yP = DISP_HEIGHT - 1 - Rpeak[i];
+    int yP = DISP_HEIGHT - 1 - RPeak[i];
     int strX = stretchedX[i] + startX;
 
-    if (Rpeak[i]) {
+    if (RPeak[i]) {
       int yPos = yP - yOffset;
       tft.fillRect(strX, yPos, 1, 2, TFT_BLACK);  // decay, draw 2-pixel-high black line
 
       if (strX > oldX + 1)
         tft.fillRect(oldX + 1, yPos, 1, 2, TFT_BLACK);  // gap decay
-      Rpeak[i] -= 2;
+      RPeak[i] -= 2;
     }
 
     int dsize = RvReal[i] / ampl;
@@ -903,8 +904,8 @@ void audioScan() {  //  240 channels spectrum in slow scan mode
     else
       transferBuffer[i] = 0;
 
-    if (dsize > Rpeak[i])
-      Rpeak[i] = dsize;
+    if (dsize > RPeak[i])
+      RPeak[i] = dsize;
 
 
     if (i > 1 && dsize > 1) {

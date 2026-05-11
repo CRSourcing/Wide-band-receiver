@@ -1,4 +1,6 @@
+#include <sys/_stdint.h>
 //Macros and global variables
+
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -219,11 +221,13 @@ DacESP32 dac2(GPIO_NUM_26), dac1(GPIO_NUM_25);  // dac2 for sine wave oscillator
 
 float RvReal[SAMPLES * 2];
 float RvImag[SAMPLES * 2];
-ArduinoFFT<float> FFT = ArduinoFFT<float>(RvReal, RvImag, 512, 5850);  // 2.75KHz, 256 usable bins
+ArduinoFFT<float> FFT = ArduinoFFT<float>(RvReal, RvImag, 512, 8000);  // 4KHz max, 255 usable bins
+
+
 RingBuffer logBuffer;                                                  // debug logs
 
 WebServer server(80);                // LittleFS uploader
-AsyncWebServer aserver(HTTTP_PORT);  // WiFi remote control
+AsyncWebServer aserver(HTTTP_PORT);  // WiFi interface
 AsyncWebSocket ws("/ws");            // websocket
 
 
@@ -384,6 +388,7 @@ uint16_t* frameBuf1 = nullptr;                            // 16 bit frame buffer
 uint16_t stretchedX[FRAMEBUFFER_240] = { 0 };             // array audio waterfall to strech 240 to 331 pixels
 int currentLine = 0;                                      // Current line being written to
 uint16_t transferBuffer[WATERFALL_SCREEN_WIDTH] = { 0 };  // line transfer buffer
+int16_t amplitudeBuffer[256];                             // holds amplitude for trace mini oscilloscope   
 const long defaultSpan = 1000000;                         //  1 MHz default span of slow waterfall
 bool smoothColorGradient = false;                         // smooth = blue to white, otherwise blue to red
 bool showAudioWaterfall = false;
@@ -410,7 +415,7 @@ int audioTreshold = 45;
 adc_oneshot_unit_handle_t adc1_handle;
 int raw34, raw35, raw36, raw39;
 
-int Rpeak[256] = { 0 };
+int RPeak[256] = { 0 };
 float pk;            // peak frequency
 long currentVU = 0;  // for volume meter
 int FFTGain = 80;    //  adjustable through config menue

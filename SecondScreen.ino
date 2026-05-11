@@ -8,7 +8,6 @@ void SecScreen() {
   }
   redrawMainScreen = true;
   drawSecBtns();
-  readSecBtns();
 }
 
 //##########################################################################################################################//
@@ -51,6 +50,9 @@ void drawSecBtns() {
     { 270, 265, "WF" },
   };
 
+
+
+
   etft.setTTFFont(Arial_14);
   etft.setTextColor(textColor);
 
@@ -70,6 +72,11 @@ void drawSecBtns() {
   etft.setTextColor(TFT_SKYBLUE);
   etft.setCursor(180, 255),
     etft.print(F("Storage"));
+  etft.setCursor(10,70);
+  etft.print(F("Tune without digital noise."));
+  etft.setCursor(10,90);
+   etft.print(F("Tap here to return."));
+
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 254);
   etft.print(F("Config"));
@@ -82,13 +89,32 @@ void drawSecBtns() {
   etft.setTextColor(textColor);
 #endif
 
-  tDoublePress();
+
+  while (true) { // run a small loop without display updates for tuning without display noise
+
+    get_Touch();
+    if (pressed)
+      break;
+
+    encoderMoved();
+    fineTune();
+    FREQCheck();        //check whether within FREQ range
+    displayFREQ(FREQ);  // display new FREQ
+    setFreq();
+    delay(10); 
+  }
+
+  tRel();
+ tft.fillRect(10,70,325,40,TFT_BLACK);
+  etft.setTTFFont(Arial_14);
+  readSecBtns();
+ 
 }
 //##########################################################################################################################//
 
 void readSecBtns() {
 
-  if (!pressed) return;
+ tft.fillRect(10,70,325,40,TFT_BLACK);
 
   int buttonID = getButtonID();
   if (!buttonID) {
@@ -542,6 +568,8 @@ void showEiBiStations(uint32_t FREQ) {
   tft.print(F("Cntry "));
   tft.setTextColor(TFT_WHITE);
   tft.print(F("Station name "));
+  sineTone(880, 100);
+  sineTone(1000, 100);
 
 
   if (!found) {

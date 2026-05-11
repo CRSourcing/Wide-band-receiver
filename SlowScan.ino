@@ -214,7 +214,7 @@ bool readSlowScanButtons() {
         currentStationIndex = -1;
         etft.setTextColor(TFT_GREEN);
         for (int i = 0; i < 255; i++)  // reset to 0 to avoid artefacts when starting mini spectrum 16
-          Rpeak[i] = 0;
+          RPeak[i] = 0;
         tx = ty = pressed = 0;
         slowScan = false;
         return false;
