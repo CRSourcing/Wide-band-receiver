@@ -26,7 +26,7 @@ See the main file SI4732Radio_V0_610.ino for more details.
 ![Alt text](pics/1.jpg)
 
 
-![Alt text](pics/20250804_183503.jpg)
+![Alt text](pics/20260429_180323.jpg)
 
 ![Alt text](pics/20260519_072337.jpg)
 
