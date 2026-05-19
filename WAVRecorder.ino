@@ -127,9 +127,12 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
   WavHeader_8bit header;
   createWavHeader8bit(&header, RECORD_TIME * SAMPLE_RATE);
   f.write((uint8_t*)&header, sizeof(header));
+  
   uint16_t ctr = 0;
+  audioBufSize = frSize; // 4096 need full size 
   recordWav = true;
-  currAudioBufSize = frSize; // 4096
+  bufferPlaying = false;
+  playIndex = 0;
 
 
   while (!(clw + cclw)) {  //encoder moved
@@ -230,19 +233,9 @@ void createWavHeader8bit(WavHeader_8bit* header, uint32_t sampleCount) {
 //##########################################################################################################################//
 
 
-// simple .wav player, has some pops and plops.
-
-
-//##########################################################################################################################//
-
-
-#define B_SIZE 2048
+// basic .wav player
 
 void playWavFile() {
-
-  uint8_t bufferA[B_SIZE];
-  uint8_t bufferB[B_SIZE];
-
 
   String selected = selectFileWithExtension(".wav");
 
@@ -267,60 +260,22 @@ void playWavFile() {
 
   si4735.setAudioMute(true);
 
-  uint32_t sampleInterval = 1000000 / header.sampleRate;
-  uint32_t nextSampleTime = micros();
-
-  // fill both buffers
-  int bytesA = f.read(bufferA, B_SIZE);
-  int bytesB = f.read(bufferB, B_SIZE);
-
-  bool useA = true;
-
-  int pos = 0;
-  int bytesAvailable = bytesA;
+  int bytesAvailable = 9999;
+  bool read = false;
 
   while (bytesAvailable > 0) {
-    // Output sample
+
+  if (!read) {  
+    bufferPlaying = true; // play via ISR
+    bytesAvailable = f.read( playBuffer, 512); // load into the ISR play buffer
+    read = true;
+  } 
+
+  while (bufferPlaying);
+   read = false;
 
     if (clw || cclw)
       break;
-
-
-    uint8_t sample = useA ? bufferA[pos] : bufferB[pos];
-
-    dac2.outputVoltage((uint8_t)sample);  // set the dac
-
-
-    pos++;
-    nextSampleTime += sampleInterval;
-
-    // pingpong fill the buffers wh
-    while (micros() < nextSampleTime) {
-      if (useA && bytesB < B_SIZE) {
-        int n = f.read(bufferB + bytesB, 64);  //64 bytes works best, still there is a knocking sound when buffer changes
-        if (n > 0) bytesB += n;
-      } else if (!useA && bytesA < B_SIZE) {
-        int n = f.read(bufferA + bytesA, 64);
-        if (n > 0) bytesA += n;
-      }
-    }
-
-
-    if (pos >= bytesAvailable) {
-      pos = 0;
-      if (useA) {
-        bytesAvailable = bytesB;
-        bytesB = 0;  // mark buffer B empty, will refill during wait
-        tft.fillCircle(10, 310, 5, TFT_RED);
-
-      } else {
-        bytesAvailable = bytesA;
-        bytesA = 0;  // mark buffer A as empty
-        tft.fillCircle(10, 310, 5, TFT_GREEN);
-      }
-      useA = !useA;
-      if (bytesAvailable <= 0) break;  // end of file
-    }
   }
 
   f.close();
@@ -328,6 +283,8 @@ void playWavFile() {
   cclw = false;
   si4735.setAudioMute(false);
   rebuildMainScreen(false);
+  bufferPlaying = false;
+  playIndex = 0;
 }
 
 

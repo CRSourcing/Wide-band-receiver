@@ -14,7 +14,7 @@ void setMode() {  // gets called from loop, selects btw. normal or scan mode, ac
   }
 
 
-  if (!scanMode && pressed && ty <= 45 && tx < 335)
+  if (!scanMode && !useNixieDial && pressed && ty <= 45 && tx < 335)
     tapFreqDigit();
 
 #ifdef NBFM_DEMODULATOR_PRESENT

@@ -720,12 +720,12 @@ void FFTSample() {  // Basic FFT. also collects VU
   if (!bufferFilled)
     return;
 
-  currAudioBufSize = 512;
+  audioBufSize = 512;
   bufferFilled = false;
 
 
   currentVU = 0;
-  for (int i = 0; i < currAudioBufSize; i++) {  // sampling loop
+  for (int i = 0; i < audioBufSize; i++) {  // sampling loop
 
     int32_t tmp = (int32_t)frame[i] - 127;  // back to signed
 
@@ -735,15 +735,15 @@ void FFTSample() {  // Basic FFT. also collects VU
     tmp *= 16;  // back to original value
     float sum = (float)tmp;
 
-    sum /= currAudioBufSize / FFTGain;
+    sum /= audioBufSize / FFTGain;
 
     RvReal[i] = sum;
     RvImag[i] = 0;
   }
 
-  FFT.windowing(RvReal, currAudioBufSize, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-  FFT.compute(RvReal, RvImag, currAudioBufSize, FFT_FORWARD);
-  FFT.complexToMagnitude(RvReal, RvImag, currAudioBufSize);
+  FFT.windowing(RvReal, audioBufSize, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+  FFT.compute(RvReal, RvImag, audioBufSize, FFT_FORWARD);
+  FFT.complexToMagnitude(RvReal, RvImag, audioBufSize);
 
   for (int i = 2; i < SAMPLES; i++) {
     currentVU += (int)RvReal[i];

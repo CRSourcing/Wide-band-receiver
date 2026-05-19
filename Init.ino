@@ -123,7 +123,7 @@ void startAudioSampler() {
 
   //set interrupt timer for sampling
   timer = timerBegin(aSR);  //sample rate fixed 8000
-  timerAttachInterrupt(timer, &sampleAudio);
+  timerAttachInterrupt(timer, &processAudio);
 
   // ticks per interrupt
   uint64_t baseFreq = timerGetFrequency(timer);

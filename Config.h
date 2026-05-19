@@ -231,6 +231,7 @@ AsyncWebServer aserver(HTTTP_PORT);  // WiFi interface
 AsyncWebSocket ws("/ws");            // websocket
 
 
+
 //##########################################################################################################################//
 
 // global variables
@@ -239,7 +240,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.605";  // version
+const char ver[] = "V.610";  // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -421,6 +422,11 @@ long currentVU = 0;  // for volume meter
 int FFTGain = 80;    //  adjustable through config menue
 int gpio36_Offset;   //  dc offset of pin 36, should be around 1.65V
 
+uint8_t playBuffer[512]; // ISR audio player buffer
+uint16_t playIndex = 0;
+volatile bool bufferPlaying = false;
+uint32_t audioTicks = 0;
+
 
 
 #ifdef AUDIO_SQUAREWAVE_PRESENT
@@ -455,7 +461,7 @@ hw_timer_t* timer = NULL;   // ISR
 const uint16_t frSize = 4096;
 uint8_t frame[frSize];  // ISR will fill this buffer
 uint16_t frameIndex = 0;
-uint16_t currAudioBufSize = frSize;
+uint16_t audioBufSize = frSize;
 volatile bool bufferFilled = false;
 
 
@@ -485,6 +491,39 @@ const char* eibi = "https://www.eibispace.de/dx/sked-b25.csv";              //EI
 
 //##########################################################################################################################//
 // structures
+
+
+
+struct tftSlider { // universal slider
+
+  int x;
+  int y;
+  int w;
+  int h;
+
+  int value; // 0-100
+};
+
+
+struct tftSwitch { // universal switch
+
+  int x;
+  int y;
+  bool state;
+};
+
+
+// slider and switch instances
+tftSlider pulseSlider = { 20, 70, 300, 20, 0 };  // x,y, w, h, initial val
+tftSlider notchSlider = { 20, 120, 300, 20, 0 };
+tftSlider combSlider = { 20, 170, 300, 20, 0 };
+tftSlider muteSlider = { 20, 220, 300, 20, 0 };
+tftSlider nrSlider = { 20, 270, 300, 20, 0 }; // noise reduction
+tftSwitch combSwitch = { 350, 170, false };
+tftSwitch npSwitch = { 350, 120, false };  // notch/peak
+tftSwitch nbSwitch = { 350, 70, false };  // noiseblanker
+tftSwitch nrSwitch = { 350, 270, false }; // noise reduction 
+
 
 // Original lists to load when CSV files missing.If a CSV file on the LittleFS is found, values will be loaded from the
 // LittleFS. The LittleFS can be deleted or be overwritten by copying files from an SDcard, so editing of the parameters is possible without recompiling.

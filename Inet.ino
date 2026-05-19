@@ -607,7 +607,7 @@ void webIF() { // webIF needs >95K free heap
     if (req->hasParam("f")) {
       FREQ = req->getParam("f")->value().toInt();
       notifyClients();
-      currAudioBufSize = 256;  // reduce audio buffer to reduce lag
+      audioBufSize = 256;  // reduce audio buffer to reduce lag
     }
 
     req->send(200, "text/plain", "FREQ changed");
@@ -617,7 +617,7 @@ void webIF() { // webIF needs >95K free heap
     if (req->hasParam("m")) {
       newMode = req->getParam("m")->value().toInt();
       modeChangeRequested = true;  // client changes modulation type
-      currAudioBufSize = 256;
+      audioBufSize = 256;
       if (streamAudio) {
         streamAudio = false;  // interrupt audio streaming
         wasStreaming = true;
@@ -633,7 +633,7 @@ void webIF() { // webIF needs >95K free heap
       notifyClients();
     }
     req->send(200, "text/plain", String(FREQ));
-    currAudioBufSize = 256;  // reduce audio buffer to reduce lag
+    audioBufSize = 256;  // reduce audio buffer to reduce lag
     frameIndex = 0;
   });
 

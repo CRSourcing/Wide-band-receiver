@@ -26,15 +26,15 @@ void drawSecBtns() {
   struct Button {
     const int x;
     const int y;
-    const char* label;
+    const char *label;
   };
 
 
   const Button buttons[] PROGMEM = {
     { 20, 134, "Station" },
     { 20, 152, "Scan" },
-    { 100, 132, "" },
-    { 100, 152, "" },
+    { 100, 132, "Audio" },
+    { 100, 152, "DSP" },
     { 185, 132, "Web" },
     { 185, 152, "Tools" },
     { 270, 132, "Pass" },
@@ -72,10 +72,10 @@ void drawSecBtns() {
   etft.setTextColor(TFT_SKYBLUE);
   etft.setCursor(180, 255),
     etft.print(F("Storage"));
-  etft.setCursor(10,70);
+  etft.setCursor(10, 70);
   etft.print(F("Tune without digital noise."));
-  etft.setCursor(10,90);
-   etft.print(F("Tap here to return."));
+  etft.setCursor(10, 90);
+  etft.print(F("Tap here to return."));
 
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 254);
@@ -90,31 +90,32 @@ void drawSecBtns() {
 #endif
 
 
-  while (true) { // run a small loop without display updates for tuning without display noise
+  while (true) {  // run a small loop without display updates for tuning without display noise
 
     get_Touch();
     if (pressed)
       break;
-
-    encoderMoved();
-    fineTune();
-    FREQCheck();        //check whether within FREQ range
-    displayFREQ(FREQ);  // display new FREQ
-    setFreq();
-    delay(10); 
+    if (modType != WBFM && (clw || cclw)) {
+      encoderMoved();
+      fineTune();
+      FREQCheck();        //check whether within FREQ range
+      displayFREQ(FREQ);  // display new FREQ
+      setFreq();
+      delay(10);
+    }
   }
 
   tRel();
- tft.fillRect(10,70,325,40,TFT_BLACK);
+  tft.setTextSize(2);
+  tft.fillRect(10, 70, 325, 40, TFT_BLACK);
   etft.setTTFFont(Arial_14);
   readSecBtns();
- 
 }
 //##########################################################################################################################//
 
 void readSecBtns() {
 
- tft.fillRect(10,70,325,40,TFT_BLACK);
+  tft.fillRect(10, 70, 325, 40, TFT_BLACK);
 
   int buttonID = getButtonID();
   if (!buttonID) {
@@ -129,10 +130,12 @@ void readSecBtns() {
       tRel();
       tRel();
       tx = ty = pressed = 0;
-      rebuildMainScreen(0);
+      rebuildMainScreen(false);
       return;
     case 22:
+      dspAudio();
       tRel();
+      rebuildMainScreen(false);
       break;
     case 23:
       drawIBtns();
@@ -275,7 +278,7 @@ void printAGC() {
     tft.fillRoundRect(225, 95, 100, 22, 10, TFT_BLUE);
 
   else
-    tft.pushImage(225, 92, 102, 26, (uint16_t*)Oval102);
+    tft.pushImage(225, 92, 102, 26, (uint16_t *)Oval102);
 
 
   tft.setCursor(235, 98);
@@ -388,10 +391,10 @@ void selectButtonStyle() {  // selects btw. different bitmaps for the buttons
 
 
     if (i < 4)
-      tft.pushImage(8 + i * 83, 178, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t*)buttonImages[i]);  // Use the corresponding button image
+      tft.pushImage(8 + i * 83, 178, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t *)buttonImages[i]);  // Use the corresponding button image
     else
 
-      tft.pushImage(8 + (i - 4) * 83, 235, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t*)buttonImages[i]);
+      tft.pushImage(8 + (i - 4) * 83, 235, SPRITEBTN_WIDTH, SPRITEBTN_HEIGHT, (uint16_t *)buttonImages[i]);
   }
   tPress();
 
@@ -591,4 +594,814 @@ void showEiBiStations(uint32_t FREQ) {
       return;
     }
   }
+}
+
+
+//##########################################################################################################################//
+// digital audio processor
+//##########################################################################################################################//
+
+bool invertComb = false;
+bool usePeakF = false;  // noch mode
+bool nbMode = false;    // noiseblanker 1 or 2
+bool nrMode = false;   // false = freq domain, true = time domain noise reductor
+void drawSwitch(tftSwitch sw);
+void drawSlider(tftSlider s);
+bool updateSlider(tftSlider &s, uint16_t tx, uint16_t ty);
+bool updateSwitch(tftSwitch &sw, uint16_t tx, uint16_t ty);
+// prototypes needed
+
+//##########################################################################################################################//
+void drawSwitch(tftSwitch sw) {
+  const int W = 50;
+  const int H = 20;
+  uint16_t bg = sw.state ? TFT_BLUE : TFT_DARKDARKGREY;
+
+
+  tft.fillRoundRect(sw.x, sw.y, W, H, H / 2, bg);
+
+  tft.drawRoundRect(sw.x, sw.y, W, H, H / 2, TFT_GREEN);
+
+  // knob pos
+  int knobX = sw.state ? (sw.x + W - H / 2) : (sw.x + H / 2);
+
+  tft.fillCircle(knobX, sw.y + H / 2, 8, TFT_WHITE);
+}
+//##########################################################################################################################//
+bool updateSwitch(tftSwitch &sw,
+                  uint16_t tx,
+                  uint16_t ty) {
+  const int W = 50;
+  const int H = 20;
+
+  // touch inside?
+  if (tx < sw.x || tx > (sw.x + W))
+    return sw.state;
+
+  if (ty < sw.y || ty > (sw.y + H))
+    return sw.state;
+
+  // left/right = false/true
+  if (tx < (sw.x + W / 2))
+    sw.state = false;
+  else
+    sw.state = true;
+
+  drawSwitch(sw);
+
+  return sw.state;
+}
+
+//##########################################################################################################################//
+
+void drawSlider(tftSlider s) {
+
+  tft.drawRoundRect(s.x - 12, s.y, s.w + 24, s.h, 4, TFT_GREEN);  // frame
+
+  int fillW = ((s.w - 4) * s.value) / 100;
+
+  // active
+  tft.fillRect(
+    s.x - 8,
+    s.y + 1,
+    fillW + 8,
+    s.h - 2,
+    TFT_BLUE);
+
+  // inactive
+  tft.fillRect(
+    s.x + 2 + fillW,
+    s.y + 1,
+    s.w - fillW + 6,
+    s.h - 2,
+    TFT_DARKDARKGREY);
+
+  int knobX = s.x + (s.value * s.w) / 100;
+  int knobColor = TFT_GREEN;
+
+  if (!s.value)
+    knobColor = TFT_GREY;
+
+
+  tft.fillCircle(
+    knobX,
+    s.y + s.h / 2,
+    s.h / 2 - 3,
+    knobColor);
+}
+
+//##########################################################################################################################//
+
+bool updateSlider(tftSlider &s, uint16_t tx, uint16_t ty) {
+  if (tx < s.x || tx > (s.x + s.w))
+    return false;
+
+  if (ty < s.y || ty > (s.y + s.h))
+    return false;
+
+  s.value = ((tx - s.x) * 100) / s.w;
+
+  if (s.value < 2) s.value = 0;
+  if (s.value > 100) s.value = 100;
+
+  drawSlider(s);
+
+  return true;
+}
+
+//##########################################################################################################################//
+
+
+void drawSliders() {
+  tft.fillRect(3, 50, 335, 240, TFT_BLACK);
+  drawSlider(pulseSlider);
+  drawSlider(notchSlider);
+  drawSlider(combSlider);
+  drawSlider(muteSlider);
+  drawSlider(nrSlider);
+  drawSwitch(combSwitch);
+  drawSwitch(npSwitch);
+  drawSwitch(nbSwitch);
+  drawSwitch(nrSwitch);
+  tft.setCursor(10, 50);
+  tft.print("Pulse Blanker:");
+  tft.setCursor(10, 100);
+  tft.print("Notch:");
+  tft.setCursor(10, 150);
+  tft.print("Comb:");
+  tft.setCursor(10, 200);
+  tft.print("Softmute:");
+  tft.setCursor(10, 250);
+  tft.print("Noise reduction:");
+  drawButton(350, 205, TILE_WIDTH, TILE_HEIGHT, TFT_BTNCTR, TFT_BTNBDR);
+  tft.setCursor(365, 225);
+  tft.print("Back");
+}
+
+//##########################################################################################################################//
+
+
+void dspAudio() {
+
+  si4735.setHardwareAudioMute(true);
+  tft.setTextColor(TFT_YELLOW);
+  drawSliders();
+  audioBufSize = 512;
+  printSliderValues();
+  bool leave = false;
+
+  while (!leave) {  // break if back button touched
+
+    //start filling buffer
+    bufferFilled = false;
+
+    if (!nrMode)  // FFT mode
+      fftNR();    // basic noise reductor in freq domain, RvReal and RvImag are filled, perform FFT and IFFT. Causes clicks
+
+    for (int i = 0; i < audioBufSize; i++) {
+
+      int16_t s = (int16_t)frame[i] - 128;  // move to signed
+
+
+      if (pulseSlider.value) {
+        if (!nbMode)
+          s = noiseBlanker(s);
+        else
+          s = noiseBlanker2(s);
+      }
+
+      if (notchSlider.value) {
+        if (!usePeakF)
+          s = notchF(s);
+        else
+          s = peakF(s);
+      }
+
+
+      if (combSlider.value)
+        s = combFilter(s, 20 * combSlider.value);
+
+      if (muteSlider.value)
+        s = softMute(s, muteSlider.value / 3);
+
+
+      if ((nrSlider.value) && nrMode)  // time domain mode
+        s = noiseReduction(s, nrSlider.value);
+
+      if ((nrSlider.value) && !nrMode) {  // frequency domain mode
+        RvReal[i] = (float)s;
+        RvImag[i] = 0;
+      }
+
+      else
+        playBuffer[i] = (uint8_t)s + 128;  // back to unsigned
+    }
+
+
+
+    while (!bufferFilled) {
+      if (tft.getTouchRawZ() > 300) {         // we have a touch
+        tft.getTouch(&tx, &ty);               // get_Touch() would glitch here
+        if (tx > 358 && ty > 205 && ty < 245)  // Back touched
+          leave = true;
+        processSliderTouch(tx, ty);
+        tx = 0;
+        ty = 0;
+      }
+
+
+      if (clw || cclw) {  // allow tuning
+        if (clw) {
+          FREQ += STEP;
+          clw = false;
+        } else if (cclw) {
+          FREQ -= STEP;
+          cclw = false;
+        }
+        displayFREQ(FREQ);
+        setFreq();
+      }
+    }
+
+    // --- Start playback via ISR ---
+    playIndex = 0;
+    bufferPlaying = true;
+  }
+
+  si4735.setHardwareAudioMute(false);
+  bufferPlaying = false;
+  audioBufSize = 4096;  // reset to default
+  clw = false;
+  cclw = false;
+  tft.setTextColor(textColor);
+}
+
+
+
+//##########################################################################################################################//
+
+void processSliderTouch(uint16_t tx, uint16_t ty) {
+
+
+  if (tx >= pulseSlider.x - 5 && tx <= pulseSlider.x + pulseSlider.w + 5 && ty >= pulseSlider.y - 10 && ty <= pulseSlider.y + pulseSlider.h) {
+    updateSlider(pulseSlider, tx, ty);
+
+    tft.fillRect(185, 50, 60, 16, TFT_BLACK);
+
+    tft.setCursor(185, 50);
+    tft.printf("%d", pulseSlider.value);
+
+    return;
+  }
+
+
+
+  else if (tx > 350 && ty >= pulseSlider.y && ty <= pulseSlider.y + pulseSlider.h)
+
+    nbMode = updateSwitch(nbSwitch, tx, ty);  //noise blanker 1 or 2
+
+
+  else if (tx >= notchSlider.x - 5 && tx <= notchSlider.x + notchSlider.w + 5 && ty >= notchSlider.y - 10 && ty <= notchSlider.y + notchSlider.h) {
+    updateSlider(notchSlider, tx, ty);
+
+    tft.fillRect(85, 100, 90, 16, TFT_BLACK);
+
+    tft.setCursor(85, 100);
+    tft.printf("%d Hz", notchSlider.value * 20);
+
+    return;
+  }
+
+
+  else if (tx > 350 && ty >= notchSlider.y && ty <= notchSlider.y + notchSlider.h) {
+
+    usePeakF = updateSwitch(npSwitch, tx, ty);
+    tft.fillRect(10, 100, 70, 16, TFT_BLACK);
+    tft.setCursor(10, 100);
+    if (usePeakF)
+      tft.print("Peak:");
+    else
+      tft.print("Notch:");
+    return;
+  }
+
+
+
+  else if ((tx >= combSlider.x - 5 && tx <= combSlider.x + combSlider.w + 5 && ty >= combSlider.y - 10 && ty <= combSlider.y + combSlider.h)
+           || (tx > 350 && ty >= combSlider.y && ty <= combSlider.y + combSlider.h)) {
+
+
+
+    if (tx > 350 && ty >= combSlider.y && ty <= combSlider.y + combSlider.h) {
+
+      invertComb = updateSwitch(combSwitch, tx, ty);
+
+      tft.fillRect(10, 150, 325, 16, TFT_BLACK);
+      tft.setCursor(10, 150);
+      if (invertComb)
+        tft.print("Comb inverse:");
+      else
+        tft.print("Comb normal:");
+      return;
+    }
+
+    updateSlider(combSlider, tx, ty);
+
+    tft.fillRect(180, 150, 90, 16, TFT_BLACK);
+    tft.setCursor(180, 150);
+    tft.printf("%d Hz", combSlider.value * 20);
+
+    return;
+  }
+
+
+  else if (tx >= muteSlider.x - 5 && tx <= muteSlider.x + muteSlider.w + 5 && ty >= muteSlider.y - 10 && ty <= muteSlider.y + muteSlider.h) {
+    updateSlider(muteSlider, tx, ty);
+
+    tft.fillRect(120, 200, 60, 16, TFT_BLACK);
+
+    tft.setCursor(120, 200);
+    tft.printf("%d", muteSlider.value);
+
+    return;
+  }
+
+  else if (tx > 350 && ty >= nrSlider.y && ty <= nrSlider.y + nrSlider.h)
+
+    nrMode = updateSwitch(nrSwitch, tx, ty);  //noise reduction 1 or 2
+
+  else if (tx >= nrSlider.x - 5 && tx <= nrSlider.x + nrSlider.w + 5 && ty >= nrSlider.y - 10 && ty <= nrSlider.y + nrSlider.h) {
+    updateSlider(nrSlider, tx, ty);
+
+    tft.fillRect(220, 250, 90, 16, TFT_BLACK);
+
+    tft.setCursor(220, 250);
+
+    tft.printf("%d", nrSlider.value);
+    return;
+  }
+}
+
+
+//##########################################################################################################################//
+
+void printSliderValues() {
+
+  tft.setCursor(345, 65);
+  tft.setTextColor(TFT_YELLOW);
+
+  tft.fillRect(185, 50, 60, 16, TFT_BLACK);
+  tft.setCursor(185, 50);
+  tft.printf("%d", pulseSlider.value);
+
+
+  tft.fillRect(85, 100, 90, 16, TFT_BLACK);
+  tft.setCursor(85, 100);
+  tft.printf("%d Hz", notchSlider.value * 20);
+
+  tft.fillRect(10, 100, 70, 16, TFT_BLACK);
+  tft.setCursor(10, 100);
+  if (usePeakF)
+    tft.print("Peak:");
+  else
+    tft.print("Notch:");
+
+
+  tft.fillRect(10, 150, 325, 16, TFT_BLACK);
+  tft.setCursor(10, 150);
+  if (invertComb)
+    tft.print("Comb inverse:");
+  else
+    tft.print("Comb normal:");
+
+
+  tft.fillRect(180, 150, 90, 16, TFT_BLACK);
+  tft.setCursor(180, 150);
+  tft.printf("%d Hz", combSlider.value * 20);
+
+  tft.fillRect(120, 200, 60, 16, TFT_BLACK);
+
+  tft.setCursor(120, 200);
+  tft.printf("%d", muteSlider.value);
+
+  tft.fillRect(220, 250, 90, 16, TFT_BLACK);
+
+  tft.setCursor(220, 250);
+
+  tft.printf("%d", nrSlider.value);
+}
+
+
+
+
+//##########################################################################################################################//
+
+int16_t noiseBlanker(int16_t s)  // adaptive noise blanker with audio buffer to repair samples
+{
+  const int BUF = 32;
+  static int16_t buf[BUF];
+  static uint8_t wr = 0;
+  const int delay = 12;
+
+
+  delayMicroseconds(20);
+  buf[wr] = s;
+
+  // delayed output pointer
+  int rd = wr - delay;
+
+  if (rd < 0)
+    rd += BUF;
+
+  // shift prev. samples
+
+  int p1 = wr - 1;
+  if (p1 < 0) p1 += BUF;
+
+  int p2 = wr - 2;
+  if (p2 < 0) p2 += BUF;
+
+  int16_t last = buf[p1];
+
+
+
+  // calculate trigger
+  static float avgDelta = 10;
+
+  int16_t delta = s - last;
+
+  int16_t absDelta = abs(delta);
+
+  // track normal signal changes
+  avgDelta += 0.01f * ((float)absDelta - avgDelta);
+
+  int16_t trigger = avgDelta + (101 - pulseSlider.value / 3);
+
+  trigger -= 75;  // shift  active area
+
+  // pulse detected
+  if (absDelta > trigger) {
+
+    //calculate width
+
+    int pulseLen = 1;
+
+    while (pulseLen < 12) {
+
+      int idx = (wr + pulseLen) % BUF;
+
+      int idxPrev = (idx - 1 + BUF) % BUF;
+
+      int16_t d = abs(buf[idx] - buf[idxPrev]);
+
+      // still impulsive?
+      if (d > (trigger >> 1)) pulseLen++;
+
+      else
+        break;
+    }
+
+
+    // start and stop of noise
+    int startIdx = p1;
+
+    int endIdx = (wr + pulseLen) % BUF;
+
+    int16_t y1 = buf[startIdx];
+
+    int16_t y2 = buf[endIdx];
+
+    //interpolate
+    for (int i = 0; i < pulseLen; i++) {
+
+      int idx = (wr + i) % BUF;
+
+      float t = (float)(i + 1) / (pulseLen + 1);
+
+      buf[idx] = y1 + (y2 - y1) * t;
+    }
+  }
+
+  //output
+
+  int16_t out = 1.5f * buf[rd];
+
+  // increase bufptr
+  wr++;
+
+  if (wr >= BUF)
+    wr = 0;
+
+  return out;
+}
+
+//##########################################################################################################################//
+
+int16_t noiseBlanker2(int16_t s) {  // AI optimized, check whether better?
+  const int BUF = 64;               // larger buf
+  static int16_t buf[BUF];
+  static uint8_t wr = 0;
+  const int delay = 12;
+
+
+  delayMicroseconds(30);
+  buf[wr] = s;
+
+  // delayed output pointer
+  int rd = wr - delay;
+  if (rd < 0) rd += BUF;
+
+  // previous sample
+  int p1 = wr - 1;
+  if (p1 < 0) p1 += BUF;
+  int16_t last = buf[p1];
+
+  // --- RMS-based delta tracking ---
+  static float rmsDelta = 10.0f;
+  int16_t delta = s - last;
+  int16_t absDelta = abs(delta);
+
+  // update RMS estimate
+  rmsDelta = 0.99f * rmsDelta + 0.01f * (absDelta * absDelta);
+
+  // adaptive trigger
+  int16_t trigger = (int16_t)(sqrtf(rmsDelta) + (101 - pulseSlider.value / 3));
+
+  trigger -= 75;
+
+
+  // --- pulse detection ---
+  if (absDelta > trigger) {
+    int pulseLen = 1;
+    while (pulseLen < 16) {
+      int idx = (wr + pulseLen) % BUF;
+      int idxPrev = (idx - 1 + BUF) % BUF;
+      int16_t d = abs(buf[idx] - buf[idxPrev]);
+      if (d > (trigger >> 1))
+        pulseLen++;
+      else
+        break;
+    }
+
+    // endpoints
+    int startIdx = p1;
+    int endIdx = (wr + pulseLen) % BUF;
+    int16_t y1 = buf[startIdx];
+    int16_t y2 = buf[endIdx];
+
+    // --- adaptive interpolation ---
+    if (pulseLen <= 3) {
+      // very short pulse → average
+      int16_t avg = (y1 + y2) / 2;
+      for (int i = 0; i < pulseLen; i++)
+        buf[(wr + i) % BUF] = avg;
+    } else if (pulseLen <= 8) {
+      // medium pulse → linear ramp
+      for (int i = 0; i < pulseLen; i++) {
+        float t = (float)(i + 1) / (pulseLen + 1);
+        buf[(wr + i) % BUF] = y1 + (y2 - y1) * t;
+      }
+    } else {
+      // longer burst → quadratic easing
+      for (int i = 0; i < pulseLen; i++) {
+        float t = (float)(i + 1) / (pulseLen + 1);
+        float ease = t * t;
+        buf[(wr + i) % BUF] = y1 + (y2 - y1) * ease;
+      }
+    }
+  }
+
+  int16_t out = buf[rd] * 1.5f;
+  wr++;
+  if (wr >= BUF) wr = 0;
+  return out;
+}
+
+//##########################################################################################################################//
+int16_t notchF(int16_t x) {
+  // history
+  static float x1 = 0, x2 = 0;
+  static float y1 = 0, y2 = 0;
+
+  const float r = 0.94;  // determines how narrow the filter is
+
+  const float w0 = 2.0f * PI * (float)notchSlider.value * 20.0f / 8000.0f;
+
+  const float c = cosf(w0);
+
+  float y =
+    x
+    - 2.0f * c * x1
+    + x2
+    + 2.0f * r * c * y1
+    - r * r * y2;
+
+  x2 = x1;
+  x1 = x;
+
+  y2 = y1;
+  y1 = y;
+
+  // clamp
+  if (y > 32767) y = 32767;
+  if (y < -32768) y = -32768;
+
+  return (int16_t)y;
+}
+
+
+//##########################################################################################################################//
+
+
+int16_t peakF(int16_t x) {
+  // history
+  static float y1 = 0, y2 = 0;
+
+
+  float freq = (float)notchSlider.value * 20.0f;
+
+  if (freq < 40.0f)
+    freq = 40.0f;
+
+  // bandw
+  const float r = 0.90f;  // wider than the notch
+
+  // boost
+  const float gain = 2.0f;
+
+  float w0 =
+    2.0f * PI * freq / 8000.0f;
+
+  float c = cosf(w0);
+
+  // narrow bandpass
+  float bp =
+    (1.0f - r) * x
+    + 2.0f * r * c * y1
+    - r * r * y2;
+
+  // update
+  y2 = y1;
+  y1 = bp;
+
+  // add gain
+  float y = gain * bp;
+
+  // clamp
+  if (y > 32767) y = 32767;
+  if (y < -32768) y = -32768;
+
+  return (int16_t)y;
+}
+//##########################################################################################################################//
+
+int16_t combFilter(int16_t x, int fundamentalHz) {
+  const int fs = 8000;  // sample rate
+  int32_t y;
+  // calculate period
+  int N = fs / fundamentalHz;
+  if (N < 2) N = 2;      // need min. 2 samples
+  if (N > 256) N = 256;  //clamp to buffer size for very low fundamentals
+
+  static int16_t delayBuffer[256];
+  static int idx = 0;
+  static int currentN = 0;
+
+  // if fundamental changed, reset index
+  if (N != currentN) {
+    idx = 0;
+    currentN = N;
+  }
+
+  // wrapper
+  if (idx >= currentN) idx = 0;
+
+  // delayed sample
+  int16_t delayed = delayBuffer[idx];
+
+  if (!invertComb)
+    y = (int32_t)x - (int32_t)delayed;
+
+  else
+    y = (int32_t)x + (int32_t)delayed;
+
+
+  // store sample
+  delayBuffer[idx] = x;
+  idx++;
+
+  // clamp
+  if (y > 32767) y = 32767;
+  if (y < -32768) y = -32768;
+
+  return (int16_t)y;
+}
+
+//##########################################################################################################################//
+
+
+int16_t softMute(int16_t s, uint8_t triggerLevel) {
+  static int32_t gain = 256;
+
+  static uint64_t quietStart = 0;
+
+  int16_t level = abs(s);
+
+
+  if (level >= triggerLevel) {
+
+    quietStart = 0;
+
+    // recover slowly sounds better than aprupt
+    if (gain < 256)
+      gain++;
+
+  } else {
+
+    if (quietStart == 0)
+      quietStart = audioTicks;
+
+    // low amplitude >0.5s
+    if ((audioTicks - quietStart) > 4000) {
+
+      // decrease
+      if (gain > 0)
+        gain--;
+    }
+  }
+  s = (s * gain) >> 8;
+
+  return s;
+}
+
+
+//##########################################################################################################################//
+
+
+void fftNR() {  // basic FFT noise reductor. causes clicks.
+
+  if (nrSlider.value) {
+    FFT.compute(RvReal, RvImag, audioBufSize, FFT_FORWARD);
+    float gain = (float)1 / nrSlider.value;
+    float gainAdjust = 1.0f + (float)nrSlider.value / 100;  // add  Gain for high slider values
+
+    for (int i = 1; i < audioBufSize / 2; i++) {
+
+      float mag = fabsf(RvReal[i]) + fabsf(RvImag[i]);  // fast magnitude approximation
+
+      if (!nrMode) {
+        // noise threshold
+        float threshold = (nrSlider.value) * 4;
+
+        if (mag < threshold) {
+
+          RvReal[i] = RvReal[i + 1] * gain;
+          RvImag[i] = RvImag[i + 1] * gain;
+
+          //mirror bin
+          int j = audioBufSize - i;
+
+          RvReal[j] = RvReal[j + 1] * gain;
+          RvImag[j] = RvImag[j + 1] * gain;
+        }
+
+        else {
+
+          RvReal[i] *= (gainAdjust + (float)i / 255);
+          RvImag[i] *= (gainAdjust + (float)i / 255);
+
+          //mirror bin
+          int j = audioBufSize - i;
+
+          RvReal[j] *= (gainAdjust + (float)i / 255);
+          RvImag[j] *= (gainAdjust + (float)i / 255);
+        }
+      }
+    }
+    FFT.compute(RvReal, RvImag, audioBufSize, FFT_REVERSE);
+
+    for (int i = 0; i < audioBufSize; i++)
+
+      playBuffer[i] = (uint8_t)((RvReal[i]) + 128);
+  }
+}
+
+//##########################################################################################################################//
+
+
+int16_t noiseReduction(int16_t s, uint8_t alphaPercent) { // time domain noise reductor
+  
+ 
+ alphaPercent = 100 - alphaPercent;
+
+  float alpha = (float)alphaPercent / 100.0f;
+
+  static float yPrev = 0.0f;  // previous output
+
+  // weighted average
+  float y = alpha * (float)s + (1.0f - alpha) * yPrev;
+
+  yPrev = y;  
+
+  return 1.5f * (int16_t)y;
 }
