@@ -90,11 +90,7 @@ void drawSecBtns() {
 #endif
 
 
-  while (true) {  // run a small loop without display updates for tuning without display noise
-
-    get_Touch();
-    if (pressed)
-      break;
+  while (tft.getTouchRawZ() < 300) {  // run a small loop without display updates for tuning without display noise
     if (modType != WBFM && (clw || cclw)) {
        if (clw) {
          FREQ += STEP;
