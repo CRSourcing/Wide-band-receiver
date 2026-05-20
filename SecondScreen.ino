@@ -96,7 +96,14 @@ void drawSecBtns() {
     if (pressed)
       break;
     if (modType != WBFM && (clw || cclw)) {
-      encoderMoved();
+       if (clw) {
+         FREQ += STEP;
+         clw = false;
+        } 
+       else if (cclw) {
+         FREQ -= STEP;
+         cclw = false;
+        }
       fineTune();
       FREQCheck();        //check whether within FREQ range
       displayFREQ(FREQ);  // display new FREQ
