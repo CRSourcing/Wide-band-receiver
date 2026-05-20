@@ -104,7 +104,6 @@ void drawSecBtns() {
          FREQ -= STEP;
          cclw = false;
         }
-      fineTune();
       FREQCheck();        //check whether within FREQ range
       displayFREQ(FREQ);  // display new FREQ
       setFreq();
