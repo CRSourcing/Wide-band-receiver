@@ -91,20 +91,21 @@ void drawSecBtns() {
 
 
   while (tft.getTouchRawZ() < 300) {  // run a small loop without display updates for tuning without display noise
+
     if (modType != WBFM && (clw || cclw)) {
        if (clw) {
-         FREQ += STEP;
-         clw = false;
-        } 
-       else if (cclw) {
-         FREQ -= STEP;
-         cclw = false;
+          FREQ += STEP;
+          clw = false;
+        } else if (cclw) {
+          FREQ -= STEP;
+          cclw = false;
         }
       FREQCheck();        //check whether within FREQ range
       displayFREQ(FREQ);  // display new FREQ
       setFreq();
-      delay(10);
+     
     }
+   delay(20);
   }
 
   tRel();
