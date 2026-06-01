@@ -624,7 +624,7 @@ void setDac2() {  //generate sine tone for audio testing
   dac2.enable();
 
   tft.setTextColor(textColor);
-  tft.fillRect(3, 62, 330, 230, TFT_BLACK);
+  tft.fillRect(3, 62, 333, 230, TFT_BLACK);
   tft.setCursor(10, 65);
   tft.print(F("Sine tone for audio test"));
   while (digitalRead(ENCODER_BUTTON) == HIGH) {

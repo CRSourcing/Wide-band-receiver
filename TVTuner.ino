@@ -180,21 +180,21 @@ void setTunerAGC(bool showValues) {  // use TV tuner AGC for strong signals.
 
   static unsigned char currentAGCVal = gainLimit;  // start with max tuner gain
   static unsigned char agcResult;
-  static unsigned char lastSignalStrength = 0;
   const unsigned char minGain = 70;
+  triggerUpdate++;
 
   agcResult = (255 - (signalStrength * 2) + GAIN_SHIFT);  // was empirical formula
   
   
   agcResult = constrain(agcResult, minGain, gainLimit);
 
-  if ((showValues) && displayDebugInfo && (agcResult != currentAGCVal || signalStrength != lastSignalStrength)) {
+  if (showValues && displayDebugInfo && triggerUpdate % 20 == 0) { // display update every 200ms
+    triggerUpdate = 0;
     tft.setTextColor(TFT_SKYBLUE);
     tft.setTextSize(1);
     tft.fillRect(140, 132, 22, 38, TFT_BLACK);
     tft.setCursor(143, 135);
     tft.printf("%d", signalStrength);
-    lastSignalStrength = signalStrength;
     tft.setTextColor(TFT_WHITE);
     tft.setCursor(143, 158);
     tft.printf("%d", currentAGCVal);

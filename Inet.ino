@@ -20,6 +20,35 @@ void connectWIFI() {
 //##########################################################################################################################//
 
 
+const char* makeEibiFilename(struct tm *timeinfo) {//changes every 6 months
+
+  uint16_t month = timeinfo->tm_mon + 1;    //  add 1
+  uint16_t year  = timeinfo->tm_year + 1900; 
+
+
+  char letter;
+  if (month == 11 || month == 12 || month <= 3) {
+    letter = 'b';
+  } else {
+    letter = 'a';
+  }
+
+  // Last two digits of year
+  int yy = year % 100;
+
+snprintf(urlbuffer, sizeof(urlbuffer), "https://www.eibispace.de/dx/sked-%c%02d.csv", letter, yy);
+ 
+ tft.print("\n\n");
+ tft.print(urlbuffer);
+  return urlbuffer;
+}
+
+
+
+//##########################################################################################################################//
+
+
+
 void downloadFile(bool fill) {  // downloads a jpg or png file
 
   if (fill)
@@ -37,8 +66,11 @@ void downloadFile(bool fill) {  // downloads a jpg or png file
 
   if (downloadSelector < 6) {
     file = LittleFS.open("/image.img", FILE_WRITE);
-  } else {
-    file = LittleFS.open("/sked-b25.lst", FILE_WRITE);  // EiBi station list must not end with .csv (no automatic load)
+  } 
+  
+  if (downloadSelector == 6){
+
+    file = LittleFS.open("/eibi.lst", FILE_WRITE);  // EiBi station list must not end with .csv (no automatic load)
   }
 
   if (!file) {
@@ -68,8 +100,10 @@ void downloadFile(bool fill) {  // downloads a jpg or png file
     case 5:
       http.begin(client, host5);
       break;
-    case 6:
-      http.begin(client, eibi);
+    case 6:{
+      const char* filename = makeEibiFilename(&timeinfo); // changes 2x per year
+      http.begin(client, filename); 
+    }
       break;
   }
 
@@ -132,9 +166,12 @@ int32_t mySeek(PNGFILE *handle, int32_t position) {
 //##########################################################################################################################//
 int PNGDraw(PNGDRAW *pDraw) {
   uint16_t usPixels[2500];
-  const uint32_t leftShift = -110, downShift = 70;
+  //const uint32_t hShift = -110, vShift = 70;
+  const uint32_t hShift =  20, vShift = -70;
   png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
-  tft.pushRect(leftShift + xShift, pDraw->y - downShift + yShift, pDraw->iWidth, 1, usPixels);
+  //tft.pushRect(leftShift + xShift, pDraw->y - downShift + yShift, pDraw->iWidth, 1, usPixels);
+  tft.pushRect(hShift + xShift, pDraw->y - vShift + yShift, pDraw->iWidth, 1, usPixels);
+  
   return 1;
 }
 
@@ -215,6 +252,7 @@ void readIBtns() {
     case 31:
       downloadSelector = 6;  // EiBi station list
       connectWIFI();
+      while (!getLocalTime(&timeinfo)); //need month and year to selecct Eibi file
       downloadFile(true);
       WiFi.disconnect();
       preferences.putBool("fB", true);  // set fastboot
@@ -338,6 +376,7 @@ void PNGWrapper(int cycle) {
     connectWIFI();
     downloadFile(false);
     WiFi.disconnect();
+    tft.fillScreen(TFT_BLACK);
     displayPNG();
     for (long i = 0; i < cycle * 600; i++) {
       get_Touch();

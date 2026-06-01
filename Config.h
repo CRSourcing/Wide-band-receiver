@@ -240,7 +240,7 @@ const uint16_t size_content = sizeof ssb_patch_content;  // see ssb_patch_conten
 volatile bool clw = false;                               // encoder direction clockwise
 volatile bool cclw = false;                              // counter clockwise
 
-const char ver[] = "V.610";  // version
+const char ver[] = "V.611";  // version
 
 long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
 long STEP;                    //STEP size
@@ -265,6 +265,7 @@ int NBFMOffset = 0;              // shift of  SI4735TUNED_FREQ in KHz to demodul
 int afcVoltage = 410;            // voltage tap from the quadrature demodulator
 int discriminatorZero;           // middle of the tuning meter needle
 uint8_t tuningMeterDivider = 5;  // adjust so that the tuning meter shows deviation in KHz correctly
+uint8_t triggerUpdate = 0;       // triggers AGC updates (Attn buttons)
 int8_t SWGainCorrection = 10;    //  corrects shortwave S Meter
 uint16_t SWAttn = 0;             // Shortwave attenuator attenuation, 0 = 0dB, 255= 30dB attenuation
 uint8_t SWMinAttn = 0;           // Shortwave attenuator minimum attenuation, 0 = 0dB, 255= 30dB attenuation
@@ -474,7 +475,9 @@ int reportSelector = 0;
 
 struct tm timeinfo;
 bool timeSet = false;
-static uint16_t timeOld = 0;
+uint16_t timeOld = 0;
+char urlbuffer[100]; // temporary URL's 
+
 
 // URL's for png and jpeg images. Change as you like. Resolution is limited to 480 * 320 pixels
 const char* host1 = "https://www.sws.bom.gov.au/Images/HF%20Systems/Global%20HF/Fadeout%20Charts/rtalf.jpeg";
@@ -482,17 +485,15 @@ const char* host2 = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/339
 //const char* host3 = "https://www.sws.bom.gov.au/Images/SOLROT/noscript/SOL_IMG_2.jpg";
 const char* host3 = "https://www.sws.bom.gov.au/Images/SOLROT/noscript/SOL_IMG_9.jpg";
 const char* host4 = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/CAM/GEOCOLOR/1000x1000.jpg";
-const char* host5 = "https://services.swpc.noaa.gov/images/animations/d-rap/global/latest.png";
-
+//const char* host5 = "https://services.swpc.noaa.gov/images/animations/d-rap/global/latest.png";
+const char* host5 =  "https://rigreference.com/solar/img/wide";
 const char* al = "https://services.swpc.noaa.gov/products/alerts.json";     // Spaceweather alerts from NOAA
 const char* fr = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";  // Forecast from NOAA
-const char* eibi = "https://www.eibispace.de/dx/sked-b25.csv";              //EIBI SW station list
+
 
 
 //##########################################################################################################################//
 // structures
-
-
 
 struct tftSlider { // universal slider
 

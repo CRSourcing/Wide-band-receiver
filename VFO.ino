@@ -18,7 +18,7 @@ void tune() {  // selects tuning method depending on frequency and programs si53
     TVTunerActive = false;
 
 
-    if (!singleConversionMode) {
+    if (!singleConversionMode) {  // relevant for SSB
       singleConversionMode = true;  // single conversion with LO above the IF, update needed to select BFO's
       loadSi4735parameters();
     }
@@ -32,13 +32,6 @@ void tune() {  // selects tuning method depending on frequency and programs si53
       LO_RX = abs((SI4735TUNED_FREQ * 1000) + FREQ);  // normal mode with LO above RF
     else
       LO_RX = abs((SI4735TUNED_FREQ * 1000) - FREQ);  // debugging mode with LO below RF
-
-
-#ifdef SATELLITE_TUNER_PRESENT
-#define SHORTWAVE_MODE_UPPER_LIMIT 150000000            // needss to cover 144HMz, 144 * 3 = 432MHz IF from satellite tuner
-    LO_RX = abs((SI4735TUNED_FREQ * 1000) + FREQ / 3);  // 3rd harmonic of CLK2
-
-#endif
 
 
 
@@ -101,7 +94,7 @@ void setFreq() {
   }
 
   else
-    tune();  // select tuning method and tune in
+    tune();  // select tuning method and tune in 
   return;
 }
 

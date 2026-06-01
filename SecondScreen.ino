@@ -72,10 +72,7 @@ void drawSecBtns() {
   etft.setTextColor(TFT_SKYBLUE);
   etft.setCursor(180, 255),
     etft.print(F("Storage"));
-  etft.setCursor(10, 70);
-  etft.print(F("Tune without digital noise."));
-  etft.setCursor(10, 90);
-  etft.print(F("Tap here to return."));
+
 
   etft.setTextColor(TFT_GREEN);
   etft.setCursor(20, 254);
@@ -90,23 +87,26 @@ void drawSecBtns() {
 #endif
 
 
+
   while (tft.getTouchRawZ() < 300) {  // run a small loop without display updates for tuning without display noise
 
     if (modType != WBFM && (clw || cclw)) {
-       if (clw) {
-          FREQ += STEP;
-          clw = false;
-        } else if (cclw) {
-          FREQ -= STEP;
-          cclw = false;
-        }
+      if (clw) {
+        FREQ += STEP;
+        clw = false;
+      } else if (cclw) {
+        FREQ -= STEP;
+        cclw = false;
+      }
       FREQCheck();        //check whether within FREQ range
       displayFREQ(FREQ);  // display new FREQ
       setFreq();
-     
     }
-   delay(20);
+    delay(20);
   }
+
+  if (pressSound)
+    sineTone(440, 20);  // missing here
 
   tRel();
   tft.setTextSize(2);
@@ -153,7 +153,7 @@ void readSecBtns() {
       vfoMenu();
       break;
     case 32:
-      showEiBiStations(FREQ);
+      showEiBiStations(1);  // 1 = regular mode
       break;
     case 33:
       setBFO();
@@ -424,7 +424,7 @@ void clearNotification() {
 
 //##########################################################################################################################//
 // EiBi list viewer
-void showEiBiStations(uint32_t FREQ) {
+void showEiBiStations(int mode) {
 
   int timeNowInt = 9999;  // HHMM, init out of range
 
@@ -434,32 +434,77 @@ void showEiBiStations(uint32_t FREQ) {
 
   if (timeSet) {
     getLocalTime(&timeinfo);
-    timeNowInt = timeinfo.tm_hour * 100 + timeinfo.tm_min;  // struct to HHMM
+    timeNowInt = timeinfo.tm_hour * 100 + timeinfo.tm_min;  //  to HHMM
   }
 
 
-  File file = LittleFS.open("/sked-b25.lst", FILE_READ);
+  File file = LittleFS.open("/eibi.lst", FILE_READ);
   if (!file) {
     Serial_println("Failed to open file");
     return;
   }
 
 
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(0, 0);
-  tft.printf("Loading stations at %5.1f KHz...\n", targetFreq);
-  tft.println();
+  if (mode == 1) {  // regular mode
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW);
+    tft.setCursor(0, 0);
+    tft.printf("Loading stations at %5.1f KHz...\n", targetFreq);
+    tft.println();
+  }
 
-
-
+  int xPosEibi = 3;
+  int yPosEibi = 160;
+  bool fillEibi = false;
   bool found = false;
   bool duplicate = false;
+  float freq = 0;
+  String line;
 
   String prevF4 = "";  // store prev station name to check for duplicates
 
-  while (file.available()) {
+
+  // 2 stage search, first a binary search, then when close a forward search
+
+  uint32_t low = 0;
+  uint32_t high = file.size();
+
+  while (high - low > 512) {  // stop binary when window is small, around 5 lines
+    uint32_t mid = (low + high) / 2;
+    file.seek(mid);
+
+    // Align to start of next line
+    file.readStringUntil('\n');
+
+    // read a line
     String line = file.readStringUntil('\n');
+    if (line.length() == 0) break;
+
+    // Extract freq
+    int sepPt = line.indexOf(';');
+    if (sepPt == -1) continue;
+    freq = line.substring(0, sepPt).toFloat();
+
+    if (freq < targetFreq) {
+      low = mid;
+    } else {
+      low = mid - 20000;  // correct overshot
+      high = mid;
+    }
+  }
+
+  file.seek(low);
+
+  //Serial.printf("binsearch: %6.0f for FREQ:%ld\n", freq, FREQ / 1000);
+
+  while (file.available()) {  //we're close, start 2nd stage, search, extract and print info
+
+    if (!fillEibi && mode == 2) {
+      tft.fillRect(3, 165, 334, 100, TFT_BLACK);  // make room for Eibi entries, y =160 - y =165 is reserved for cursor
+      fillEibi = true;
+    }
+
+    line = file.readStringUntil('\n');
     line.trim();
     if (line.length() == 0) continue;
 
@@ -473,13 +518,13 @@ void showEiBiStations(uint32_t FREQ) {
     // Extract freq
     int sepIndex = line.indexOf(';');
     if (sepIndex == -1) continue;
-    float freq = line.substring(0, sepIndex).toFloat();
+    freq = line.substring(0, sepIndex).toFloat();
 
     // Small frequency error allowed
-    if (abs(freq - targetFreq) < 0.5) {
+    if (abs(freq - targetFreq) <= 0.5f) {
       found = true;
 
-      // Extract first 5 fields
+      // Extract first 5 fields,
       String fields[5];
       int start = 0;
       for (int f = 0; f < 5; f++) {
@@ -510,14 +555,16 @@ void showEiBiStations(uint32_t FREQ) {
       bool active = false;
 
 
-
-
+ 
       if ((startT <= endT && timeNowInt >= startT && timeNowInt <= endT) || ((startT > endT && (timeNowInt >= startT || timeNowInt <= endT)) && timeNowInt != 9999))  // handle midnight crossing
         active = true;                                                                                                                                                // we have a match
 
+
+
+
       // Compare station name with prev station name
       if (fields[4] == prevF4 && !active) {
-        if (!duplicate) {  // flag the duplicate
+        if (!duplicate && mode == 1) {  // flag the duplicate
           tft.setTextColor(TFT_DARKGREY);
           int gy = tft.getCursorY();
           gy -= 32;  // 2 lines up to overwrite the 1st found time
@@ -534,67 +581,156 @@ void showEiBiStations(uint32_t FREQ) {
 
       else
         duplicate = false;
+      
 
+      String days = fields[2];
+      dashIdx = days.indexOf('-');
+
+      // Extract start and end day
+     String startDay = days.substring(0, dashIdx);
+     String endDay = days.substring(dashIdx + 1);
+     
+
+  
+     int startD = 0;
+
+      if (startDay == "Mo")
+        startD = 1;
+      else if (startDay == "Tu")
+        startD = 2;
+      else if (startDay=="We")
+        startD = 3;
+      else if (startDay== "Th")
+        startD = 4;
+      else if (startDay == "Fr")
+        startD = 5;
+      else if (startDay =="Sa")
+        startD = 6;
+      else if (startDay== "Su")
+        startD = 7;   
+
+      int endD = 0;
+
+         if (endDay == "Mo")
+        endD = 1;
+      else if (endDay == "Tu")
+        endD = 2;
+      else if (endDay == "We")
+        endD = 3;
+      else if (endDay == "Th")
+        endD = 4;
+      else if (endDay == "Fr")
+        endD = 5;
+      else if (endDay == "Sa")
+        endD = 6;
+      else if (endDay =="Su")
+        endD= 7;
+
+      
+    int dayOfWeek = timeinfo.tm_wday;
+
+       Serial.println(startDay + "  " + endDay);
+ 
+
+    Serial.printf(" %s  startday:%d  endday:%d  today %d\n", fields[4].c_str(), startD, endD, dayOfWeek);
+
+
+    if (startD < dayOfWeek  && endD < dayOfWeek && startD && endD) // 0  when fields are not populated
+       continue; 
+      
+    if (startD > dayOfWeek  && endD > dayOfWeek)
+       continue;   
+
+    if (startD > dayOfWeek  && endD < dayOfWeek) // overrun
+       continue; 
+
+    if (endD > dayOfWeek  && startD < dayOfWeek) // overrun
+       continue;     
+      
+    if(startD && !endD && startD != dayOfWeek ) // single day
+       continue;   
+     
       prevF4 = fields[4];
 
+      if (mode == 1) { // full screen
+        // Print
+        uint16_t cls[5] = { TFT_DARKGREY, TFT_ORANGE, TFT_CYAN, TFT_WHITE, TFT_WHITE };
+        const uint8_t colWidths[4] = { 10, 6, 4, 19 };
 
-      // Print
-      uint16_t cls[5] = { TFT_DARKGREY, TFT_ORANGE, TFT_CYAN, TFT_WHITE, TFT_WHITE };
-      const uint8_t colWidths[4] = { 10, 6, 4, 19 };
-
-      if (active) {
-        cls[0] = TFT_GREEN;
-        cls[3] = TFT_GREEN;
-      }
-
-      for (int f = 1; f < 5; f++) {
-        tft.setTextColor(cls[f - 1]);
-        String field = fields[f];
-
-        if (field.length() > colWidths[f - 1]) {
-          field = field.substring(0, colWidths[f - 1]);  // cut length
+        if (active) {
+          cls[0] = TFT_GREEN;
+          cls[3] = TFT_GREEN;
         }
-        tft.printf("%-*s", colWidths[f - 1], field.c_str());
+
+        for (int f = 1; f < 5; f++) {
+          tft.setTextColor(cls[f - 1]);
+          String field = fields[f];
+
+          if (field.length() > colWidths[f - 1]) {
+            field = field.substring(0, colWidths[f - 1]);  // cut length
+          }
+          tft.printf("%-*s", colWidths[f - 1], field.c_str());
+        }
+        tft.println();
+        tft.println();
       }
-      tft.println();
-      tft.println();
+
+
+
+      else if (mode == 2) {  // embedded in waterfall
+        if (active) {
+          Serial.printf("%s\n", fields[4].c_str());
+          if (yPosEibi < 260) {  // room for max 4 entries
+            tft.setCursor(xPosEibi + 10, yPosEibi + 10);
+            tft.printf("%s", fields[4].c_str());
+          }
+          yPosEibi += 25;
+        }
+      }
+    }  // endif freq matched
+
+    if (freq > targetFreq + 0.5f) {  // above target frequency
+
+      break;
     }
   }
 
-
   file.close();
 
-  tft.fillRect(0, 0, 480, 16, TFT_BLACK);
-  tft.setCursor(0, 0);
-  tft.setTextColor(TFT_DARKGREY);
-  tft.print(F("UTC - UTC "));
-  tft.setTextColor(TFT_ORANGE);
-  tft.print(F("Days "));
-  tft.setTextColor(TFT_CYAN);
-  tft.print(F("Cntry "));
-  tft.setTextColor(TFT_WHITE);
-  tft.print(F("Station name "));
-  sineTone(880, 100);
-  sineTone(1000, 100);
 
-
-  if (!found) {
-    tft.fillScreen(TFT_BLACK);
+  if (mode == 1) {
+    tft.fillRect(0, 0, 480, 16, TFT_BLACK);
     tft.setCursor(0, 0);
-    tft.setTextColor(TFT_RED);
-    tft.println("No stations found.\n");
-    delay(1000);
-    rebuildMainScreen(false);
-    return;
-  }
+    tft.setTextColor(TFT_DARKGREY);
+    tft.print(F("UTC - UTC "));
+    tft.setTextColor(TFT_ORANGE);
+    tft.print(F("Days "));
+    tft.setTextColor(TFT_CYAN);
+    tft.print(F("Cntry "));
+    tft.setTextColor(TFT_WHITE);
+    tft.print(F("Station name "));
+    sineTone(880, 100);
+    sineTone(1000, 100);
 
-  while (true) {
 
-    uint16_t z = tft.getTouchRawZ();
-
-    if ((z > 300) || clw || cclw || digitalRead(ENCODER_BUTTON) == LOW) {  // touch, encoder moved or pressed
+    if (!found) {
+      tft.fillScreen(TFT_BLACK);
+      tft.setCursor(0, 0);
+      tft.setTextColor(TFT_RED);
+      tft.println("No stations found.\n");
+      delay(1000);
       rebuildMainScreen(false);
       return;
+    }
+
+    while (true) {
+
+      uint16_t z = tft.getTouchRawZ();
+
+      if ((z > 300) || clw || cclw || digitalRead(ENCODER_BUTTON) == LOW) {  // touch, encoder moved or pressed
+        rebuildMainScreen(false);
+        return;
+      }
     }
   }
 }
@@ -607,7 +743,7 @@ void showEiBiStations(uint32_t FREQ) {
 bool invertComb = false;
 bool usePeakF = false;  // noch mode
 bool nbMode = false;    // noiseblanker 1 or 2
-bool nrMode = false;   // false = freq domain, true = time domain noise reductor
+bool nrMode = false;    // false = freq domain, true = time domain noise reductor
 void drawSwitch(tftSwitch sw);
 void drawSlider(tftSlider s);
 bool updateSlider(tftSlider &s, uint16_t tx, uint16_t ty);
@@ -803,8 +939,8 @@ void dspAudio() {
 
 
     while (!bufferFilled) {
-      if (tft.getTouchRawZ() > 300) {         // we have a touch
-        tft.getTouch(&tx, &ty);               // get_Touch() would glitch here
+      if (tft.getTouchRawZ() > 300) {          // we have a touch
+        tft.getTouch(&tx, &ty);                // get_Touch() would glitch here
         if (tx > 358 && ty > 205 && ty < 245)  // Back touched
           leave = true;
         processSliderTouch(tx, ty);
@@ -834,8 +970,6 @@ void dspAudio() {
   si4735.setHardwareAudioMute(false);
   bufferPlaying = false;
   audioBufSize = 4096;  // reset to default
-  clw = false;
-  cclw = false;
   tft.setTextColor(textColor);
 }
 
@@ -1100,83 +1234,81 @@ int16_t noiseBlanker(int16_t s)  // adaptive noise blanker with audio buffer to 
 
 //##########################################################################################################################//
 
-int16_t noiseBlanker2(int16_t s) {  // AI optimized, check whether better?
-  const int BUF = 64;               // larger buf
+int16_t noiseBlanker2(int16_t s)  // adaptive noise blanker with audio buffer to repair samples
+{
+  const int BUF = 32;
   static int16_t buf[BUF];
   static uint8_t wr = 0;
   const int delay = 12;
 
-
-  delayMicroseconds(30);
+  delayMicroseconds(20);
   buf[wr] = s;
 
-  // delayed output pointer
   int rd = wr - delay;
   if (rd < 0) rd += BUF;
 
-  // previous sample
   int p1 = wr - 1;
   if (p1 < 0) p1 += BUF;
+
   int16_t last = buf[p1];
 
-  // --- RMS-based delta tracking ---
-  static float rmsDelta = 10.0f;
+  // --- adaptive trigger calculation ---
+  static float avgDelta = 10;
   int16_t delta = s - last;
   int16_t absDelta = abs(delta);
+  avgDelta += 0.01f * ((float)absDelta - avgDelta);
 
-  // update RMS estimate
-  rmsDelta = 0.99f * rmsDelta + 0.01f * (absDelta * absDelta);
-
-  // adaptive trigger
-  int16_t trigger = (int16_t)(sqrtf(rmsDelta) + (101 - pulseSlider.value / 3));
-
+  int16_t trigger = avgDelta + (101 - pulseSlider.value / 3);
   trigger -= 75;
 
-
-  // --- pulse detection ---
+  // --- noise blanker ---
   if (absDelta > trigger) {
     int pulseLen = 1;
-    while (pulseLen < 16) {
+    while (pulseLen < 12) {
       int idx = (wr + pulseLen) % BUF;
       int idxPrev = (idx - 1 + BUF) % BUF;
       int16_t d = abs(buf[idx] - buf[idxPrev]);
-      if (d > (trigger >> 1))
-        pulseLen++;
-      else
-        break;
+      if (d > (trigger >> 1)) pulseLen++;
+      else break;
     }
 
-    // endpoints
     int startIdx = p1;
     int endIdx = (wr + pulseLen) % BUF;
     int16_t y1 = buf[startIdx];
     int16_t y2 = buf[endIdx];
 
-    // --- adaptive interpolation ---
-    if (pulseLen <= 3) {
-      // very short pulse → average
-      int16_t avg = (y1 + y2) / 2;
-      for (int i = 0; i < pulseLen; i++)
-        buf[(wr + i) % BUF] = avg;
-    } else if (pulseLen <= 8) {
-      // medium pulse → linear ramp
-      for (int i = 0; i < pulseLen; i++) {
-        float t = (float)(i + 1) / (pulseLen + 1);
-        buf[(wr + i) % BUF] = y1 + (y2 - y1) * t;
-      }
-    } else {
-      // longer burst → quadratic easing
-      for (int i = 0; i < pulseLen; i++) {
-        float t = (float)(i + 1) / (pulseLen + 1);
-        float ease = t * t;
-        buf[(wr + i) % BUF] = y1 + (y2 - y1) * ease;
-      }
+    for (int i = 0; i < pulseLen; i++) {
+      int idx = (wr + i) % BUF;
+      float t = (float)(i + 1) / (pulseLen + 1);
+      buf[idx] = y1 + (y2 - y1) * t;
     }
   }
 
-  int16_t out = buf[rd] * 1.5f;
+
+  static float gain = 256;
+  static uint64_t quietStart = 0;
+
+  int16_t out = buf[rd];
+  int16_t level = abs(out);
+
+  if (level >= pulseSlider.value / 3) {
+    quietStart = 0;
+    if (gain < 256) gain += 2;  // slow recovery
+  } else {
+    if (quietStart == 0) quietStart = audioTicks;
+    if ((audioTicks - quietStart) > 2000) {  // ~0.2s quiet
+      gain -= (gain / 1000.0f);              // fade out
+    }
+  }
+
+
+
+
+  out = (out * (uint16_t)gain) >> 8;
+
   wr++;
   if (wr >= BUF) wr = 0;
+
   return out;
 }
 
@@ -1392,10 +1524,10 @@ void fftNR() {  // basic FFT noise reductor. causes clicks.
 //##########################################################################################################################//
 
 
-int16_t noiseReduction(int16_t s, uint8_t alphaPercent) { // time domain noise reductor
-  
- 
- alphaPercent = 100 - alphaPercent;
+int16_t noiseReduction(int16_t s, uint8_t alphaPercent) {  // time domain noise reductor
+
+
+  alphaPercent = 100 - alphaPercent;
 
   float alpha = (float)alphaPercent / 100.0f;
 
@@ -1404,7 +1536,7 @@ int16_t noiseReduction(int16_t s, uint8_t alphaPercent) { // time domain noise r
   // weighted average
   float y = alpha * (float)s + (1.0f - alpha) * yPrev;
 
-  yPrev = y;  
+  yPrev = y;
 
   return 1.5f * (int16_t)y;
 }

@@ -96,13 +96,10 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
   tft.setCursor(8, 260);
   tft.print(F("8 Bit Mono, 8000 sampl/sec"));
 
-  char tempVol = si4735.getVolume();
   bool circle = false;
   bool mutestat = audioMuted;
 
   si4735.setHardwareAudioMute(false);
-  si4735.setVolume(50);
-
   mountSDCard();
 
   // Find next avail file name
@@ -195,7 +192,6 @@ void wavRecord(uint8_t mode) {  // 0 = plain, 1 = timer, 2 = squelch
 
   f.flush();
   f.close();
-  si4735.setVolume(tempVol);
   mutestat = audioMuted;
   si4735.setAudioMute(mutestat);
   si4735.setHardwareAudioMute(mutestat);
