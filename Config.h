@@ -110,8 +110,8 @@
 #define RELAY_SWITCH_OUTPUT 14     // activates IF  and LNA relays. Low = tvTuner connected to LNA and AD831
 #define ENCODER_PIN_B 16           // Encoder left and right pins
 #define ENCODER_PIN_A 17           // Encoder left and right pins
-#define ESP32_I2C_SDA 21           // I2C bus
-#define ESP32_I2C_SCL 22           // I2C bus
+#define ESP32__SDA 21           //  bus
+#define ESP32__SCL 22           //  bus
 #define TUNER_AGC_PIN 25           // tuner AGC pin
 
 
@@ -209,7 +209,7 @@ TFT_eSprite spr2 = TFT_eSprite(&tft);  // rolling RSSI indicator
 TFT_eSprite spr3 = TFT_eSprite(&tft);  // audio waterfall after user inactivity
 
 
-Si5351 si5351(0x60);  //Si5351 I2C Address 0x60
+Si5351 si5351(0x60);  //Si5351  Address 0x60
 SI4735 si4735;
 Preferences preferences;  // Flash save data
 PNG png;
@@ -242,7 +242,7 @@ volatile bool cclw = false;                              // counter clockwise
 
 const char ver[] = "V.611";  // version
 
-long I2C_BUSSPEED = 2100000;  // Adjust as needed. This is high, but seems to work fine. Gets automatically reduced when the tv tuner gets addressed
+long I2C_BUSSPEED = 500000;  // Adjust as needed. 
 long STEP;                    //STEP size
 long OLDSTEP;
 const long MIN_FREQ = 100000;          // lowest frequency
